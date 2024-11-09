@@ -1,0 +1,146 @@
+import {
+    TextInput,
+    PasswordInput,
+    Checkbox,
+    Stack,
+    Divider,
+    Paper,
+    Box,
+    Center,
+    Text,
+    Anchor,
+    Button,
+    Group,
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { AuthError, useAuth, SocialLoginButtons, SignInStep, passwordPolicyValidator } from '../../Authentication';
+import { notifications } from '@mantine/notifications';
+
+export const SignUpForm = () => {
+    const auth = useAuth();
+
+    const form = useForm({
+        initialValues: {
+            firstName: '',
+            lastName: '',
+            email: '',
+            password: '',
+            terms: false,
+        },
+        validate: {
+            firstName: (val: string) => (val ? null : 'Please provide a first name'),
+            lastName: (val: string) => (val ? null : 'Please provide a last name'),
+            email: (val: string) => (/^\S+@\S+$/.test(val) ? null : 'Please provide a valid email'),
+            password: passwordPolicyValidator,
+            terms: (val: boolean) => (val ? null : 'Please accept terms and conditions'),
+        },
+    });
+
+    const onSubmit = async (values: typeof form.values) => {
+        console.log('Signup hola');
+        try {
+            await auth.signUp({
+                username: values.email,
+                password: values.password,
+                email: values.email,
+                firstName: values.firstName,
+                lastName: values.lastName,
+            });
+
+            notifications.show({
+                title: 'Sign up code sent',
+                message: 'Please check your email for your sign up code',
+            });
+        } catch (error) {
+            if (error instanceof AuthError) {
+                switch (error.name) {
+                    case 'UsernameExistsException':
+                        form.setFieldError('email', 'Email already in use. Sign in or reset yourpassword.');
+                        break;
+                    default:
+                        console.error('Authentication error:', error);
+                        form.setFieldError('email', 'An unexpected error occurred');
+                }
+            } else {
+                console.error('Unexpected error:', error);
+                form.setFieldError('email', 'An unexpected error occurred');
+            }
+        }
+    };
+
+    return (
+        <Center h="100vh">
+            <Box w={500}>
+                <Paper radius="md" p="xl" withBorder>
+                    <Text size="lg" fw={500}>
+                        Welcome, sign up with
+                    </Text>
+
+                    <SocialLoginButtons />
+
+                    <Divider label="Or continue with email" labelPosition="center" my="lg" />
+                    <form id="signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
+                        <Stack>
+                            <TextInput
+                                label="First Name"
+                                placeholder="Elon"
+                                value={form.values.firstName}
+                                onChange={(event) => form.setFieldValue('firstName', event.currentTarget.value)}
+                                error={form.errors.firstName}
+                                radius="md"
+                            />
+                            <TextInput
+                                label="Last Name"
+                                placeholder="Musk"
+                                value={form.values.lastName}
+                                onChange={(event) => form.setFieldValue('lastName', event.currentTarget.value)}
+                                error={form.errors.lastName}
+                                radius="md"
+                            />
+                            <TextInput
+                                required
+                                label="Email"
+                                placeholder="your@email.com"
+                                value={form.values.email}
+                                onChange={(event) => form.setFieldValue('email', event.currentTarget.value)}
+                                error={form.errors.email}
+                                radius="md"
+                            />
+                            <PasswordInput
+                                required
+                                label="Password"
+                                placeholder="Your password"
+                                value={form.values.password}
+                                onChange={(event) => form.setFieldValue('password', event.currentTarget.value)}
+                                error={form.errors.password}
+                                radius="md"
+                            />
+                            <Checkbox
+                                label="I accept terms and conditions"
+                                checked={form.values.terms}
+                                onChange={(event) => form.setFieldValue('terms', event.currentTarget.checked)}
+                                error={form.errors.terms}
+                            />
+                        </Stack>
+                    </form>
+                    <Group justify="space-between" mt="xl">
+                        <Anchor
+                            component="button"
+                            type="button"
+                            c="dimmed"
+                            onClick={() => {
+                                auth.setSignInStep(SignInStep.SIGNIN);
+                            }}
+                            size="xs"
+                        >
+                            Already have an account? Sign In
+                        </Anchor>
+                        <Button type="submit" form="signup-form">
+                            Sign Up
+                        </Button>
+                    </Group>
+                </Paper>
+            </Box>
+        </Center>
+    );
+};
