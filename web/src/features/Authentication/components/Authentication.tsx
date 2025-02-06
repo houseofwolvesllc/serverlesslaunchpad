@@ -60,4 +60,8 @@ done: check for duplicate code
 
 questions
 should validation be in the contact functions as well as the useForm definitions?
+
+todo: adjust authentication context to solely house signInStep and signedInUser 
+todo: authentication provider should no longer be needed and should be removed
+todo: 
 */

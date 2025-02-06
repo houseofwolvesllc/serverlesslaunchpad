@@ -1,21 +1,30 @@
-import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor } from '@mantine/core';
+import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor, Input } from '@mantine/core';
 import { useAuth } from '../../Authentication';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { useSearchParams } from 'react-router-dom';
+
 export const ConfirmSignUpForm = () => {
     const auth = useAuth();
+    const [searchParams] = useSearchParams();
+    const confirmationEmail = searchParams.get('email');
 
     const form = useForm({
         initialValues: {
+            confirmationEmail: confirmationEmail || '',
             confirmationCode: '',
         },
         validate: {
+            confirmationEmail: (val: string) => (val ? null : 'Please provide the email address you signed up with'),
             confirmationCode: (val: string) => (val ? null : 'Please provide a confirmation code'),
         },
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        await auth.confirmSignUp(values.confirmationCode);
+        await auth.confirmSignUp({
+            confirmationEmail: values.confirmationEmail,
+            confirmationCode: values.confirmationCode,
+        });
 
         notifications.show({
             title: 'Confirmed!',
@@ -24,7 +33,7 @@ export const ConfirmSignUpForm = () => {
     };
 
     const resendSignUpCode = async () => {
-        await auth.resendSignUpCode();
+        await auth.resendConfirmationCode(form.values.confirmationEmail);
 
         notifications.show({
             title: 'Sign up code resent',
@@ -41,6 +50,7 @@ export const ConfirmSignUpForm = () => {
                     </Text>
                     <form id="confirm-signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
+                            <Input type="hidden" {...form.getInputProps('confirmationEmail')} />
                             <TextInput
                                 required
                                 label="Confirmation Code"

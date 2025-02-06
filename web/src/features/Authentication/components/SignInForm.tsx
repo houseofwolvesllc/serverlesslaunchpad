@@ -12,10 +12,17 @@ import {
     Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, SocialLoginButtons, SignInStep, useAuth } from '../../Authentication';
+import { AuthError, SignInStep, SocialLoginButtons } from '../../Authentication';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useContext } from 'react';
+import { LoadingContext } from '../../../context/LoadingContext';
+import { useAuth } from '../hooks/useAuth';
 
 export const SignInForm = () => {
-    const auth = useAuth();
+    const { signIn } = useAuth();
+    const { setIsLoading } = useContext(LoadingContext);
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const form = useForm({
         initialValues: {
@@ -30,11 +37,38 @@ export const SignInForm = () => {
 
     const onSubmit = async (values: typeof form.values) => {
         try {
-            await auth.signIn({ username: values.email, password: values.password });
+            setIsLoading(true);
+
+            const result = await signIn({
+                username: values.email,
+                password: values.password,
+            });
+
+            if (!result) {
+                throw new Error('Unexpected sign in step');
+            }
+
+            switch (result) {
+                case SignInStep.CONFIRM_SIGNUP:
+                    navigate(`/auth/confirm-signup?username=${values.email}`);
+                    break;
+                case SignInStep.RESET_PASSWORD:
+                    navigate(`/auth/reset-password`);
+                    break;
+                case SignInStep.COMPLETED:
+                    const origin = location.state?.from?.pathname || '/dashboard';
+                    navigate(origin);
+                    break;
+            }
         } catch (error) {
-            console.log('INSTANCE', error instanceof AuthError, typeof error);
-            if (error instanceof Error) {
+            if (error instanceof AuthError) {
                 switch (error.name) {
+                    case 'UserNotConfirmedException':
+                        navigate(`/auth/confirm-signup?username=${values.email}`);
+                        break;
+                    case 'PasswordResetRequiredException':
+                        navigate(`/auth/reset-password`);
+                        break;
                     case 'NotAuthorizedException':
                         form.setFieldError(
                             'password',
@@ -43,7 +77,7 @@ export const SignInForm = () => {
                                 <Anchor
                                     size="xs"
                                     style={{ cursor: 'pointer' }}
-                                    onClick={() => auth.setSignInStep(SignInStep.RESET_PASSWORD)}
+                                    onClick={() => navigate(`/auth/reset-password`)}
                                 >
                                     Forgot password?
                                 </Anchor>
@@ -57,10 +91,9 @@ export const SignInForm = () => {
                         console.error('Authentication error:', error);
                         form.setFieldError('email', 'An unexpected error occurred');
                 }
-            } else {
-                console.error('Unexpected error:', error);
-                form.setFieldError('email', 'An unexpected error occurred');
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -103,7 +136,7 @@ export const SignInForm = () => {
                             type="button"
                             c="dimmed"
                             onClick={() => {
-                                auth.setSignInStep(SignInStep.SIGNUP);
+                                navigate(`/auth/signup`);
                             }}
                             size="xs"
                         >
