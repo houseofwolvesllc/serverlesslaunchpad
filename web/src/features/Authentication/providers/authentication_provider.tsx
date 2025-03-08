@@ -1,6 +1,6 @@
-import { AuthenticationContext, useAuth } from '../../Authentication';
+import { AuthenticationContext, useAuth } from '../../authentication';
 import { useContext, useEffect, useState } from 'react';
-import { LoadingContext } from '../../../context/LoadingContext';
+import { LoadingContext } from '../../../context/loading_context';
 import { User, AuthError } from '../types';
 
 export const AuthenticationProvider = ({ children }: { children: React.ReactNode }) => {

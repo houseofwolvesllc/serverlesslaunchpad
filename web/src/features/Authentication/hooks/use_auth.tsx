@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { AuthenticationContext, AuthError, SignInStep, User } from '../../Authentication';
+import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
 import * as amplify from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
 

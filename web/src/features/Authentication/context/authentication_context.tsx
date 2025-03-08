@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { User } from '../../Authentication';
+import { User } from '../../authentication';
 
 export const AuthenticationContext = createContext<{
     signedInUser: User | undefined;

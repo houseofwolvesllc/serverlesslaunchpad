@@ -13,7 +13,7 @@ import {
     Image,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../Authentication';
+import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../authentication';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from 'react-router-dom';
 

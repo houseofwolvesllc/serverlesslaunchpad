@@ -1,7 +1,7 @@
 import { TextInput, Button, Stack, Paper, Text, Center, Box, rem, Image } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useAuth } from '../../Authentication';
+import { useAuth } from '../../authentication';
 import { useNavigate } from 'react-router-dom';
 
 export const ResetPasswordForm = () => {

@@ -1,10 +1,9 @@
 import { Center, Box, Paper, Group, Anchor, Button, TextInput, PasswordInput, Stack, Image, rem } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, SignInStep } from '../../Authentication';
+import { AuthError, SignInStep, useAuth } from '../../authentication';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
-import { LoadingContext } from '../../../context/LoadingContext';
-import { useAuth } from '../hooks/useAuth';
+import { LoadingContext } from '../../../context/loading_context';
 import { notifications } from '@mantine/notifications';
 
 export const SignInForm = () => {

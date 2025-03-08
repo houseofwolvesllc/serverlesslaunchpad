@@ -1,5 +1,5 @@
 import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor, Input, rem, Image } from '@mantine/core';
-import { useAuth } from '../../Authentication';
+import { useAuth } from '../../authentication';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useSearchParams, useNavigate } from 'react-router-dom';
