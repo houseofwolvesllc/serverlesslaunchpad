@@ -1,4 +1,17 @@
-import { TextInput, PasswordInput, Button, Stack, Paper, Text, Center, Box, Input, Anchor } from '@mantine/core';
+import {
+    TextInput,
+    PasswordInput,
+    Button,
+    Stack,
+    Paper,
+    Text,
+    Center,
+    Box,
+    Input,
+    Anchor,
+    rem,
+    Image,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AuthError, passwordPolicyValidator, useAuth } from '../../Authentication';
@@ -84,6 +97,12 @@ export const ConfirmResetPasswordForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
                     <Text size="lg" fw={500} mb="md">
                         Reset Your Password

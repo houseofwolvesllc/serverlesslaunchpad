@@ -1,4 +1,17 @@
-import { TextInput, PasswordInput, Checkbox, Stack, Paper, Box, Center, Anchor, Button, Group } from '@mantine/core';
+import {
+    TextInput,
+    PasswordInput,
+    Checkbox,
+    Stack,
+    Paper,
+    Box,
+    Center,
+    Anchor,
+    Button,
+    Group,
+    rem,
+    Image,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../Authentication';
 import { notifications } from '@mantine/notifications';
@@ -76,6 +89,12 @@ export const SignUpForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
                     <form id="signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
