@@ -1,19 +1,6 @@
-import {
-    TextInput,
-    PasswordInput,
-    Checkbox,
-    Stack,
-    Divider,
-    Paper,
-    Box,
-    Center,
-    Text,
-    Anchor,
-    Button,
-    Group,
-} from '@mantine/core';
+import { TextInput, PasswordInput, Checkbox, Stack, Paper, Box, Center, Anchor, Button, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, useAuth, SocialLoginButtons, passwordPolicyValidator, SignInStep } from '../../Authentication';
+import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../Authentication';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from 'react-router-dom';
 
@@ -68,12 +55,20 @@ export const SignUpForm = () => {
                         form.setFieldError('email', 'Email already in use. Sign in or reset yourpassword.');
                         break;
                     default:
-                        console.error('Authentication error:', error);
-                        form.setFieldError('email', 'An unexpected error occurred');
+                        notifications.show({
+                            color: 'red',
+                            title: 'Something Unexpected Happened',
+                            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                        });
+                        throw error;
                 }
             } else {
-                console.error('Unexpected error:', error);
-                form.setFieldError('email', 'An unexpected error occurred');
+                notifications.show({
+                    color: 'red',
+                    title: 'Something Unexpected Happened',
+                    message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                });
+                throw error;
             }
         }
     };
@@ -82,13 +77,6 @@ export const SignUpForm = () => {
         <Center h="100vh">
             <Box w={500}>
                 <Paper radius="md" p="xl" withBorder>
-                    <Text size="lg" fw={500}>
-                        Welcome, sign up with
-                    </Text>
-
-                    <SocialLoginButtons />
-
-                    <Divider label="Or continue with email" labelPosition="center" my="lg" />
                     <form id="signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
                             <TextInput

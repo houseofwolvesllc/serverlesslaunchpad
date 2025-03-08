@@ -2,12 +2,13 @@ import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor, Inpu
 import { useAuth } from '../../Authentication';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 export const ConfirmSignUpForm = () => {
     const auth = useAuth();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const confirmationEmail = searchParams.get('email');
+    const confirmationEmail = (searchParams.get('email') || '').trim().replace(/\s/g, '+');
 
     const form = useForm({
         initialValues: {
@@ -21,19 +22,39 @@ export const ConfirmSignUpForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        await auth.confirmSignUp({
-            confirmationEmail: values.confirmationEmail,
-            confirmationCode: values.confirmationCode,
-        });
+        try {
+            await auth.confirmSignUp({
+                confirmationEmail: values.confirmationEmail,
+                confirmationCode: values.confirmationCode,
+            });
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                title: 'Something Unexpected Happened',
+                message: error instanceof Error ? error.message : 'An unexpected error occurred',
+            });
+            throw error;
+        }
 
         notifications.show({
             title: 'Confirmed!',
             message: 'Thank you for confirming your account :)',
         });
+
+        navigate('/dashboard');
     };
 
     const resendSignUpCode = async () => {
-        await auth.resendConfirmationCode(form.values.confirmationEmail);
+        try {
+            await auth.resendConfirmationCode(form.values.confirmationEmail);
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                title: 'Something Unexpected Happened',
+                message: error instanceof Error ? error.message : 'An unexpected error occurred',
+            });
+            throw error;
+        }
 
         notifications.show({
             title: 'Sign up code resent',

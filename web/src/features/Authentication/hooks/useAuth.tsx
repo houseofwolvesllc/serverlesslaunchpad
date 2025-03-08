@@ -1,21 +1,58 @@
 import { useContext } from 'react';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../Authentication';
 import * as amplify from 'aws-amplify/auth';
+import { Amplify } from 'aws-amplify';
+
+Amplify.configure({
+    Auth: {
+        Cognito: {
+            identityPoolId: 'us-west-2:680b19b5-c13b-46b1-8343-8962fc545d69',
+            userPoolId: 'us-west-2_mvWUwrMK9',
+            userPoolClientId: '3j37olsjbth4d10v0s2nortqtv',
+            loginWith: {
+                email: true,
+            },
+            signUpVerificationMethod: 'code',
+            userAttributes: {
+                email: {
+                    required: true,
+                },
+            },
+            allowGuestAccess: true,
+            passwordFormat: {
+                minLength: 8,
+                requireLowercase: true,
+                requireUppercase: true,
+                requireNumbers: true,
+                requireSpecialCharacters: true,
+            },
+        },
+    },
+});
 
 export const useAuth = function () {
     const { setSignedInUser } = useContext(AuthenticationContext);
 
     async function authorize(): Promise<User> {
-        const currentUser = await amplify.getCurrentUser();
+        try {
+            await amplify.getCurrentUser();
 
-        if (!currentUser) {
-            throw new AuthError({ name: 'NotAuthenticated', message: 'User not authenticated' });
+            const authSession = await amplify.fetchAuthSession();
+            const user = await authorizeSession(authSession);
+            setSignedInUser(user);
+            return user;
+        } catch (error) {
+            if (error instanceof amplify.AuthError) {
+                switch (error.name) {
+                    case 'UserUnAuthenticatedException':
+                        throw new AuthError({ name: 'NotAuthenticated', message: 'User not authenticated' });
+                    default:
+                        throw new AuthError(error);
+                }
+            }
+
+            throw error;
         }
-
-        const authSession = await amplify.fetchAuthSession();
-        const user = await authorizeSession(authSession);
-        setSignedInUser(user);
-        return user;
     }
 
     async function authorizeSession(authSession: amplify.AuthSession): Promise<User> {

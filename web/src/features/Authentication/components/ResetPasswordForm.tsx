@@ -18,12 +18,21 @@ export const ResetPasswordForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
+        try {
+            await auth.resetPassword(values.email);
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                title: 'Something Unexpected Happened',
+                message: error instanceof Error ? error.message : 'An unexpected error occurred',
+            });
+            throw error;
+        }
+
         notifications.show({
             title: 'Reset code sent',
             message: 'Please check your email for your reset code',
         });
-
-        await auth.resetPassword(values.email);
 
         navigate(`/auth/confirm-reset-password?email=${values.email}`);
     };

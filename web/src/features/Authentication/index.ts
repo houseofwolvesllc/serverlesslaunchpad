@@ -1,4 +1,3 @@
-export * from './components/Authentication';
 export * from './providers/AuthenticationProvider';
 export * from './context/AuthenticationContext';
 export * from './components/ConfirmSignUpForm';
@@ -7,4 +6,5 @@ export * from './components/ResetPasswordForm';
 export * from './components/SignInForm';
 export * from './components/SignUpForm';
 export * from './hooks/useAuth';
-export * from './components/SocialLoginButtons';
+export * from './types';
+export * from './utils/passwordPolicyValidator';
