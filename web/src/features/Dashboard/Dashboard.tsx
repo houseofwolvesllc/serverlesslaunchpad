@@ -1,7 +1,6 @@
-import { AppShell, Burger, Text } from '@mantine/core';
+import { AppShell, Burger, Text, Image } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { useAuth } from '../Authentication';
-import { Logo } from './Logo';
+import { AuthenticationContext, useAuth } from '../Authentication';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
 import {
     IconNotes,
@@ -15,7 +14,9 @@ import {
 import { UserButton } from '../../components/UserButton/UserButton';
 import { LinksGroup } from '../../components/NavbarLinksGroup/NavbarLinksGroup';
 import classes from './Dashboard.module.css';
-import { useEffect } from 'react';
+import { useContext } from 'react';
+import { LoadingContext } from '../../context/LoadingContext';
+import { useNavigate } from 'react-router-dom';
 
 const mockdata = [
     { label: 'Dashboard', icon: IconGauge },
@@ -55,6 +56,10 @@ const mockdata = [
 
 export const Dashboard = () => {
     const auth = useAuth();
+    const { setIsLoading } = useContext(LoadingContext);
+    const { signedInUser } = useContext(AuthenticationContext);
+    const navigate = useNavigate();
+
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
@@ -64,9 +69,13 @@ export const Dashboard = () => {
 
     const links = mockdata.map((item) => <LinksGroup {...item} key={item.label} />);
 
-    useEffect(() => {
-        console.log('DASHBOARD USEEFFECT', auth.signedInUser);
-    }, []);
+    const onSignOut = async () => {
+        console.log('DASHBOARD SIGN OUT');
+        setIsLoading(true);
+        await auth.signOut();
+        setIsLoading(false);
+        navigate('/auth/signin');
+    };
 
     return (
         <AppShell
@@ -78,7 +87,11 @@ export const Dashboard = () => {
                 <Group h="100%" px="md">
                     <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
                     <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
-                    <Logo style={{ width: rem(120) }} />
+                    <Image
+                        src="/svg/serverless_launchpad_logo.svg"
+                        alt="Serverless Launchpad Logo"
+                        style={{ height: rem(56) }}
+                    />
                 </Group>
             </AppShell.Header>
             <AppShell.Navbar p="md" pt="0" pb="0">
@@ -94,8 +107,8 @@ export const Dashboard = () => {
             <AppShell.Main>
                 Main
                 <br />
-                <div>Authenticated as {auth.signedInUser?.username}</div>
-                <Button onClick={() => auth.signOut()}>Logout</Button>
+                <div>Authenticated as {signedInUser?.username}</div>
+                <Button onClick={onSignOut}>Logout</Button>
                 {Array(40)
                     .fill(0)
                     .map((_, index) => (

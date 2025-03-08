@@ -3,22 +3,23 @@ import {
     PasswordInput,
     Checkbox,
     Stack,
-    Divider,
     Paper,
     Box,
     Center,
-    Text,
     Anchor,
     Button,
     Group,
+    rem,
+    Image,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, useAuth, SocialLoginButtons, SignInStep, passwordPolicyValidator } from '../../Authentication';
+import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../Authentication';
 import { notifications } from '@mantine/notifications';
+import { useNavigate } from 'react-router-dom';
 
 export const SignUpForm = () => {
     const auth = useAuth();
-
+    const navigate = useNavigate();
     const form = useForm({
         initialValues: {
             firstName: '',
@@ -37,20 +38,29 @@ export const SignUpForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        console.log('Signup hola');
         try {
-            await auth.signUp({
-                username: values.email,
-                password: values.password,
+            const result = await auth.signUp({
                 email: values.email,
+                password: values.password,
                 firstName: values.firstName,
                 lastName: values.lastName,
             });
 
-            notifications.show({
-                title: 'Sign up code sent',
-                message: 'Please check your email for your sign up code',
-            });
+            switch (result) {
+                case SignInStep.CONFIRM_SIGNUP:
+                    notifications.show({
+                        title: 'Sign up code sent',
+                        message: 'Please check your email for your sign up code',
+                    });
+
+                    navigate(`/auth/confirm-signup?email=${values.email}`);
+                    break;
+                case SignInStep.SIGNIN:
+                    navigate(`/auth/signin`);
+                    break;
+                default:
+                    throw new Error(`Unexpected sign in step: ${result}`);
+            }
         } catch (error) {
             if (error instanceof AuthError) {
                 switch (error.name) {
@@ -58,12 +68,20 @@ export const SignUpForm = () => {
                         form.setFieldError('email', 'Email already in use. Sign in or reset yourpassword.');
                         break;
                     default:
-                        console.error('Authentication error:', error);
-                        form.setFieldError('email', 'An unexpected error occurred');
+                        notifications.show({
+                            color: 'red',
+                            title: 'Something Unexpected Happened',
+                            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                        });
+                        throw error;
                 }
             } else {
-                console.error('Unexpected error:', error);
-                form.setFieldError('email', 'An unexpected error occurred');
+                notifications.show({
+                    color: 'red',
+                    title: 'Something Unexpected Happened',
+                    message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                });
+                throw error;
             }
         }
     };
@@ -71,14 +89,13 @@ export const SignUpForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
-                    <Text size="lg" fw={500}>
-                        Welcome, sign up with
-                    </Text>
-
-                    <SocialLoginButtons />
-
-                    <Divider label="Or continue with email" labelPosition="center" my="lg" />
                     <form id="signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
                             <TextInput
@@ -129,7 +146,7 @@ export const SignUpForm = () => {
                             type="button"
                             c="dimmed"
                             onClick={() => {
-                                auth.setSignInStep(SignInStep.SIGNIN);
+                                navigate(`/auth/signin`);
                             }}
                             size="xs"
                         >

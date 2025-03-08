@@ -1,21 +1,17 @@
-import {
-    Center,
-    Box,
-    Paper,
-    Text,
-    Divider,
-    Group,
-    Anchor,
-    Button,
-    TextInput,
-    PasswordInput,
-    Stack,
-} from '@mantine/core';
+import { Center, Box, Paper, Group, Anchor, Button, TextInput, PasswordInput, Stack, Image, rem } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, SocialLoginButtons, SignInStep, useAuth } from '../../Authentication';
+import { AuthError, SignInStep } from '../../Authentication';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useContext } from 'react';
+import { LoadingContext } from '../../../context/LoadingContext';
+import { useAuth } from '../hooks/useAuth';
+import { notifications } from '@mantine/notifications';
 
 export const SignInForm = () => {
-    const auth = useAuth();
+    const { signIn } = useAuth();
+    const { setIsLoading } = useContext(LoadingContext);
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const form = useForm({
         initialValues: {
@@ -30,11 +26,36 @@ export const SignInForm = () => {
 
     const onSubmit = async (values: typeof form.values) => {
         try {
-            await auth.signIn({ username: values.email, password: values.password });
+            setIsLoading(true);
+
+            const result = await signIn({
+                username: values.email,
+                password: values.password,
+            });
+
+            switch (result) {
+                case SignInStep.CONFIRM_SIGNUP:
+                    navigate(`/auth/confirm-signup?username=${values.email}`);
+                    break;
+                case SignInStep.RESET_PASSWORD:
+                    navigate(`/auth/reset-password`);
+                    break;
+                case SignInStep.COMPLETED:
+                    const origin = location.state?.from?.pathname || '/dashboard';
+                    navigate(origin);
+                    break;
+                default:
+                    throw new Error(`Unexpected sign in step: ${result}`);
+            }
         } catch (error) {
-            console.log('INSTANCE', error instanceof AuthError, typeof error);
-            if (error instanceof Error) {
+            if (error instanceof AuthError) {
                 switch (error.name) {
+                    case 'UserNotConfirmedException':
+                        navigate(`/auth/confirm-signup?username=${values.email}`);
+                        break;
+                    case 'PasswordResetRequiredException':
+                        navigate(`/auth/reset-password`);
+                        break;
                     case 'NotAuthorizedException':
                         form.setFieldError(
                             'password',
@@ -43,7 +64,7 @@ export const SignInForm = () => {
                                 <Anchor
                                     size="xs"
                                     style={{ cursor: 'pointer' }}
-                                    onClick={() => auth.setSignInStep(SignInStep.RESET_PASSWORD)}
+                                    onClick={() => navigate(`/auth/reset-password`)}
                                 >
                                     Forgot password?
                                 </Anchor>
@@ -54,27 +75,29 @@ export const SignInForm = () => {
                         form.setFieldError('email', 'User not found');
                         break;
                     default:
-                        console.error('Authentication error:', error);
-                        form.setFieldError('email', 'An unexpected error occurred');
+                        notifications.show({
+                            color: 'red',
+                            title: 'Something Unexpected Happened',
+                            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                        });
+                        throw error;
                 }
-            } else {
-                console.error('Unexpected error:', error);
-                form.setFieldError('email', 'An unexpected error occurred');
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
-                    <Text size="lg" fw={500}>
-                        Welcome, sign in with
-                    </Text>
-
-                    <SocialLoginButtons />
-
-                    <Divider label="Or continue with email" labelPosition="center" my="lg" />
                     <form id="signin-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
                             <TextInput
@@ -103,7 +126,7 @@ export const SignInForm = () => {
                             type="button"
                             c="dimmed"
                             onClick={() => {
-                                auth.setSignInStep(SignInStep.SIGNUP);
+                                navigate(`/auth/signup`);
                             }}
                             size="xs"
                         >

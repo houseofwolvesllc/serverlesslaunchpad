@@ -1,30 +1,60 @@
-import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor } from '@mantine/core';
+import { TextInput, Button, Stack, Paper, Text, Center, Box, Group, Anchor, Input, rem, Image } from '@mantine/core';
 import { useAuth } from '../../Authentication';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+
 export const ConfirmSignUpForm = () => {
     const auth = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const confirmationEmail = (searchParams.get('email') || '').trim().replace(/\s/g, '+');
 
     const form = useForm({
         initialValues: {
+            confirmationEmail: confirmationEmail || '',
             confirmationCode: '',
         },
         validate: {
+            confirmationEmail: (val: string) => (val ? null : 'Please provide the email address you signed up with'),
             confirmationCode: (val: string) => (val ? null : 'Please provide a confirmation code'),
         },
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        await auth.confirmSignUp(values.confirmationCode);
+        try {
+            await auth.confirmSignUp({
+                confirmationEmail: values.confirmationEmail,
+                confirmationCode: values.confirmationCode,
+            });
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                title: 'Something Unexpected Happened',
+                message: error instanceof Error ? error.message : 'An unexpected error occurred',
+            });
+            throw error;
+        }
 
         notifications.show({
             title: 'Confirmed!',
             message: 'Thank you for confirming your account :)',
         });
+
+        navigate('/dashboard');
     };
 
     const resendSignUpCode = async () => {
-        await auth.resendSignUpCode();
+        try {
+            await auth.resendConfirmationCode(form.values.confirmationEmail);
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                title: 'Something Unexpected Happened',
+                message: error instanceof Error ? error.message : 'An unexpected error occurred',
+            });
+            throw error;
+        }
 
         notifications.show({
             title: 'Sign up code resent',
@@ -35,12 +65,19 @@ export const ConfirmSignUpForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
                     <Text size="lg" fw={500} mb="md">
                         Confirm Your Sign Up
                     </Text>
                     <form id="confirm-signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
+                            <Input type="hidden" {...form.getInputProps('confirmationEmail')} />
                             <TextInput
                                 required
                                 label="Confirmation Code"
