@@ -1,0 +1,36 @@
+// https://www.typescriptlang.org/tsconfig
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": [
+      "ESNext"
+    ],
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "importHelpers": true,
+    "alwaysStrict": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "downlevelIteration": true,
+    "declaration": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "vitest/globals"
+    ]
+  }
+}
