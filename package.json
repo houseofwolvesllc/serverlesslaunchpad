@@ -16,5 +16,8 @@
     },
     "devDependencies": {
         "vitest": "^3.0.8"
+    },
+    "dependencies": {
+        "@aws-sdk/client-athena": "^3.772.0"
     }
 }
