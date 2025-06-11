@@ -1,12 +1,13 @@
 import {
     AuthorizeMessage,
     GetSessionsMessage,
-    Paginated,
     ReauthorizeMessage,
     RevokeSessionMessage,
     Session,
     UnauthorizeMessage,
-} from "@houseofwolves/serverlesslaunchpad.types";
+} from "./types";
+
+import { Paginated } from "@houseofwolves/serverlesslaunchpad.commons";
 
 export interface Authority {
     authorize(message: AuthorizeMessage): Promise<boolean>;

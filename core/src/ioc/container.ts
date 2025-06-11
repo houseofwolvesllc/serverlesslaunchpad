@@ -1,140 +1,118 @@
-import "reflect-metadata";
+import { ContainerError, ServiceAlreadyRegisteredError, ServiceNotFoundError } from "./errors";
+import { AbstractConstructor, BindOptions, Constructor, ServiceDescriptor } from "./types";
 
-export type Lifecycle = "transient" | "singleton" | "scoped";
+export class ContainerRegistrar<T> {
+    constructor(private descriptor: ServiceDescriptor<T>, private registry: Map<string, ServiceDescriptor<any>>) {}
 
-export interface RegistrationOptions {
-    lifecycle?: Lifecycle;
-    token?: symbol | string;
-}
+    to(implementationType: Constructor<T>): ContainerRegistrar<T> {
+        this.descriptor.implementation = implementationType;
+        return this;
+    }
 
-interface InjectableClass {
-    __interface: symbol;
-}
+    toFactory(factory: () => T): ContainerRegistrar<T> {
+        this.descriptor.factory = factory;
+        return this;
+    }
 
-interface ServiceDescriptor<T> {
-    implementation: new (...args: any[]) => T;
-    lifecycle: Lifecycle;
-    instance?: T;
-    token: symbol | string;
-    interface: symbol;
-}
+    asSingleton(): ContainerRegistrar<T> {
+        this.descriptor.lifecycle = "singleton";
+        return this;
+    }
 
-type ServiceRegistry = Map<symbol | string, ServiceDescriptor<any>>;
+    asTransient(): ContainerRegistrar<T> {
+        this.descriptor.lifecycle = "transient";
+        return this;
+    }
 
-// Injectable decorator to mark classes that will be registered as interface implementations
-export function Injectable(token: symbol) {
-    return function (target: any) {
-        (target as InjectableClass).__interface = token;
-    };
-}
+    named(name: string): ContainerRegistrar<T> {
+        this.registry.delete(this.descriptor.name);
+        this.descriptor.name = `${name}-${this.descriptor.serviceType.name}`;
 
-// Inject decorator for constructor parameters that are interfaces
-export function Inject(token: symbol) {
-    return function (target: any, propertyKey: string | undefined, parameterIndex: number) {
-        const existingParams: symbol[] = Reflect.getMetadata("design:paramtypes", target) || [];
-        existingParams[parameterIndex] = token;
-        Reflect.defineMetadata("design:paramtypes", existingParams, target);
-    };
-}
+        if (this.registry.has(this.descriptor.name)) {
+            throw new ServiceAlreadyRegisteredError(this.descriptor.name);
+        }
 
-// Type guard to check if a class is marked as implementing an interface
-function isInjectable(target: any): target is InjectableClass {
-    return target && "__interface" in target;
+        this.registry.set(this.descriptor.name, this.descriptor);
+        return this;
+    }
 }
 
 export class Container {
-    private registry: ServiceRegistry = new Map();
-    private scopedInstances: Map<symbol | string, any> = new Map();
+    private registry: Map<string, ServiceDescriptor<any>> = new Map();
 
-    register<T>(implementation: new (...args: any[]) => T, options: RegistrationOptions = {}): void {
-        const token = options.token;
-        const lifecycle = options.lifecycle || "transient";
+    bind<T>(serviceType: AbstractConstructor<T> | Constructor<T>, options?: BindOptions<T>): ContainerRegistrar<T> {
+        const descriptor: ServiceDescriptor<T> = {
+            serviceType,
+            implementation: options?.implementation || (serviceType as Constructor<T>),
+            factory: options?.factory,
+            lifecycle: options?.lifecycle || "transient",
+            name: options?.name ? `${options.name}-${serviceType.name}` : serviceType.name,
+        };
 
-        // Check if this token is already registered
-        if (token && this.registry.has(token)) {
-            throw new Error(`A service with token ${token.toString()} is already registered.`);
+        if (this.registry.has(descriptor.name)) {
+            throw new ServiceAlreadyRegisteredError(descriptor.name);
         }
 
-        // If the implementation is decorated with @Injectable, use its interface token
-        // Otherwise, use the provided token or generate one from the class name
-        const interfaceToken = isInjectable(implementation) ? implementation.__interface : undefined;
-        const finalToken = token || interfaceToken || Symbol(implementation.name);
-
-        this.registry.set(finalToken, {
-            implementation,
-            lifecycle,
-            instance: lifecycle === "singleton" ? new implementation() : undefined,
-            token: finalToken,
-            interface: interfaceToken || Symbol(implementation.name),
-        });
+        this.registry.set(descriptor.name, descriptor);
+        return new ContainerRegistrar(descriptor, this.registry);
     }
 
-    private resolveConstructorParams(descriptor: ServiceDescriptor<any>): any[] {
-        const paramTypes = Reflect.getMetadata("design:paramtypes", descriptor.implementation) || [];
-        return paramTypes.map((paramType: any, index: number) => {
-            const paramToken = Reflect.getMetadata("design:paramtypes", descriptor.implementation)[index];
-            if (paramToken) {
-                const paramDescriptor = this.registry.get(paramToken);
-                if (!paramDescriptor) {
-                    throw new Error(`No registration found for constructor parameter token: ${paramToken.toString()}`);
-                }
-                return this.resolveInstance(paramDescriptor);
+    resolve<T>(serviceType: AbstractConstructor<T> | Constructor<T>, name?: string): T {
+        const registryName = name ? `${name}-${serviceType.name}` : serviceType.name;
+        let descriptor = this.registry.get(registryName);
+
+        if (!descriptor) {
+            if (name) {
+                throw new ServiceNotFoundError(registryName);
             }
-            return new paramType();
-        });
-    }
 
-    private resolveInstance(descriptor: ServiceDescriptor<any>): any {
+            descriptor = {
+                serviceType,
+                implementation: serviceType as Constructor<T>,
+                lifecycle: "transient",
+                name: registryName,
+            };
+        }
+
+        if (descriptor.factory) {
+            switch (descriptor.lifecycle) {
+                case "singleton":
+                    if (!descriptor.instance) {
+                        descriptor.instance = descriptor.factory();
+                    }
+                    return descriptor.instance;
+                case "transient":
+                    return descriptor.factory();
+                default:
+                    throw new ContainerError(`Invalid lifecycle ${descriptor.lifecycle}`);
+            }
+        }
+
+        const params = Reflect.getMetadata("design:paramtypes", descriptor.implementation);
+        const keys = Reflect.getMetadata("injection:keys", descriptor.implementation);
+        const resolvedParams = !params
+            ? []
+            : params.map((param: any, index: number) => {
+                  if (!param) {
+                      throw new ContainerError(
+                          `Cannot resolve parameter of type ${param} for ${descriptor.implementation.name}`
+                      );
+                  }
+
+                  const key = keys?.[index];
+                  return this.resolve(param, key);
+              });
+
         switch (descriptor.lifecycle) {
             case "singleton":
                 if (!descriptor.instance) {
-                    const params = this.resolveConstructorParams(descriptor);
-                    descriptor.instance = new descriptor.implementation(...params);
+                    descriptor.instance = new descriptor.implementation(...resolvedParams);
                 }
                 return descriptor.instance;
-
-            case "scoped":
-                if (!this.scopedInstances.has(descriptor.token)) {
-                    const params = this.resolveConstructorParams(descriptor);
-                    this.scopedInstances.set(descriptor.token, new descriptor.implementation(...params));
-                }
-                return this.scopedInstances.get(descriptor.token);
-
             case "transient":
+                return new descriptor.implementation(...resolvedParams);
             default:
-                const params = this.resolveConstructorParams(descriptor);
-                return new descriptor.implementation(...params);
+                throw new ContainerError(`Invalid lifecycle ${descriptor.lifecycle}`);
         }
-    }
-
-    get<T>(token?: symbol | string): T {
-        // If no token provided, try to find a service by type
-        if (!token) {
-            // Look for a service that implements the interface
-            for (const [_, descriptor] of this.registry) {
-                if (isInjectable(descriptor.implementation)) {
-                    return this.get<T>(descriptor.token);
-                }
-            }
-            throw new Error("No service found for the requested type");
-        }
-
-        const descriptor = this.registry.get(token);
-
-        if (!descriptor) {
-            throw new Error(`No registration found for token: ${token.toString()}`);
-        }
-
-        return this.resolveInstance(descriptor) as T;
-    }
-
-    createScope(): Container {
-        const scopedContainer = new Container();
-        scopedContainer.registry = this.registry;
-        return scopedContainer;
-    }
-
-    clearScope(): void {
-        this.scopedInstances.clear();
     }
 }

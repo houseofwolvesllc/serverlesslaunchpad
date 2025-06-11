@@ -1,8 +1,8 @@
 {
-    "name": "@houseofwolves/serverlesslaunchpad.types",
+    "name": "@houseofwolves/serverlesslaunchpad.commons",
     "version": "1.0.0",
     "author": "k-gar",
-    "description": "Library for common types for the Serverless Launchpad platform.",
+    "description": "Library for common types, schemas, and utils shared across the Serverless Launchpad platform.",
     "private": true,
     "main": "src/index.ts",
     "type": "module",

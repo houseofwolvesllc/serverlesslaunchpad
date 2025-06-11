@@ -1,4 +1,4 @@
-import { User } from "@houseofwolves/serverlesslaunchpad.types";
+import { User } from "./types";
 
 export interface UserProvider {
     getUser(message: { email: string }): Promise<User>;
