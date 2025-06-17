@@ -1,17 +1,21 @@
-import { Authority, SessionRepository, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
+import { ResourcesConfig } from "@aws-amplify/core";
+import { Paginated } from "@houseofwolves/serverlesslaunchpad.commons";
 import {
+    Authority,
     AuthorizeMessage,
+    Features,
     GetSessionsMessage,
     InvalidAccessTokenError,
-    Paginated,
     ReauthorizeMessage,
     RevokeSessionMessage,
+    Role,
     Session,
+    SessionRepository,
     UnauthorizeMessage,
     User,
-} from "@houseofwolves/serverlesslaunchpad.types";
+    UserRepository,
+} from "@houseofwolves/serverlesslaunchpad.core";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
-import { ResourcesConfig } from "@aws-amplify/core";
 import * as crypto from "crypto";
 
 export class CognitoAuthority implements Authority {
@@ -91,6 +95,10 @@ export class CognitoAuthority implements Authority {
             email: message.email,
             firstName: message.firstName,
             lastName: message.lastName,
+            role: Role.Base,
+            features: Features.None,
+            dateCreated: new Date(),
+            dateModified: new Date(),
         });
     }
 
