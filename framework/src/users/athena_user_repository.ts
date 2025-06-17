@@ -1,5 +1,4 @@
-import { UserProvider, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
-import { User } from "@houseofwolves/serverlesslaunchpad.types";
+import { Features, Role, User, UserProvider, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
 import { AthenaClient } from "../data/athena/athena_client";
 
 export class AthenaUserProvider implements UserProvider {
@@ -17,6 +16,10 @@ export class AthenaUserProvider implements UserProvider {
             email: row.email,
             firstName: row.firstName,
             lastName: row.lastName,
+            role: row.role,
+            features: row.features,
+            dateCreated: row.dateCreated,
+            dateModified: row.dateModified,
         };
     }
 
@@ -39,7 +42,16 @@ export class AthenaUserRepository extends AthenaUserProvider implements UserRepo
         super(athenaClient, tableName);
     }
 
-    async upsertUser(message: { userId: string; email: string; firstName: string; lastName: string }): Promise<User> {
+    async upsertUser(message: {
+        userId: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        role: Role;
+        features: Features;
+        dateCreated: Date;
+        dateModified: Date;
+    }): Promise<User> {
         // Check if user exists
         const checkSql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
         const checkParams = [{ name: "userId", value: message.userId }];
@@ -53,14 +65,14 @@ export class AthenaUserRepository extends AthenaUserProvider implements UserRepo
             // Update existing user
             sql = `
                 UPDATE ${this.tableName} 
-                SET email = :email, firstName = :firstName, lastName = :lastName
+                SET email = :email, firstName = :firstName, lastName = :lastName, role = :role, features = :features, dateCreated = :dateCreated, dateModified = :dateModified
                 WHERE userId = :userId
             `;
         } else {
             // Insert new user
             sql = `
-                INSERT INTO ${this.tableName} (userId, email, firstName, lastName) 
-                VALUES (:userId, :email, :firstName, :lastName)
+                INSERT INTO ${this.tableName} (userId, email, firstName, lastName, role, features, dateCreated, dateModified) 
+                VALUES (:userId, :email, :firstName, :lastName, :role, :features, :dateCreated, :dateModified)
             `;
         }
 
@@ -69,6 +81,10 @@ export class AthenaUserRepository extends AthenaUserProvider implements UserRepo
             { name: "email", value: message.email },
             { name: "firstName", value: message.firstName },
             { name: "lastName", value: message.lastName },
+            { name: "role", value: message.role },
+            { name: "features", value: message.features },
+            { name: "dateCreated", value: message.dateCreated },
+            { name: "dateModified", value: message.dateModified },
         ];
 
         await this.athenaClient.query(sql, params);
@@ -79,6 +95,10 @@ export class AthenaUserRepository extends AthenaUserProvider implements UserRepo
             email: message.email,
             firstName: message.firstName,
             lastName: message.lastName,
+            role: message.role,
+            features: message.features,
+            dateCreated: message.dateCreated,
+            dateModified: message.dateModified,
         };
     }
 }

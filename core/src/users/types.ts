@@ -1,13 +1,18 @@
 import { z } from "zod";
 
-export enum Roles {
-    Base = 0,
-    Admin = 1 << 0,
+export enum Role {
+    Base,
+    Support,
+    AccountManager,
+    Admin,
 }
 
 export enum Features {
-    Base = 0,
-    Works = 1 << 0,
+    None = 0,
+    Contacts = 1 << 0,
+    Campaigns = 1 << 1,
+    Links = 1 << 2,
+    Apps = 1 << 3,
 }
 
 const userSchema = z.object({
@@ -15,8 +20,8 @@ const userSchema = z.object({
     email: z.string(),
     firstName: z.string(),
     lastName: z.string(),
-    roles: z.array(z.nativeEnum(Roles)),
-    features: z.array(z.nativeEnum(Features)),
+    role: z.nativeEnum(Role),
+    features: z.nativeEnum(Features),
     dateCreated: z.date().optional().default(new Date()),
     dateModified: z.date().optional().default(new Date()),
 });

@@ -1,13 +1,14 @@
-import { SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
-import { GetSessionsMessage, Paginated, Session } from "@houseofwolves/serverlesslaunchpad.types";
+import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
+import { Session, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
 import { AthenaClient, SqlParameter } from "../data/athena/athena_client";
 import { AthenaPagingInstruction } from "../data/athena/athena_paging_intstruction";
 
-export class AthenaSessionRepository implements SessionRepository {
+export class AthenaSessionRepository extends SessionRepository {
     protected readonly athenaClient: AthenaClient;
     protected readonly tableName: string;
 
     constructor(athenaClient: AthenaClient, tableName: string = "sessions") {
+        super();
         this.athenaClient = athenaClient;
         this.tableName = tableName;
     }
@@ -26,40 +27,54 @@ export class AthenaSessionRepository implements SessionRepository {
 
     async getSessions(message: {
         sessionToken: string;
-        pagingInstruction?: AthenaPagingInstruction;
+        pagingInstruction?: PagingInstruction;
     }): Promise<Paginated<Session>> {
         const userId = message.sessionToken.substring(32);
         const params: SqlParameter[] = [];
 
+        if (message.pagingInstruction && !this.isAthenaPagingInstruction(message.pagingInstruction)) {
+            throw new Error("Paging instruction must be an AthenaPagingInstruction");
+        }
+
         let sql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
         params.push({ name: "userId", value: userId });
+
+        if (message.pagingInstruction?.cursor) {
+            const operator = message.pagingInstruction.direction === "backward" ? ">" : "<";
+            sql += ` AND dateCreated ${operator} :cursor`;
+            params.push({ name: "cursor", value: message.pagingInstruction.cursor });
+        }
 
         sql += " ORDER BY dateCreated DESC";
 
         if (message.pagingInstruction) {
-            sql += " LIMIT :limit OFFSET :offset";
-            params.push({ name: "limit", value: message.pagingInstruction.size });
-            params.push({
-                name: "offset",
-                value: (message.pagingInstruction?.page ?? 0) * message.pagingInstruction.size,
-            });
+            sql += " LIMIT :limit";
+            params.push({ name: "limit", value: message.pagingInstruction.size + 1 });
         }
 
         const sessions = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
+
+        const hasMore = message.pagingInstruction ? sessions.length > message.pagingInstruction.size : false;
+        if (hasMore) {
+            sessions.pop();
+        }
+
         let next: AthenaPagingInstruction | undefined;
         let previous: AthenaPagingInstruction | undefined;
 
-        if (sessions.length === message.pagingInstruction?.size) {
+        if (hasMore && sessions.length > 0 && message.pagingInstruction) {
             next = {
-                page: (message.pagingInstruction?.page ?? 0) + 1,
-                size: message.pagingInstruction?.size,
+                cursor: sessions[sessions.length - 1].dateCreated.toISOString(),
+                size: message.pagingInstruction.size,
+                direction: "forward",
             };
         }
 
-        if (message.pagingInstruction?.page && message.pagingInstruction?.page > 0) {
+        if (message.pagingInstruction?.cursor && sessions.length > 0) {
             previous = {
-                page: message.pagingInstruction?.page - 1,
-                size: message.pagingInstruction?.size,
+                cursor: sessions[0].dateCreated.toISOString(),
+                size: message.pagingInstruction.size,
+                direction: "backward",
             };
         }
 
@@ -130,5 +145,13 @@ export class AthenaSessionRepository implements SessionRepository {
         const params: SqlParameter[] = [{ name: "sessionId", value: message.sessionId }];
 
         await this.athenaClient.query(sql, params);
+    }
+
+    private isAthenaPagingInstruction(
+        pagingInstruction: PagingInstruction | undefined
+    ): pagingInstruction is AthenaPagingInstruction {
+        return (
+            pagingInstruction !== undefined && typeof (pagingInstruction as AthenaPagingInstruction).cursor === "string"
+        );
     }
 }
