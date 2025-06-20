@@ -1,0 +1,32 @@
+{
+  "name": "@serverlesslaunchpad/api.hypermedia",
+  "version": "1.0.0",
+  "description": "Hypermedia API for Serverless Launchpad",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "prettier": "prettier --write \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@serverlesslaunchpad/core": "file:../core",
+    "@serverlesslaunchpad/framework": "file:../framework",
+    "@serverlesslaunchpad/types": "file:../types",
+    "@types/aws-lambda": "^8.10.134",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}

@@ -2,9 +2,16 @@ import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad
 import { Session } from "./types";
 
 export abstract class SessionProvider {
-    abstract getSession(message: { sessionId: string }): Promise<Session | undefined>;
+    abstract getSession(message: {
+        userId: string;
+        sessionId?: string;
+        sessionSignature?: string;
+    }): Promise<Session | undefined>;
 
-    abstract getSessions(message: { pagingInstruction?: PagingInstruction }): Promise<Paginated<Session>>;
+    abstract getSessions(message: {
+        userId: string;
+        pagingInstruction?: PagingInstruction;
+    }): Promise<Paginated<Session>>;
 }
 
 export abstract class SessionRepository extends SessionProvider {
@@ -16,5 +23,11 @@ export abstract class SessionRepository extends SessionProvider {
         userAgent: string;
     }): Promise<Session>;
 
-    abstract deleteSession(message: { sessionId: string }): Promise<void>;
+    abstract extendSession(message: { userId: string; sessionSignature: string }): Promise<Session | undefined>;
+
+    abstract deleteSession(message: {
+        userId: string;
+        sessionId?: string;
+        sessionSignature?: string;
+    }): Promise<boolean>;
 }

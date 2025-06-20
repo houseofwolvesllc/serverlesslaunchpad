@@ -1,13 +1,8 @@
-import { ResourcesConfig } from "@aws-amplify/core";
-import { Paginated } from "@houseofwolves/serverlesslaunchpad.commons";
 import {
     Authority,
     AuthorizeMessage,
     Features,
-    GetSessionsMessage,
-    InvalidAccessTokenError,
     ReauthorizeMessage,
-    RevokeSessionMessage,
     Role,
     Session,
     SessionRepository,
@@ -15,60 +10,27 @@ import {
     User,
     UserRepository,
 } from "@houseofwolves/serverlesslaunchpad.core";
-import { CognitoJwtVerifier } from "aws-jwt-verify";
 import * as crypto from "crypto";
 
 export class CognitoAuthority implements Authority {
-    private readonly amplifyResourcesConfig: ResourcesConfig;
     private readonly sessionRepository: SessionRepository;
     private readonly userRepository: UserRepository;
 
-    constructor(
-        amplifyResourcesConfig: ResourcesConfig,
-        sessionRepository: SessionRepository,
-        userRepository: UserRepository
-    ) {
-        this.amplifyResourcesConfig = amplifyResourcesConfig;
+    constructor(sessionRepository: SessionRepository, userRepository: UserRepository) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
     }
 
-    async authorize(message: AuthorizeMessage): Promise<boolean> {
-        // verify access token
-        // get user from email address
-        // if no user exists build user
-        // upsert user
-        // build sessionHash from message.sessionKey
-        // upsert user and session
-        // return sessionToken (this will be used for reauthorization or un-authorization)
-
-        this.verifyAccessToken(message.accessToken);
+    async authorize(message: AuthorizeMessage): Promise<Session> {
         const user = await this.upsertUser(message);
-        this.createSession(message, user);
-
-        return true;
+        return await this.createSession(message, user);
     }
 
-    private async verifyAccessToken(accessToken: string): Promise<void> {
-        const verifier = CognitoJwtVerifier.create({
-            userPoolId: this.amplifyResourcesConfig.Auth?.Cognito?.userPoolId ?? "",
-            tokenUse: "access",
-            clientId: this.amplifyResourcesConfig.Auth?.Cognito?.userPoolClientId ?? "",
-        });
-
-        try {
-            verifier.verify(accessToken);
-        } catch (err) {
-            console.error(err);
-            throw new InvalidAccessTokenError("Invalid access token");
-        }
-    }
-
-    private async createSession(message: AuthorizeMessage, user: User): Promise<void> {
+    private async createSession(message: AuthorizeMessage, user: User): Promise<Session> {
         const sessionSignature = this.generateSessionSignature(message);
         const sessionId = crypto.randomUUID();
 
-        this.sessionRepository.createSession({
+        return await this.sessionRepository.createSession({
             sessionId: sessionId,
             userId: user.userId,
             sessionSignature: sessionSignature,
@@ -78,7 +40,8 @@ export class CognitoAuthority implements Authority {
     }
 
     private generateSessionSignature(message: AuthorizeMessage): string {
-        const sessionKey = message.sessionToken.substring(0, 32);
+        const { sessionKey } = this.parseSessionToken(message.sessionToken);
+
         return crypto
             .createHash("md5")
             .update(`${sessionKey}_${message.ipAddress}_${message.userAgent}_${process.env.SESSION_TOKEN_SALT}`)
@@ -93,32 +56,39 @@ export class CognitoAuthority implements Authority {
         return this.userRepository.upsertUser({
             userId: user?.userId ?? crypto.randomUUID(),
             email: message.email,
-            firstName: message.firstName,
-            lastName: message.lastName,
-            role: Role.Base,
-            features: Features.None,
-            dateCreated: new Date(),
+            firstName: user?.firstName ?? message.firstName,
+            lastName: user?.lastName ?? message.lastName,
+            role: user?.role ?? Role.Base,
+            features: user?.features ?? Features.None,
+            dateCreated: user?.dateCreated ?? new Date(),
             dateModified: new Date(),
         });
     }
 
-    async reauthorize(_message: ReauthorizeMessage): Promise<boolean> {
-        return true;
+    async reauthorize(message: ReauthorizeMessage): Promise<void> {
+        const { userId } = this.parseSessionToken(message.sessionToken);
+        const sessionSignature = this.generateSessionSignature(message);
+        const session = await this.sessionRepository.extendSession({ userId, sessionSignature });
+
+        if (!session) {
+            throw new InvalidSessionError("Session not found");
+        }
+
+        return;
     }
 
     async unauthorize(_message: UnauthorizeMessage): Promise<boolean> {
+        // parse session token
+        // get session from session repository
+        // if session is not found return true
+        // if session is found delete session
         return true;
     }
 
-    async getSessions(_message: GetSessionsMessage): Promise<Paginated<Session>> {
-        return {
-            items: [],
-            pagingInstructions: {},
-        };
-    }
-
-    async revokeSession(_message: RevokeSessionMessage): Promise<boolean> {
-        return true;
+    private parseSessionToken(sessionToken: string): { sessionKey: string; userId: string } {
+        const sessionKey = sessionToken.substring(0, 32);
+        const userId = sessionToken.substring(32);
+        return { sessionKey, userId };
     }
 }
 

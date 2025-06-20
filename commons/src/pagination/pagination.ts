@@ -1,5 +1,5 @@
 export abstract class PagingInstruction {
-    size = 100;
+    limit = 100;
 }
 
 export abstract class PagingInstructions {
