@@ -2,7 +2,7 @@ import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslau
 import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../common/extended_alb_event.js";
 import { HypermediaResponse } from "../common/types.js";
-import { Cache, Protected } from "../decorators/index.js";
+import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
 import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas.js";
 
@@ -23,6 +23,7 @@ export class ApiKeysController extends BaseController {
      * Body: { "pagingInstruction": { ... } }
      * Note: API key management requires higher privilege (AccountManager)
      */
+    @Log()
     @Protected()
     @Cache({ ttl: 600, vary: ['Authorization'] })
     @Route('POST', '/users/{userId}/api_keys/list')
@@ -61,6 +62,7 @@ export class ApiKeysController extends BaseController {
      * Example: POST /users/123/api_keys/delete
      * Requires Admin role and session authentication (critical operation)
      */
+    @Log()
     @Protected()
     @Route('POST', '/users/{userId}/api_keys/delete')
     async deleteApiKeys(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
