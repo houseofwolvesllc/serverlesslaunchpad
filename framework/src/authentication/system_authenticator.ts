@@ -6,6 +6,7 @@ import {
     ConfigurationStore,
     Features,
     Injectable,
+    RevokeMessage,
     Role,
     SessionRepository,
     UserRepository,
@@ -102,7 +103,7 @@ export class SystemAuthenticator implements Authenticator {
         }
     }
 
-    private generateSessionSignature(message: AuthenticateMessage): string {
+    private generateSessionSignature(message: { sessionKey: string; ipAddress: string; userAgent: string }): string {
         return crypto
             .createHash("sha256")
             .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${process.env.SESSION_TOKEN_SALT}`)
@@ -191,5 +192,20 @@ export class SystemAuthenticator implements Authenticator {
         const sessionKey = sessionToken.substring(0, 32);
         const userId = sessionToken.substring(32);
         return { sessionKey, userId };
+    }
+
+    async revoke(message: RevokeMessage): Promise<void> {
+        const { sessionKey, userId } = this.parseSessionToken(message.sessionToken);
+
+        const sessionSignature = this.generateSessionSignature({
+            sessionKey,
+            ipAddress: message.ipAddress,
+            userAgent: message.userAgent,
+        });
+
+        await this.sessionRepository.deleteSessionBySignature({
+            userId,
+            sessionSignature,
+        });
     }
 }

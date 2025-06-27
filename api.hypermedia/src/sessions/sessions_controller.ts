@@ -1,18 +1,26 @@
+import { Injectable, Role, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
 import { BaseController } from "../base_controller.js";
-import { Route } from "../router.js";
-import { Protected, Cache } from "../decorators/index.js";
-import { Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { AuthenticatedALBEvent } from "../common/extended_alb_event.js";
-import { GetSessionsSchema, DeleteSessionsSchema } from "./schemas.js";
 import { HypermediaResponse } from "../common/types.js";
+import { Cache, Protected } from "../decorators/index.js";
+import { Route } from "../router.js";
+import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
 
 /**
  * Sessions endpoint controller demonstrating proper decorator usage
  */
+@Injectable()
 export class SessionsController extends BaseController {
+    constructor(
+        private sessionRepository: SessionRepository
+    ) {
+        super();
+    }
+
     /**
      * Get paginated list of user sessions
-     * Example: GET /users/123/sessions
+     * Example: POST /users/123/sessions/list
+     * Body: { "pagingInstruction": { ... } }
      * 
      * Decorator execution order (bottom to top):
      * 1. Cache - checks ETag first
@@ -21,12 +29,12 @@ export class SessionsController extends BaseController {
      */
     @Protected()
     @Cache({ ttl: 300, vary: ['Authorization'] })
-    @Route('GET', '/users/{userId}/sessions')
+    @Route('POST', '/users/{userId}/sessions/list')
     async getSessions(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
         // Parse and validate request data
-        const { params, query } = this.parseRequest(event, GetSessionsSchema);
+        const { params, body } = this.parseRequest(event, GetSessionsSchema);
         const { userId } = params;
-        const { limit, cursor } = query;
+        const { pagingInstruction } = body;
 
         // Get authenticated user and check authorization
         const user = event.authContext.identity;
@@ -35,73 +43,22 @@ export class SessionsController extends BaseController {
             resourceUserId: userId
         });
         
-        // TODO: Implement actual session retrieval
-        // const sessions = await this.sessionRepository.findByUserId(userId, { limit, cursor });
+        const sessions = await this.sessionRepository.getSessions({
+            userId,
+            pagingInstruction
+        });
         
         // Return mock session data for now
         return this.success({
-            sessions: [],
-            pagination: {
-                limit,
-                cursor,
-                hasMore: false
+            sessions: sessions.items,
+            paging: {
+                next: sessions.pagingInstructions.next,
+                previous: sessions.pagingInstructions.previous,
+                current: sessions.pagingInstructions.current
             }
         });
     }
 
-    /**
-     * Get specific session details
-     * Example: GET /users/123/sessions/456
-     */
-    @Protected()
-    @Cache({ ttl: 600 })
-    @Route('GET', '/users/{userId}/sessions/{sessionId}')
-    async getSessionById(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
-        // Parse and validate parameters
-        const { userId, sessionId } = this.getPathParams(event);
-        
-        // Get authenticated user and check authorization
-        const user = event.authContext.identity;
-        this.requireRole(user, Role.Support, {
-            allowOwner: true,
-            resourceUserId: userId
-        });
-        
-        // TODO: Implement single session retrieval
-        // const session = await this.sessionRepository.findById(sessionId);
-        
-        // Return mock session data for now
-        return this.success({ 
-            sessionId,
-            userId,
-            createdAt: new Date().toISOString(),
-            lastAccessedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 86400000).toISOString() // 24 hours
-        });
-    }
-
-    /**
-     * Delete a specific session
-     * Example: DELETE /users/123/sessions/456
-     * Note: No caching for destructive operations
-     */
-    @Protected()
-    @Route('DELETE', '/users/{userId}/sessions/{sessionId}')
-    async deleteSession(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
-        // Parse parameters
-        const { userId, sessionId } = this.getPathParams(event);
-        
-        // Get authenticated user and check authorization
-        const user = event.authContext.identity;
-        this.requireRole(user, Role.Support, {
-            allowOwner: true,
-            resourceUserId: userId
-        });
-        
-        // TODO: Implement session deletion
-        // Note: Logging is handled by @Log decorator
-        return this.noContent();
-    }
 
     /**
      * Delete multiple sessions
@@ -126,7 +83,11 @@ export class SessionsController extends BaseController {
         // Require session auth for bulk deletion (sensitive operation)
         this.requireSessionAuth(event);
 
-        // TODO: Implement multiple session deletion
+        await this.sessionRepository.deleteSessions({
+            userId,
+            sessionIds
+        });
+        
         return this.success({ 
             message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
             deletedCount: sessionIds.length

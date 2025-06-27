@@ -1,28 +1,36 @@
+import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { BaseController } from "../base_controller.js";
-import { Route } from "../router.js";
-import { Protected, Cache } from "../decorators/index.js";
-import { Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { AuthenticatedALBEvent } from "../common/extended_alb_event.js";
-import { GetApiKeysSchema, DeleteApiKeysSchema } from "./schemas.js";
 import { HypermediaResponse } from "../common/types.js";
+import { Cache, Protected } from "../decorators/index.js";
+import { Route } from "../router.js";
+import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas.js";
 
 /**
  * API Keys endpoint controller
  */
+@Injectable()
 export class ApiKeysController extends BaseController {
+    constructor(
+        private apiKeyRepository: ApiKeyRepository
+    ) {
+        super();
+    }
+
     /**
      * Get paginated list of user API keys
-     * Example: GET /users/123/api_keys
+     * Example: POST /users/123/api_keys/list
+     * Body: { "pagingInstruction": { ... } }
      * Note: API key management requires higher privilege (AccountManager)
      */
     @Protected()
     @Cache({ ttl: 600, vary: ['Authorization'] })
-    @Route('GET', '/users/{userId}/api_keys')
+    @Route('POST', '/users/{userId}/api_keys/list')
     async getApiKeys(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
         // Parse and validate request data
-        const { params, query } = this.parseRequest(event, GetApiKeysSchema);
+        const { params, body } = this.parseRequest(event, GetApiKeysSchema);
         const { userId } = params;
-        const { limit, cursor } = query;
+        const { pagingInstruction } = body;
 
         // Get authenticated user and check authorization
         const user = event.authContext.identity;
@@ -31,73 +39,21 @@ export class ApiKeysController extends BaseController {
             resourceUserId: userId
         });
 
-        // TODO: Implement API keys retrieval
-        // const apiKeys = await this.apiKeyRepository.findByUserId(userId, { limit, cursor });
+        // Call repository with pagination instruction (or undefined for first page)
+        const result = await this.apiKeyRepository.getApiKeys({
+            userId,
+            pagingInstruction
+        });
         
-        // Return mock API key data for now
+        // Return the result with plain pagination instructions
         return this.success({
-            apiKeys: [],
-            pagination: {
-                limit,
-                cursor,
-                hasMore: false
+            apiKeys: result.items,
+            paging: {
+                next: result.pagingInstructions.next,
+                previous: result.pagingInstructions.previous,
+                current: result.pagingInstructions.current
             }
         });
-    }
-
-    /**
-     * Get specific API key details
-     * Example: GET /users/123/api_keys/456
-     */
-    @Protected()
-    @Cache({ ttl: 900 })
-    @Route('GET', '/users/{userId}/api_keys/{apiKeyId}')
-    async getApiKeyById(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
-        // Parse parameters
-        const { userId, apiKeyId } = this.getPathParams(event);
-        
-        // Get authenticated user and check authorization
-        const user = event.authContext.identity;
-        this.requireRole(user, Role.AccountManager, {
-            allowOwner: true,
-            resourceUserId: userId
-        });
-        
-        // TODO: Implement single API key retrieval
-        // const apiKey = await this.apiKeyRepository.findById(apiKeyId);
-        
-        // Return mock API key data for now
-        return this.success({ 
-            apiKeyId,
-            userId,
-            name: "Production API Key",
-            createdAt: new Date().toISOString(),
-            lastUsedAt: new Date().toISOString(),
-            expiresAt: null // No expiration
-        });
-    }
-
-    /**
-     * Delete a specific API key
-     * Example: DELETE /users/123/api_keys/456
-     * Requires Admin role for security (deleting API keys is dangerous)
-     */
-    @Protected()
-    @Route('DELETE', '/users/{userId}/api_keys/{apiKeyId}')
-    async deleteApiKey(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
-        // Parse parameters
-        const { userId, apiKeyId } = this.getPathParams(event);
-        
-        // Get authenticated user and check authorization
-        const user = event.authContext.identity;
-        this.requireRole(user, Role.Admin, {
-            allowOwner: true,
-            resourceUserId: userId
-        });
-        
-        // TODO: Implement API key deletion
-        // Note: Logging is handled by @Log decorator
-        return this.noContent();
     }
 
     /**
@@ -123,7 +79,11 @@ export class ApiKeysController extends BaseController {
         // Require session auth for bulk deletion (critical operation)
         this.requireSessionAuth(event);
 
-        // TODO: Implement multiple API key deletion
+        await this.apiKeyRepository.deleteApiKeys({
+            userId,
+            apiKeys: apiKeyIds
+        });
+        
         return this.success({ 
             message: `Deleted ${apiKeyIds.length} API keys for user ${userId}`,
             deletedCount: apiKeyIds.length
