@@ -1,6 +1,8 @@
 import { ConfigurationStore } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
+import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { z } from "zod";
 
+@Injectable()
 export class EnvConfigurationStore<T extends z.ZodType> implements ConfigurationStore<z.infer<T>> {
     private readonly configurationName: string;
     private readonly zodSchema: T;

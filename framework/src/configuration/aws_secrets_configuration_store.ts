@@ -1,7 +1,9 @@
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { ConfigurationStore } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
+import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { z } from "zod";
 
+@Injectable()
 export class AwsSecretsConfigurationStore<T extends z.ZodType> implements ConfigurationStore<z.infer<T>> {
     private readonly configurationName: string;
     private readonly client: SecretsManagerClient;

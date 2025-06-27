@@ -8,7 +8,8 @@
         "./core",
         "./web",
         "./commons",
-        "./framework"
+        "./framework",
+        "./api.hypermedia"
     ],
     "engines": {
         "node": ">=20.10.0",
