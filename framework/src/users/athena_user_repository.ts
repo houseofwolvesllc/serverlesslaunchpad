@@ -29,30 +29,22 @@ export class AthenaUserProvider implements UserProvider {
         };
     }
 
-    async getUserByEmail(message: GetUserByEmailMessage): Promise<User> {
+    async getUserByEmail(message: GetUserByEmailMessage): Promise<User | undefined> {
         const sql = `SELECT * FROM users WHERE email = ?`;
         const params = [message.email];
 
         const results = await this.athenaClient.query(sql, params, this.mapToUser.bind(this));
 
-        if (results.length === 0) {
-            throw new Error(`User with email ${message.email} not found`);
-        }
-
-        return results[0];
+        return results.length > 0 ? results[0] : undefined;
     }
 
-    async getUserById(message: GetUserByIdMessage): Promise<User> {
+    async getUserById(message: GetUserByIdMessage): Promise<User | undefined> {
         const sql = `SELECT * FROM users WHERE userId = ?`;
         const params = [message.userId];
 
         const results = await this.athenaClient.query(sql, params, this.mapToUser.bind(this));
 
-        if (results.length === 0) {
-            throw new Error(`User with id ${message.userId} not found`);
-        }
-
-        return results[0];
+        return results.length > 0 ? results[0] : undefined;
     }
 }
 

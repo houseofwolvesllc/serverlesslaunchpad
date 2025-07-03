@@ -1,6 +1,6 @@
 export abstract class UserProvider {
-    abstract getUserByEmail(message: GetUserByEmailMessage): Promise<User>;
-    abstract getUserById(message: GetUserByIdMessage): Promise<User>;
+    abstract getUserByEmail(message: GetUserByEmailMessage): Promise<User | undefined>;
+    abstract getUserById(message: GetUserByIdMessage): Promise<User | undefined>;
 }
 
 export abstract class UserRepository extends UserProvider {

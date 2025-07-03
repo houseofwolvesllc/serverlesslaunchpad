@@ -1,14 +1,21 @@
 import {
-    Authenticator, ConfigurationStore, Container, SessionRepository,
+    ApiKeyRepository,
+    Authenticator, ConfigurationStore, Container,
+    Environment,
+    LogLevel,
+    SessionRepository,
     UserRepository
 } from "@houseofwolves/serverlesslaunchpad.core";
 import {
+    AthenaApiKeyRepository,
     AthenaSessionRepository,
     AthenaUserRepository,
     AwsSecretsConfigurationStore,
-    EnvConfigurationStore,
-    SystemAuthenticator
+    FileConfigurationStore,
+    SystemAuthenticator,
 } from "@houseofwolves/serverlesslaunchpad.framework";
+import * as path from "path";
+import { z } from "zod";
 import { ApiLogger } from "./logging";
 
 /**
@@ -41,23 +48,64 @@ class AppContainer {
         // Authentication bindings
         container.bind(Authenticator).to(SystemAuthenticator).asSingleton();
         container.bind(SessionRepository).to(AthenaSessionRepository).asSingleton();
+        container.bind(ApiKeyRepository).to(AthenaApiKeyRepository).asSingleton();
         
         // User management bindings
         container.bind(UserRepository).to(AthenaUserRepository).asSingleton();
-        
-        // Configuration bindings
-        // Determine which configuration store to use based on environment
-        const configStoreImpl = process.env.USE_AWS_SECRETS === "true" 
-            ? AwsSecretsConfigurationStore 
-            : EnvConfigurationStore;
-        container.bind(ConfigurationStore).to(configStoreImpl).asSingleton();
 
-        // Logging bindings
-        container.bind(ApiLogger).toSelf().asSingleton();
+        container.bind(ConfigurationStore<{
+            auth: { cognito: { userPoolId: string; userPoolClientId: string } }
+        }>)
+            .toFactory(() => {
+                const configSchema = z.object({
+                    auth: z.object({
+                        cognito: z.object({
+                            userPoolId: z.string(),
+                            userPoolClientId: z.string()
+                        })
+                    })
+                });
+                
+                return new FileConfigurationStore(configSchema, path.join(__dirname, "../config"), `${AppContainer.getEnvironment()}.config.json`);
+            }).asSingleton();
 
-        // Note: ApiKeyRepository implementation is not yet available in framework
-        // This will need to be added when the concrete implementation is created
-        // container.bind(ApiKeyRepository).to(AthenaApiKeyRepository).asSingleton();
+        container.bind(ConfigurationStore<{
+            session_token_salt: string;
+        }>).toFactory(() => {
+            const configSchema = z.object({
+                session_token_salt: z.string()
+            });
+            return new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment(), );
+        }).asSingleton();        
+
+        container.bind(ApiLogger).toFactory(() => {
+            const logLevel = AppContainer.getLogLevelForEnvironment(AppContainer.getEnvironment());
+            return new ApiLogger(logLevel);
+        }).asSingleton();
+    }
+
+    /**
+     * Get appropriate log level based on NODE_ENV
+     */
+    private static getLogLevelForEnvironment(environment: Environment): LogLevel {
+        switch (environment) {
+            case Environment.Development:
+                return LogLevel.DEBUG;
+            case Environment.Staging:
+                return LogLevel.WARN;
+            case Environment.Production:
+                return LogLevel.WARN;
+            default:
+                return LogLevel.INFO;
+        }
+    }
+
+    private static getEnvironment(): Environment {
+        const environment = process.env.NODE_ENV;
+        if (!environment) {
+            throw new Error("NODE_ENV is not set");
+        }
+        return environment as Environment;
     }
 }
 
