@@ -9,6 +9,7 @@ import { UnauthorizedError } from "../common/errors";
 import { ExtendedALBEvent } from "../common/extended_alb_event";
 import { HypermediaResponse } from "../common/types";
 import { Route } from "../router";
+import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 
 // Define the authentication request schema
 const authenticateSchema = z.object({
@@ -73,12 +74,23 @@ export class AuthenticationController extends BaseController {
             throw new UnauthorizedError("Bearer failed validation.");
         }
 
-        // Return hypermedia response with available actions
-        return this.success({
+        // Create response
+        const response = this.success({
             user: authResult.authContext.identity,
             authContext: authResult.authContext,
             links: this.buildUserLinks(authResult.authContext.identity)
         });
+
+        // Set secure cookie if client accepts HTML for hypermedia browsing
+        if (this.shouldSetAuthCookie(event)) {
+            AuthenticationCookieRepository.set(
+                response, 
+                authResult.authContext.access.sessionToken || "", 
+                authResult.authContext.access.dateExpires ? Math.floor(authResult.authContext.access.dateExpires.getTime() / 1000) : 60 * 60 * 24 * 7
+            );
+        }
+
+        return response;
     }
 
     /**
@@ -117,6 +129,23 @@ export class AuthenticationController extends BaseController {
             userAgent: headers['user-agent'],
         });
 
-        return this.success({});
+        // Create response
+        const response = this.success({});
+
+        // Clear the session cookie
+        AuthenticationCookieRepository.remove(response);
+
+        return response;
+    }
+
+    /**
+     * Determine if we should set authentication cookie for this request
+     */
+    private shouldSetAuthCookie(event: ExtendedALBEvent): boolean {
+        const accept = event.headers?.accept || event.headers?.Accept || '';
+        
+        // Set cookie if client accepts HTML (for hypermedia browsing)
+        return accept.includes('text/html') || 
+               accept.includes('application/xhtml+xml');
     }
 }
