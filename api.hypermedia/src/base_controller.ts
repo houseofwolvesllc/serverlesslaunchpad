@@ -9,8 +9,19 @@ import {
     UnauthorizedError,
     UnprocessableEntityError,
     ValidationError
-} from "./common/errors";
-import { AuthenticatedALBEvent, ExtendedALBEvent } from "./common/extended_alb_event";
+} from "./errors";
+import { AuthenticatedALBEvent, ExtendedALBEvent } from "./extended_alb_event";
+
+/**
+ * Standard hypermedia response structure returned by all controllers
+ */
+export interface HypermediaResponse {
+    statusCode: number;
+    headers?: Record<string, string>;
+    body?: string;
+    // Allow additional properties for controller responses
+    [key: string]: any;
+}
 
 /**
  * Base controller class that provides common functionality

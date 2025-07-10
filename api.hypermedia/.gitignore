@@ -32,3 +32,6 @@ dist/
 *.csv
 *.prod.config.json
 working_dir/
+
+# Infrastructure generated config
+config/*.config.json

@@ -1,8 +1,8 @@
 import type { ALBResult } from "aws-lambda";
 import { ContentType, CONTENT_TYPES } from "./content_negotiation";
-import { JsonAdapter } from "../content_types/json_adapter";
-import { XhtmlAdapter } from "../content_types/xhtml_adapter";
-import { HttpError } from "./errors";
+import { JsonAdapter } from "./json_adapter";
+import { XhtmlAdapter } from "./xhtml_adapter";
+import { HttpError } from "../errors";
 
 /**
  * Response data interface for content adapters

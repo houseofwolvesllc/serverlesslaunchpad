@@ -1,6 +1,6 @@
 import { ALBEvent, ALBResult } from "aws-lambda";
 import "reflect-metadata"; // Must be imported first for decorators to work
-import { getAcceptedContentType } from "./common/content_negotiation";
+import { getAcceptedContentType } from "./content_types/content_negotiation";
 import {
     ConflictError,
     ForbiddenError,
@@ -10,9 +10,9 @@ import {
     UnauthorizedError,
     UnprocessableEntityError,
     ValidationError
-} from "./common/errors";
-import { ExtendedALBEvent } from "./common/extended_alb_event";
-import { ResponseBuilder } from "./common/response_builder";
+} from "./errors";
+import { ExtendedALBEvent } from "./extended_alb_event";
+import { ResponseBuilder } from "./content_types/response_builder";
 import { getContainer } from "./container";
 import { ApiLogger } from "./logging";
 import { HttpMethod, Router } from "./router";
@@ -167,8 +167,9 @@ function handleError(error: Error, event: ALBEvent, traceId?: string, logger?: A
             title = "Bad Request";
             detail = error.message || "The request failed validation";
             // Extract Zod field violations with detailed feedback
-            if ((error as ValidationError).zodError) {
-                violations = (error as ValidationError).zodError.issues.map(issue => ({
+            const validationError = error as ValidationError;
+            if (validationError.zodError) {
+                violations = validationError.zodError.issues.map(issue => ({
                     field: issue.path.join('.'), // Flatten nested paths like "user.sessions.0.id"
                     message: issue.message
                 }));
