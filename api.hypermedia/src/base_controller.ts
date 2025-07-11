@@ -1,5 +1,6 @@
 import { Features, Role, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ZodError, z } from "zod";
+import { ALBResult } from "aws-lambda";
 import {
     ConflictError,
     ForbiddenError,
@@ -11,16 +12,45 @@ import {
     ValidationError
 } from "./errors";
 import { AuthenticatedALBEvent, ExtendedALBEvent } from "./extended_alb_event";
+import { getAcceptedContentType, CONTENT_TYPES } from "./content_types/content_negotiation";
+import { JsonAdapter } from "./content_types/json_adapter";
+import { XhtmlAdapter } from "./content_types/xhtml_adapter";
 
 /**
- * Standard hypermedia response structure returned by all controllers
+ * Response data interface for content adapters
  */
-export interface HypermediaResponse {
-    statusCode: number;
-    headers?: Record<string, string>;
-    body?: string;
-    // Allow additional properties for controller responses
-    [key: string]: any;
+export interface ResponseData<T = unknown> {
+    status?: number;
+    data?: T;
+    error?: {
+        status: number;
+        title: string;
+        detail?: string;
+        instance?: string;
+        timestamp?: string;
+        traceId?: string;
+        violations?: Array<{ field: string; message: string }>;
+    };
+    links?: Array<{ rel: string[]; href: string; title?: string }>;
+    actions?: Array<{
+        name: string;
+        title: string;
+        method: string;
+        href: string;
+        type?: string;
+        fields?: Array<{
+            name: string;
+            type: string;
+            required?: boolean;
+            value?: any;
+        }>;
+    }>;
+    metadata?: {
+        title?: string;
+        description?: string;
+        resourceType?: string;
+        resourceUri?: string;
+    };
 }
 
 /**
@@ -28,6 +58,9 @@ export interface HypermediaResponse {
  * for all API controllers.
  */
 export abstract class BaseController {
+    private static jsonAdapter = new JsonAdapter();
+    private static xhtmlAdapter = new XhtmlAdapter();
+    
     // Export error classes as static properties for easy access
     static readonly ValidationError = ValidationError;
     static readonly UnauthorizedError = UnauthorizedError;
@@ -103,30 +136,61 @@ export abstract class BaseController {
     }
 
     /**
-     * Build a success response with optional data
+     * Build a successful ALB response with content negotiation
      */
-    protected success<T>(data?: T, statusCode = 200): { statusCode: number; data?: T } {
+    protected success<T>(
+        event: ExtendedALBEvent,
+        data: T, 
+        options: {
+            status?: number;
+            headers?: Record<string, string>;
+            links?: ResponseData["links"];
+            actions?: ResponseData["actions"];
+            metadata?: ResponseData["metadata"];
+        } = {}
+    ): ALBResult {
+        const contentType = getAcceptedContentType(event);
+        const status = options.status || 200;
+        
+        const responseData: ResponseData = {
+            status,
+            data,
+            links: options.links,
+            actions: options.actions,
+            metadata: options.metadata
+        };
+        
+        const body = contentType === CONTENT_TYPES.JSON 
+            ? BaseController.jsonAdapter.format(responseData)
+            : BaseController.xhtmlAdapter.format(responseData);
+        
         return {
-            statusCode,
-            ...(data !== undefined && { data })
+            statusCode: status,
+            headers: {
+                "Content-Type": contentType,
+                ...options.headers
+            },
+            body
         };
     }
 
     /**
-     * Build a no content response (204)
+     * Build a redirect ALB response
      */
-    protected noContent(): { statusCode: number } {
-        return { statusCode: 204 };
-    }
-
-    /**
-     * Build a created response (201) with optional location header
-     */
-    protected created<T>(data?: T, location?: string): { statusCode: number; data?: T; headers?: Record<string, string> } {
+    protected redirect(
+        location: string,
+        options: {
+            status?: 301 | 302 | 303 | 307 | 308;
+            headers?: Record<string, string>;
+        } = {}
+    ): ALBResult {
         return {
-            statusCode: 201,
-            ...(data !== undefined && { data }),
-            ...(location && { headers: { Location: location } })
+            statusCode: options.status || 302,
+            headers: {
+                Location: location,
+                ...options.headers
+            },
+            body: ""
         };
     }
 

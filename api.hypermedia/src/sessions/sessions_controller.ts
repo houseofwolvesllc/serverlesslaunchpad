@@ -1,5 +1,6 @@
 import { Injectable, Role, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
-import { BaseController, HypermediaResponse } from "../base_controller.js";
+import { ALBResult } from "aws-lambda";
+import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
@@ -30,7 +31,7 @@ export class SessionsController extends BaseController {
     @Protected()
     @Cache({ ttl: 300, vary: ['Authorization'] })
     @Route('POST', '/users/{userId}/sessions/list')
-    async getSessions(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
+    async getSessions(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
         const { params, body } = this.parseRequest(event, GetSessionsSchema);
         const { userId } = params;
@@ -48,8 +49,7 @@ export class SessionsController extends BaseController {
             pagingInstruction
         });
         
-        // Return mock session data for now
-        return this.success({
+        return this.success(event, {
             sessions: sessions.items,
             paging: {
                 next: sessions.pagingInstructions.next,
@@ -68,7 +68,7 @@ export class SessionsController extends BaseController {
     @Log()
     @Protected()
     @Route('POST', '/users/{userId}/sessions/delete')
-    async deleteSessions(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
+    async deleteSessions(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
         const { params, body } = this.parseRequest(event, DeleteSessionsSchema);
         const { userId } = params;
@@ -89,7 +89,7 @@ export class SessionsController extends BaseController {
             sessionIds
         });
         
-        return this.success({ 
+        return this.success(event, { 
             message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
             deletedCount: sessionIds.length
         });

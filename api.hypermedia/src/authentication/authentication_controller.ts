@@ -3,8 +3,9 @@ import {
     Injectable,
     User
 } from "@houseofwolves/serverlesslaunchpad.core";
+import { ALBResult } from "aws-lambda";
 import { z } from "zod";
-import { BaseController, HypermediaResponse } from "../base_controller";
+import { BaseController } from "../base_controller";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
@@ -52,7 +53,7 @@ export class AuthenticationController extends BaseController {
      * Returns hypermedia response with available actions based on user's permissions.
      */
     @Route('POST', '/signin')
-    async authenticate(event: ExtendedALBEvent): Promise<HypermediaResponse> {
+    async authenticate(event: ExtendedALBEvent): Promise<ALBResult> {
         
         const { headers, body } = this.parseRequest(event, authenticateSchema);
 
@@ -74,7 +75,7 @@ export class AuthenticationController extends BaseController {
         }
 
         // Create response
-        const response = this.success({
+        const response = this.success(event, {
             user: authResult.authContext.identity,
             authContext: authResult.authContext,
             links: this.buildUserLinks(authResult.authContext.identity)
@@ -119,7 +120,7 @@ export class AuthenticationController extends BaseController {
     }
 
     @Route('POST', '/signout')
-    async signout(event: ExtendedALBEvent): Promise<HypermediaResponse> {
+    async signout(event: ExtendedALBEvent): Promise<ALBResult> {
         const { headers } = this.parseRequest(event, signoutSchema);
 
         await this.authenticator.revoke({
@@ -129,7 +130,7 @@ export class AuthenticationController extends BaseController {
         });
 
         // Create response
-        const response = this.success({});
+        const response = this.success(event, {});
 
         // Clear the session cookie
         AuthenticationCookieRepository.remove(response);

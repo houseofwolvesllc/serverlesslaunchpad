@@ -9,6 +9,7 @@
         "./web",
         "./commons",
         "./framework",
+        "./infrastructure",
         "./api.hypermedia"
     ],
     "engines": {
