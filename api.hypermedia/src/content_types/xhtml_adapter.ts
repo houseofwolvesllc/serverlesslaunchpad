@@ -1,11 +1,11 @@
-import { ResponseData } from "../common/response_builder";
+import { ResponseData } from "../base_controller";
 
 /**
  * XHTML format adapter for hypermedia responses
  */
 export class XhtmlAdapter {
     private readonly namespace = "https://github.com/houseofwolvesllc/serverlesslaunchpad#";
-    
+
     /**
      * Format response data as XHTML with RDFa
      */
@@ -13,17 +13,17 @@ export class XhtmlAdapter {
         if (response.error) {
             return this.formatError(response);
         }
-        
+
         return this.formatSuccess(response);
     }
-    
+
     /**
      * Format successful response as XHTML
      */
     private formatSuccess(response: ResponseData): string {
         const title = response.metadata?.title || "Serverless Launchpad API";
         const content = this.formatContent(response);
-        
+
         return `<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
@@ -54,28 +54,35 @@ ${content}
 </body>
 </html>`;
     }
-    
+
     /**
      * Format error response as XHTML
      */
     private formatError(response: ResponseData): string {
         const error = response.error!;
         const title = `Error - ${error.title}`;
-        
-        const violationsHtml = error.violations?.length 
+
+        const violationsHtml = error.violations?.length
             ? `
             <dt>Violations</dt>
             <dd>
                 <ul>
-                    ${error.violations.map(v => 
-                        `<li property="slp:violation" data-field="${this.escapeHtml(v.field)}">${this.escapeHtml(v.message)}</li>`
-                    ).join("\n                    ")}
+                    ${error.violations
+                        .map(
+                            (v) =>
+                                `<li property="slp:violation" data-field="${this.escapeHtml(
+                                    v.field
+                                )}">${this.escapeHtml(v.message)}</li>`
+                        )
+                        .join("\n                    ")}
                 </ul>
             </dd>`
             : "";
-        
+
         const content = `
-    <div class="error" xmlns:slp="${this.namespace}" typeof="slp:Error" resource="${this.escapeHtml(error.instance || "")}">
+    <div class="error" xmlns:slp="${this.namespace}" typeof="slp:Error" resource="${this.escapeHtml(
+            error.instance || ""
+        )}">
         <h1>${this.escapeHtml(error.title)}</h1>
         <dl>
             <dt>Type</dt>
@@ -87,13 +94,21 @@ ${content}
             <dt>Title</dt>
             <dd property="slp:title">${this.escapeHtml(error.title)}</dd>
             
-            ${error.detail ? `
+            ${
+                error.detail
+                    ? `
             <dt>Detail</dt>
-            <dd property="slp:detail">${this.escapeHtml(error.detail)}</dd>` : ""}
+            <dd property="slp:detail">${this.escapeHtml(error.detail)}</dd>`
+                    : ""
+            }
             
-            ${error.instance ? `
+            ${
+                error.instance
+                    ? `
             <dt>Instance</dt>
-            <dd property="slp:instance">${this.escapeHtml(error.instance)}</dd>` : ""}
+            <dd property="slp:instance">${this.escapeHtml(error.instance)}</dd>`
+                    : ""
+            }
             
             <dt>Timestamp</dt>
             <dd property="slp:timestamp">${error.timestamp || new Date().toISOString()}</dd>
@@ -104,7 +119,7 @@ ${content}
         </dl>
         ${this.formatNavigation(response.links)}
     </div>`;
-        
+
         return `<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
@@ -129,16 +144,16 @@ ${content}
 </body>
 </html>`;
     }
-    
+
     /**
      * Format main content based on response data
      */
     private formatContent(response: ResponseData): string {
         const resourceType = response.metadata?.resourceType || "Resource";
         const resourceUri = response.metadata?.resourceUri || "";
-        
+
         let content = "";
-        
+
         // Format data based on type
         if (Array.isArray(response.data)) {
             // Collection
@@ -147,7 +162,7 @@ ${content}
         <h1>${this.escapeHtml(response.metadata?.title || "Collection")}</h1>
         ${response.metadata?.description ? `<p>${this.escapeHtml(response.metadata.description)}</p>` : ""}
         <div class="collection">
-            ${response.data.map(item => this.formatItem(item, resourceType)).join("\n            ")}
+            ${response.data.map((item) => this.formatItem(item, resourceType)).join("\n            ")}
         </div>
         ${this.formatActions(response.actions)}
         ${this.formatNavigation(response.links)}
@@ -171,10 +186,10 @@ ${content}
         ${this.formatNavigation(response.links)}
     </div>`;
         }
-        
+
         return content;
     }
-    
+
     /**
      * Format a collection item
      */
@@ -184,59 +199,65 @@ ${content}
                 ${this.formatEntity(item)}
             </div>`;
     }
-    
+
     /**
      * Format an entity as definition list
      */
     private formatEntity(entity: any): string {
         const { _links, _actions, _class, _rel, ...properties } = entity;
-        
-        const propertyItems = Object.entries(properties).map(([key, value]) => {
-            const displayKey = this.humanizeKey(key);
-            const displayValue = this.formatValue(value);
-            return `
+
+        const propertyItems = Object.entries(properties)
+            .map(([key, value]) => {
+                const displayKey = this.humanizeKey(key);
+                const displayValue = this.formatValue(value);
+                return `
             <dt>${this.escapeHtml(displayKey)}</dt>
             <dd property="slp:${key}">${displayValue}</dd>`;
-        }).join("");
-        
+            })
+            .join("");
+
         return `<dl>${propertyItems}
         </dl>`;
     }
-    
+
     /**
      * Format a value for display
      */
     private formatValue(value: any): string {
         if (value === null || value === undefined) {
-            return '<em>None</em>';
+            return "<em>None</em>";
         }
-        
+
         if (Array.isArray(value)) {
             return `
                 <ul>
-                    ${value.map(v => `<li>${this.escapeHtml(String(v))}</li>`).join("\n                    ")}
+                    ${value.map((v) => `<li>${this.escapeHtml(String(v))}</li>`).join("\n                    ")}
                 </ul>`;
         }
-        
+
         if (typeof value === "object") {
             return this.formatEntity(value);
         }
-        
+
         return this.escapeHtml(String(value));
     }
-    
+
     /**
      * Format navigation links
      */
     private formatNavigation(links?: ResponseData["links"]): string {
         if (!links?.length) return "";
-        
-        const linkItems = links.map(link => {
-            const rel = Array.isArray(link.rel) ? link.rel.join(" ") : link.rel;
-            const title = link.title || this.humanizeKey(rel);
-            return `<li><a href="${this.escapeHtml(link.href)}" rel="slp:${rel}">${this.escapeHtml(title)}</a></li>`;
-        }).join("\n            ");
-        
+
+        const linkItems = links
+            .map((link) => {
+                const rel = Array.isArray(link.rel) ? link.rel.join(" ") : link.rel;
+                const title = link.title || this.humanizeKey(rel);
+                return `<li><a href="${this.escapeHtml(link.href)}" rel="slp:${rel}">${this.escapeHtml(
+                    title
+                )}</a></li>`;
+            })
+            .join("\n            ");
+
         return `
         <nav>
             <ul>
@@ -244,89 +265,117 @@ ${content}
             </ul>
         </nav>`;
     }
-    
+
     /**
      * Format actions as forms
      */
     private formatActions(actions?: ResponseData["actions"]): string {
         if (!actions?.length) return "";
-        
-        return actions.map(action => {
-            const method = action.method.toUpperCase();
-            const fields = action.fields?.map(field => {
-                const inputType = this.getInputType(field.type);
-                const required = field.required ? 'required' : '';
-                const value = field.value ? `value="${this.escapeHtml(String(field.value))}"` : '';
-                
+
+        return actions
+            .map((action) => {
+                const method = action.method.toUpperCase();
+                const fields = action.fields
+                    ?.map((field) => {
+                        const inputType = this.getInputType(field.type);
+                        const required = field.required ? "required" : "";
+                        const value = field.value ? `value="${this.escapeHtml(String(field.value))}"` : "";
+
+                        return `
+            <label for="${this.escapeHtml(field.name)}">${this.humanizeKey(field.name)}${
+                            field.required ? " *" : ""
+                        }</label>
+            <input type="${inputType}" id="${this.escapeHtml(field.name)}" name="${this.escapeHtml(
+                            field.name
+                        )}" ${required} ${value} />`;
+                    })
+                    .join("");
+
                 return `
-            <label for="${this.escapeHtml(field.name)}">${this.humanizeKey(field.name)}${field.required ? ' *' : ''}</label>
-            <input type="${inputType}" id="${this.escapeHtml(field.name)}" name="${this.escapeHtml(field.name)}" ${required} ${value} />`;
-            }).join("");
-            
-            return `
-        <form action="${this.escapeHtml(action.href)}" method="${method}" ${action.type ? `enctype="${this.escapeHtml(action.type)}"` : ''}>
+        <form action="${this.escapeHtml(action.href)}" method="${method}" ${
+                    action.type ? `enctype="${this.escapeHtml(action.type)}"` : ""
+                }>
             <h3>${this.escapeHtml(action.title)}</h3>
-            ${fields || ''}
+            ${fields || ""}
             <button type="submit">${this.escapeHtml(action.title)}</button>
         </form>`;
-        }).join("");
+            })
+            .join("");
     }
-    
+
     /**
      * Get HTML input type for a field type
      */
     private getInputType(fieldType: string): string {
         switch (fieldType) {
-            case "email": return "email";
-            case "password": return "password";
-            case "number": return "number";
-            case "date": return "date";
-            case "datetime": return "datetime-local";
-            case "url": return "url";
-            case "tel": return "tel";
-            default: return "text";
+            case "email":
+                return "email";
+            case "password":
+                return "password";
+            case "number":
+                return "number";
+            case "date":
+                return "date";
+            case "datetime":
+                return "datetime-local";
+            case "url":
+                return "url";
+            case "tel":
+                return "tel";
+            default:
+                return "text";
         }
     }
-    
+
     /**
      * Convert a key to human-readable format
      */
     private humanizeKey(key: string): string {
         return key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/[_-]/g, ' ')
-            .replace(/\b\w/g, l => l.toUpperCase())
+            .replace(/([A-Z])/g, " $1")
+            .replace(/[_-]/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase())
             .trim();
     }
-    
+
     /**
      * Get error type name from status code
      */
     private getErrorTypeName(status: number): string {
         switch (status) {
-            case 400: return "ValidationError";
-            case 401: return "AuthenticationError";
-            case 403: return "AuthorizationError";
-            case 404: return "NotFoundError";
-            case 409: return "ConflictError";
-            case 422: return "BusinessRuleError";
-            default: return "ServerError";
+            case 400:
+                return "ValidationError";
+            case 401:
+                return "AuthenticationError";
+            case 403:
+                return "AuthorizationError";
+            case 404:
+                return "NotFoundError";
+            case 409:
+                return "ConflictError";
+            case 422:
+                return "BusinessRuleError";
+            default:
+                return "ServerError";
         }
     }
-    
+
     /**
      * Escape HTML special characters
      */
     private escapeHtml(str: string): string {
-        const div = Object.assign(global.document?.createElement?.('div') || {}, { textContent: str });
-        return div.innerHTML || str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        const div = Object.assign(global.document?.createElement?.("div") || {}, { textContent: str });
+        return (
+            div.innerHTML ||
+            str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;")
+        );
     }
-    
+
     /**
      * Generate a trace ID
      */
