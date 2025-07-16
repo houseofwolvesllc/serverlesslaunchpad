@@ -3,15 +3,25 @@ import { z } from "zod";
 /**
  * Zod schemas for authentication endpoints
  */
-
+// Define the authentication request schema
 export const AuthenticateSchema = z.object({
-    apiKey: z.string().optional(),
-    sessionToken: z.string().optional(),
-}).refine(
-    (data) => data.apiKey || data.sessionToken,
-    {
-        message: "Either apiKey or sessionToken must be provided",
-    }
-);
+    headers: z.object({
+        authorization: z.string().startsWith("Bearer "),
+        "user-agent": z.string(),
+        "x-forwarded-for": z.string(),
+    }),
+    body: z.object({
+        sessionKey: z.string(),
+        email: z.string().email(),
+        firstName: z.string(),
+        lastName: z.string(),
+    }),
+});
 
-export type AuthenticateMessage = z.infer<typeof AuthenticateSchema>;
+export const SignoutSchema = z.object({
+    headers: z.object({
+        authorization: z.string().startsWith("SessionToken "),
+        "user-agent": z.string(),
+        "x-forwarded-for": z.string(),
+    }),
+});

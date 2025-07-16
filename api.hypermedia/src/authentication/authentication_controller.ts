@@ -1,34 +1,11 @@
 import { Authenticator, Injectable, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
-import { z } from "zod";
 import { BaseController } from "../base_controller";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
-
-// Define the authentication request schema
-const authenticateSchema = z.object({
-    headers: z.object({
-        authorization: z.string().startsWith("Bearer "),
-        "user-agent": z.string(),
-        "x-forwarded-for": z.string(),
-    }),
-    body: z.object({
-        sessionKey: z.string(),
-        email: z.string().email(),
-        firstName: z.string(),
-        lastName: z.string(),
-    }),
-});
-
-const signoutSchema = z.object({
-    headers: z.object({
-        authorization: z.string().startsWith("SessionToken "),
-        "user-agent": z.string(),
-        "x-forwarded-for": z.string(),
-    }),
-});
+import { AuthenticateSchema, SignoutSchema } from "./schemas";
 
 // type AuthMessage = z.infer<typeof AuthMessageSchema>;
 
@@ -48,7 +25,7 @@ export class AuthenticationController extends BaseController {
      */
     @Route("POST", "/signin")
     async authenticate(event: ExtendedALBEvent): Promise<ALBResult> {
-        const { headers, body } = this.parseRequest(event, authenticateSchema);
+        const { headers, body } = this.parseRequest(event, AuthenticateSchema);
 
         const authMessage = {
             accessToken: headers.authorization.replace("Bearer ", ""),
@@ -116,7 +93,7 @@ export class AuthenticationController extends BaseController {
 
     @Route("POST", "/signout")
     async signout(event: ExtendedALBEvent): Promise<ALBResult> {
-        const { headers } = this.parseRequest(event, signoutSchema);
+        const { headers } = this.parseRequest(event, SignoutSchema);
 
         await this.authenticator.revoke({
             sessionToken: headers.authorization.replace("SessionToken ", ""),
