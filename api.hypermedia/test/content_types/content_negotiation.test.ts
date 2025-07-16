@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { getAcceptedContentType, CONTENT_TYPES } from "../../src/common/content_negotiation";
 import type { ALBEvent } from "aws-lambda";
+import { describe, expect, it } from "vitest";
+import { CONTENT_TYPES, getAcceptedContentType } from "../../src/content_types/content_negotiation";
 
 describe("Content Negotiation", () => {
     const createEvent = (acceptHeader?: string): ALBEvent => ({
         requestContext: {
             elb: {
-                targetGroupArn: "test"
-            }
+                targetGroupArn: "test",
+            },
         },
         httpMethod: "GET",
         path: "/test",
@@ -16,7 +16,7 @@ describe("Content Negotiation", () => {
         body: null,
         queryStringParameters: undefined,
         multiValueQueryStringParameters: undefined,
-        multiValueHeaders: undefined
+        multiValueHeaders: undefined,
     });
 
     describe("getAcceptedContentType", () => {
@@ -69,8 +69,8 @@ describe("Content Negotiation", () => {
             const event: ALBEvent = {
                 requestContext: {
                     elb: {
-                        targetGroupArn: "test"
-                    }
+                        targetGroupArn: "test",
+                    },
                 },
                 httpMethod: "GET",
                 path: "/test",
@@ -79,7 +79,7 @@ describe("Content Negotiation", () => {
                 body: null,
                 queryStringParameters: undefined,
                 multiValueQueryStringParameters: undefined,
-                multiValueHeaders: undefined
+                multiValueHeaders: undefined,
             };
             expect(getAcceptedContentType(event)).toBe(CONTENT_TYPES.JSON);
         });

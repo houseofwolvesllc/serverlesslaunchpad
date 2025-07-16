@@ -5,12 +5,12 @@ import { ALBEvent, ALBResult } from "aws-lambda";
  * Handles secure cookie operations for browser-based API navigation.
  */
 export class AuthenticationCookieRepository {
-    private static readonly COOKIE_NAME = 'slp_session';
+    private static readonly COOKIE_NAME = "slp_session";
     private static readonly COOKIE_OPTIONS = {
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict' as const,
-        path: '/'
+        sameSite: "Strict" as const,
+        path: "/",
     };
 
     /**
@@ -28,20 +28,16 @@ export class AuthenticationCookieRepository {
     /**
      * Set session token cookie
      */
-    static set(
-        response: ALBResult, 
-        token: string, 
-        expiresIn: number
-    ): void {
+    static set(response: ALBResult, token: string, expiresIn: number): void {
         const cookieValue = this.buildCookieValue(token, expiresIn);
-        
+
         // Ensure headers object exists
         if (!response.headers) {
             response.headers = {};
         }
-        
+
         // Set cookie header
-        response.headers['Set-Cookie'] = cookieValue;
+        response.headers["Set-Cookie"] = cookieValue;
     }
 
     /**
@@ -52,25 +48,26 @@ export class AuthenticationCookieRepository {
         if (!response.headers) {
             response.headers = {};
         }
-        
-        // Set expired cookie to remove it
-        response.headers['Set-Cookie'] = `${this.COOKIE_NAME}=; Path=${this.COOKIE_OPTIONS.path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict`;
-    }
 
+        // Set expired cookie to remove it
+        response.headers[
+            "Set-Cookie"
+        ] = `${this.COOKIE_NAME}=; Path=${this.COOKIE_OPTIONS.path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict`;
+    }
 
     /**
      * Parse cookie header string into key-value pairs
      */
     private static parseCookies(cookieHeader: string): Record<string, string> {
         const cookies: Record<string, string> = {};
-        
-        cookieHeader.split(';').forEach(cookie => {
-            const [name, ...rest] = cookie.trim().split('=');
+
+        cookieHeader.split(";").forEach((cookie) => {
+            const [name, ...rest] = cookie.trim().split("=");
             if (name && rest.length > 0) {
-                cookies[name] = rest.join('=');
+                cookies[name.trim()] = rest.join("=").trim();
             }
         });
-        
+
         return cookies;
     }
 
@@ -79,14 +76,14 @@ export class AuthenticationCookieRepository {
      */
     private static buildCookieValue(token: string, expiresIn: number): string {
         const expireDate = new Date(Date.now() + expiresIn * 1000).toUTCString();
-        
+
         return [
             `${this.COOKIE_NAME}=${token}`,
             `Path=${this.COOKIE_OPTIONS.path}`,
             `Expires=${expireDate}`,
-            'HttpOnly',
-            'Secure',
-            `SameSite=${this.COOKIE_OPTIONS.sameSite}`
-        ].join('; ');
+            "HttpOnly",
+            "Secure",
+            `SameSite=${this.COOKIE_OPTIONS.sameSite}`,
+        ].join("; ");
     }
 }
