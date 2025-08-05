@@ -17,6 +17,7 @@
  * ```
  */
 
-export { Protected } from './protected';
-export { Cache, CacheOptions } from './cache';
-export { Log, Debug } from './log';
+export { Protected } from './protected.js';
+export { Cache } from './cache.js';
+export type { CacheOptions } from './cache.js';
+export { Log, Debug } from './log.js';
