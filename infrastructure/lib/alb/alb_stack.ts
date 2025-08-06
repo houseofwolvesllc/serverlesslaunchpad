@@ -1,23 +1,21 @@
 import { Duration } from "aws-cdk-lib";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
-import { IVpc, Peer, Port, SecurityGroup, SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
+import { IVpc, SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import {
     ApplicationLoadBalancer,
     ApplicationProtocol,
     ApplicationTargetGroup,
     ListenerAction,
     ListenerCondition,
-    TargetType,
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { SubnetType } from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
 
 export interface AlbStackProps extends BaseStackProps {
-    vpc?: IVpc;
-    vpcConfig?: {
-        type: "default" | "custom" | "existing";
-        vpcId?: string;
-    };
+    vpc: IVpc;
+    securityGroup: SecurityGroup;
+    targetGroup: ApplicationTargetGroup;
     description?: string;
 }
 
@@ -33,101 +31,16 @@ export class AlbStack extends BaseStack {
     constructor(scope: Construct, id: string, props: AlbStackProps) {
         super(scope, id, props);
 
-        this.vpc = this.createOrImportVpc(props);
-        this.securityGroup = this.createSecurityGroup();
+        // Use pre-created resources from NetworkStack
+        this.vpc = props.vpc;
+        this.securityGroup = props.securityGroup;
+        this.targetGroup = props.targetGroup;
+        
         this.loadBalancer = this.createLoadBalancer();
-        this.targetGroup = this.createTargetGroup();
         this.configureListeners();
         this.createOutputs();
     }
 
-    /**
-     * Create or import VPC based on configuration
-     */
-    private createOrImportVpc(props: AlbStackProps): IVpc {
-        const vpcConfig = props.vpcConfig || { type: "custom" };
-
-        if (props.vpc) {
-            // Use explicitly provided VPC
-            return props.vpc;
-        }
-
-        switch (vpcConfig.type) {
-            case "default":
-                return this.importDefaultVpc();
-            case "existing":
-                return this.importExistingVpc(vpcConfig.vpcId);
-            case "custom":
-            default:
-                return this.createCustomVpc();
-        }
-    }
-
-    /**
-     * Import the default VPC
-     */
-    private importDefaultVpc(): IVpc {
-        console.log("🔍 Looking up default VPC...");
-        return Vpc.fromLookup(this, this.constructId("default_vpc"), {
-            isDefault: true,
-        });
-    }
-
-    /**
-     * Import an existing VPC by ID
-     */
-    private importExistingVpc(vpcId?: string): IVpc {
-        if (!vpcId) {
-            throw new Error("VPC ID is required when using existing VPC");
-        }
-        return Vpc.fromLookup(this, this.constructId("existing_vpc"), {
-            vpcId: vpcId,
-        });
-    }
-
-    /**
-     * Create a custom VPC with public and private subnets
-     */
-    private createCustomVpc(): IVpc {
-        console.log("🏗️  Creating custom VPC with NAT Gateway (~$65/month)...");
-        return new Vpc(this, this.constructId("alb_vpc"), {
-            vpcName: this.resourceName("vpc"),
-            maxAzs: 2,
-            natGateways: this.isProduction() ? 2 : 1,
-            subnetConfiguration: [
-                {
-                    name: "Public",
-                    subnetType: SubnetType.PUBLIC,
-                    cidrMask: 24,
-                },
-                {
-                    name: "Private",
-                    subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-                    cidrMask: 24,
-                },
-            ],
-        });
-    }
-
-    /**
-     * Create security group for ALB
-     */
-    private createSecurityGroup(): SecurityGroup {
-        const securityGroup = new SecurityGroup(this, this.constructId("alb_security_group"), {
-            vpc: this.vpc,
-            securityGroupName: this.resourceName("alb_sg"),
-            description: "Security group for Serverless Launchpad ALB",
-            allowAllOutbound: true,
-        });
-
-        // Allow HTTP traffic
-        securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(80), "Allow HTTP traffic");
-
-        // Allow HTTPS traffic
-        securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(443), "Allow HTTPS traffic");
-
-        return securityGroup;
-    }
 
     /**
      * Create Application Load Balancer
@@ -145,27 +58,6 @@ export class AlbStack extends BaseStack {
             },
             idleTimeout: Duration.seconds(alb.idleTimeout),
             deletionProtection: this.isProduction(),
-        });
-    }
-
-    /**
-     * Create target group for Lambda
-     */
-    private createTargetGroup(): ApplicationTargetGroup {
-        const { alb } = this.configuration;
-
-        return new ApplicationTargetGroup(this, this.constructId("lambda_target_group"), {
-            targetGroupName: this.resourceName("lambda_tg"),
-            targetType: TargetType.LAMBDA,
-            vpc: this.vpc,
-            healthCheck: {
-                enabled: true,
-                path: alb.healthCheckPath,
-                interval: Duration.seconds(alb.healthCheckInterval),
-                timeout: Duration.seconds(5),
-                healthyThresholdCount: 2,
-                unhealthyThresholdCount: 3,
-            },
         });
     }
 
@@ -210,11 +102,8 @@ export class AlbStack extends BaseStack {
             return;
         }
 
-        const certificate = Certificate.fromCertificateArn(
-            this,
-            this.constructId("certificate"),
-            alb.certificateArn
-        );
+        const certificate = Certificate.fromCertificateArn(this, this.constructId("certificate"), alb.certificateArn);
+
 
         const httpsListener = this.loadBalancer.addListener(this.constructId("https_listener"), {
             protocol: ApplicationProtocol.HTTPS,

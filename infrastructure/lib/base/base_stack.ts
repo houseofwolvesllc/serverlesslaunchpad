@@ -13,13 +13,13 @@ export interface BaseStackProps extends StackProps {
  */
 export abstract class BaseStack extends Stack {
     protected readonly configuration: StackConfiguration;
-    public readonly environment: Environment;
+    public readonly appEnvironment: Environment;
 
     constructor(scope: Construct, id: string, props: BaseStackProps) {
         super(scope, id, props);
 
         this.configuration = props.configuration;
-        this.environment = props.configuration.environment;
+        this.appEnvironment = props.configuration.environment;
 
         // Apply tags to all resources in this stack
         Object.entries(props.configuration.tags).forEach(([key, value]) => {
@@ -27,7 +27,7 @@ export abstract class BaseStack extends Stack {
         });
 
         // Set termination protection for production
-        if (this.environment === "production") {
+        if (this.appEnvironment === "production") {
             this.terminationProtection = true;
         }
     }
@@ -36,54 +36,41 @@ export abstract class BaseStack extends Stack {
      * Get removal policy based on environment
      */
     protected getRemovalPolicy(): RemovalPolicy {
-        return this.environment === "production" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
+        return this.appEnvironment === "production" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
     }
 
     /**
      * Generate a resource name with environment suffix
      */
     protected resourceName(baseName: string): string {
-        return `serverlesslaunchpad_${baseName}_${this.environment}`;
+        return `slp-${baseName}-${this.appEnvironment}`;
     }
 
     /**
      * Generate a construct ID with project prefix
      */
     protected constructId(baseName: string): string {
-        return `serverlesslaunchpad_${baseName}`;
-    }
-
-    /**
-     * Generate a stack-specific resource name
-     */
-    protected stackResourceName(baseName: string): string {
-        const stackName = this.stackName
-            .toLowerCase()
-            .replace("serverlesslaunchpad_", "")
-            .replace("_stack", "")
-            .replace(`_${this.environment}`, "");
-
-        return `serverlesslaunchpad_${stackName}_${baseName}_${this.environment}`;
+        return `slp-${baseName}`;
     }
 
     /**
      * Check if this is a production environment
      */
     protected isProduction(): boolean {
-        return this.environment === "production";
+        return this.appEnvironment === "production";
     }
 
     /**
      * Check if this is a development environment
      */
     protected isDevelopment(): boolean {
-        return this.environment === "development";
+        return this.appEnvironment === "development";
     }
 
     /**
      * Check if this is a staging environment
      */
     protected isStaging(): boolean {
-        return this.environment === "staging";
+        return this.appEnvironment === "staging";
     }
 }

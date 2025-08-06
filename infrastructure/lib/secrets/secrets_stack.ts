@@ -2,6 +2,7 @@ import { Duration, SecretValue } from "aws-cdk-lib";
 import { Alias, Key } from "aws-cdk-lib/aws-kms";
 import { RotationSchedule, Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
+import { randomBytes } from "crypto";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
 
 /**
@@ -62,7 +63,7 @@ export class SecretsStack extends BaseStack {
 
         return new Secret(this, this.constructId("configuration_secret"), {
             secretName: secrets.secretName,
-            description: `Secrets for Serverless Launchpad ${this.environment} environment`,
+            description: `Secrets for Serverless Launchpad ${this.appEnvironment} environment`,
             encryptionKey: this.encryptionKey,
             removalPolicy: this.getRemovalPolicy(),
             secretStringValue: this.getInitialSecretValue(),
@@ -87,11 +88,11 @@ export class SecretsStack extends BaseStack {
         const salt = process.env.SESSION_TOKEN_SALT;
 
         if (!salt) {
-            console.log(`🔐 Generating new SESSION_TOKEN_SALT for ${this.environment} environment`);
+            console.log(`🔐 Generating new SESSION_TOKEN_SALT for ${this.appEnvironment} environment`);
             return this.generateSecureTokenSalt();
         }
 
-        console.log(`✅ Using existing SESSION_TOKEN_SALT for ${this.environment} environment`);
+        console.log(`✅ Using existing SESSION_TOKEN_SALT for ${this.appEnvironment} environment`);
         return salt;
     }
 
@@ -99,11 +100,10 @@ export class SecretsStack extends BaseStack {
      * Generate a cryptographically secure token salt
      */
     private generateSecureTokenSalt(): string {
-        const crypto = require("crypto");
 
         // Generate 64 bytes (128 hex characters) of random data
         // This provides excellent entropy for session token signing
-        return crypto.randomBytes(64).toString("hex");
+        return randomBytes(64).toString("hex");
     }
 
     /**
