@@ -3,8 +3,13 @@ import chalk from "chalk";
 import { config } from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { $ } from "zx";
 import { StackManager } from "./stack_manager";
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Handles deployment of CDK stacks with interactive prompts

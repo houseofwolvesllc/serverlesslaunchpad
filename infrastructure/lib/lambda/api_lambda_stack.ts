@@ -9,7 +9,14 @@ import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export interface ApiLambdaStackProps extends BaseStackProps {
     targetGroup: ApplicationTargetGroup;
@@ -84,18 +91,18 @@ export class ApiLambdaStack extends BaseStack {
         };
         
         // Write config to api.hypermedia project
-        const apiProjectPath = path.join(__dirname, "../../../api.hypermedia");
-        const configDir = path.join(apiProjectPath, "config");
-        const configFile = path.join(configDir, `${this.environment}.config.json`);
+        const apiProjectPath = join(__dirname, "../../../api.hypermedia");
+        const configDir = join(apiProjectPath, "config");
+        const configFile = join(configDir, `${this.environment}.config.json`);
         
         try {
             // Create config directory if it doesn't exist
-            if (!fs.existsSync(configDir)) {
-                fs.mkdirSync(configDir, { recursive: true });
+            if (!existsSync(configDir)) {
+                mkdirSync(configDir, { recursive: true });
             }
             
             // Write configuration file
-            fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+            writeFileSync(configFile, JSON.stringify(config, null, 2));
             console.log(`✅ Generated configuration file: ${configFile}`);
         } catch (error) {
             console.error(`❌ Failed to generate config file: ${error}`);
