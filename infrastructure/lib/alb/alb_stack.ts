@@ -1,6 +1,6 @@
 import { Duration } from "aws-cdk-lib";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
-import { IVpc, SecurityGroup } from "aws-cdk-lib/aws-ec2";
+import { IVpc, SecurityGroup, SubnetType } from "aws-cdk-lib/aws-ec2";
 import {
     ApplicationLoadBalancer,
     ApplicationProtocol,
@@ -8,7 +8,6 @@ import {
     ListenerAction,
     ListenerCondition,
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { SubnetType } from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
 
@@ -35,12 +34,11 @@ export class AlbStack extends BaseStack {
         this.vpc = props.vpc;
         this.securityGroup = props.securityGroup;
         this.targetGroup = props.targetGroup;
-        
+
         this.loadBalancer = this.createLoadBalancer();
         this.configureListeners();
         this.createOutputs();
     }
-
 
     /**
      * Create Application Load Balancer
@@ -48,7 +46,7 @@ export class AlbStack extends BaseStack {
     private createLoadBalancer(): ApplicationLoadBalancer {
         const { alb } = this.configuration;
 
-        return new ApplicationLoadBalancer(this, this.constructId("application_load_balancer"), {
+        return new ApplicationLoadBalancer(this, this.constructId("application-load-balancer"), {
             loadBalancerName: this.resourceName("alb"),
             vpc: this.vpc,
             internetFacing: true,
@@ -73,7 +71,7 @@ export class AlbStack extends BaseStack {
      * Configure HTTP listener with redirect to HTTPS
      */
     private configureHttpListener(): void {
-        const httpListener = this.loadBalancer.addListener(this.constructId("http_listener"), {
+        const httpListener = this.loadBalancer.addListener(this.constructId("http-listener"), {
             protocol: ApplicationProtocol.HTTP,
             port: 80,
             defaultAction: ListenerAction.redirect({
@@ -85,7 +83,7 @@ export class AlbStack extends BaseStack {
 
         // For non-production, allow HTTP traffic to target group
         if (!this.isProduction() && !this.configuration.alb.certificateArn) {
-            httpListener.addTargetGroups(this.constructId("http_target_group"), {
+            httpListener.addTargetGroups(this.constructId("http-target-group"), {
                 targetGroups: [this.targetGroup],
             });
         }
@@ -104,8 +102,7 @@ export class AlbStack extends BaseStack {
 
         const certificate = Certificate.fromCertificateArn(this, this.constructId("certificate"), alb.certificateArn);
 
-
-        const httpsListener = this.loadBalancer.addListener(this.constructId("https_listener"), {
+        const httpsListener = this.loadBalancer.addListener(this.constructId("https-listener"), {
             protocol: ApplicationProtocol.HTTPS,
             port: 443,
             certificates: [certificate],
@@ -114,7 +111,7 @@ export class AlbStack extends BaseStack {
 
         // Add domain-based routing if configured
         if (alb.domainName) {
-            httpsListener.addTargetGroups(this.constructId("domain_routing"), {
+            httpsListener.addTargetGroups(this.constructId("domain-routing"), {
                 targetGroups: [this.targetGroup],
                 conditions: [ListenerCondition.hostHeaders([alb.domainName])],
                 priority: 10,

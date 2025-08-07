@@ -25,7 +25,7 @@ export class AthenaStack extends BaseStack {
      * Create S3 bucket for data storage
      */
     private createDataBucket(): Bucket {
-        return new Bucket(this, this.constructId("data_bucket"), {
+        return new Bucket(this, this.constructId("data-bucket"), {
             bucketName: `${this.appEnvironment}.slp.data`,
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -39,7 +39,7 @@ export class AthenaStack extends BaseStack {
      * Create S3 bucket for Athena query results
      */
     private createQueryResultsBucket(): Bucket {
-        return new Bucket(this, this.constructId("query_results_bucket"), {
+        return new Bucket(this, this.constructId("query-results-bucket"), {
             bucketName: `${this.appEnvironment}.slp.results`,
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -73,7 +73,7 @@ export class AthenaStack extends BaseStack {
     private createAthenaWorkGroup(): CfnWorkGroup {
         const { athena } = this.configuration;
 
-        return new CfnWorkGroup(this, this.constructId("athena_work_group"), {
+        return new CfnWorkGroup(this, this.constructId("athena-work-group"), {
             name: athena.workGroupName,
             description: `Athena workgroup for Serverless Launchpad ${this.appEnvironment} environment`,
             workGroupConfiguration: this.getWorkGroupConfiguration(),
