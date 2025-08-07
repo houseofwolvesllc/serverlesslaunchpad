@@ -112,36 +112,50 @@ Secrets/Data/Cognito Stacks (independent)
 
 ### Key Design Benefits
 - ✅ **No circular dependencies** - Clean linear dependency chain
-- ✅ **Shared VPC** - All resources use common network infrastructure
+- ✅ **Shared VPC** - ALB uses VPC, Lambda runs outside VPC for internet access
 - ✅ **Modular deployment** - Deploy stacks independently when needed
 - ✅ **Type safety** - No optional properties or complex initialization
-- ✅ **Consistent architecture** - Lambda always runs in VPC, ready for future resources
-- ✅ **Future-ready** - Prepared for databases, caches, and other VPC-dependent services
+- ✅ **Cost optimized** - No NAT Gateway needed ($0 vs $32+/month)
+- ✅ **Full internet access** - Lambda can call external APIs (ChatGPT, webhooks, etc.)
 
 ### VPC Configuration
 
 The Network Stack handles VPC creation/lookup based on environment configuration:
 
 - **Default VPC (default)** - Uses existing default VPC in the region
-  - ✅ Free (no NAT Gateway costs)
-  - ✅ Suitable for serverless workloads
+  - ✅ Free (no additional costs)
+  - ✅ Perfect for ALB deployment
+  - ✅ Lambda runs outside VPC with full internet access
   - ⚠️ Requires default VPC to exist in region
 
 - **Custom VPC** - Creates new VPC with public/private subnets
-  - ⚠️ ~$65/month NAT Gateway cost
-  - ✅ Network isolation
-  - ✅ Custom CIDR ranges
+  - ✅ No NAT Gateway needed (Lambda outside VPC)
+  - ✅ Custom CIDR ranges for ALB
+  - ✅ Ready for future VPC resources (RDS, Redis)
 
 - **Existing VPC** - Import specific VPC by ID
   - Configure via `VPC_CONFIG=existing` and `VPC_ID=vpc-xxxxxx`
 
-### Lambda VPC Behavior
+### Lambda Network Architecture
 
-- **Development**: Lambda runs in VPC public subnets (default VPC limitation)
-- **Staging/Production**: Lambda runs in VPC private subnets with NAT Gateway for egress
-- **Benefits**: Prepared for future resources (RDS, ElastiCache, etc.) that require VPC
-- **ALB**: Always uses VPC (requires VPC for target groups)
-- **Target Groups**: Always require VPC (even for Lambda targets)
+- **Default**: Lambda runs OUTSIDE VPC for full internet access
+- **Benefits**: 
+  - ✅ Can call external APIs (ChatGPT, Stripe, webhooks, etc.)
+  - ✅ No NAT Gateway costs ($0 vs $32+/month)
+  - ✅ AWS services secured via IAM (not network-based)
+  - ✅ Simpler architecture
+- **ALB**: Always uses VPC (required for load balancing)
+- **Target Groups**: Bridge between VPC (ALB) and Lambda
+
+### When to Put Lambda in VPC
+
+Lambda VPC configuration is commented out but easily enabled when you need:
+- 🗄️ **RDS/Aurora** database access
+- 📦 **ElastiCache/Redis** access  
+- 🔍 **Elasticsearch** cluster access
+- 🔒 **Network isolation** for compliance
+
+To enable, uncomment the VPC configuration in `api_lambda_stack.ts`.
 
 ## Configuration
 
