@@ -1,68 +1,26 @@
-import { ALBEvent, ALBResult } from "aws-lambda";
-import express from "express";
-import { existsSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { handler } from "./index.js";
+import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
 
-// ES module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Parse command line argument for environment
+const environmentArg = process.argv[2] || 'development';
+const validEnvironments = Object.values(Environment);
 
-// Load configuration and set environment variables
-try {
-    const config = loadLocalConfiguration();
-    setEnvironmentFromConfig(config);
-    console.log(`✅ Loaded configuration for environment: ${config.environment || "local"}`);
-} catch (error) {
-    console.error("❌ Failed to load configuration:", error);
-    console.error("   Run: npm run generate:config");
+if (!validEnvironments.includes(environmentArg as Environment)) {
+    console.error(`❌ Invalid environment: ${environmentArg}`);
+    console.error(`   Valid environments: ${validEnvironments.join(', ')}`);
     process.exit(1);
 }
 
-/**
- * Load configuration from local.config.json
- */
-function loadLocalConfiguration() {
-    const configPath = join(__dirname, "../config/local.config.json");
+const environment = environmentArg as Environment;
 
-    if (!existsSync(configPath)) {
-        throw new Error(`Configuration file not found: ${configPath}. Run 'npm run generate:config' first.`);
-    }
+// Set NODE_ENV for ConfigStore to use
+process.env.NODE_ENV = environment;
 
-    return JSON.parse(readFileSync(configPath, "utf-8"));
-}
+console.log(`🚀 Starting API development server for environment: ${environment}`);
 
-/**
- * Set environment variables from configuration for compatibility with Lambda runtime
- */
-function setEnvironmentFromConfig(config: any): void {
-    if (config.cognito) {
-        process.env.COGNITO_USER_POOL_ID = config.cognito.user_pool_id;
-        process.env.COGNITO_USER_POOL_CLIENT_ID = config.cognito.user_pool_client_id;
-    }
-
-    if (config.athena) {
-        process.env.ATHENA_WORKGROUP = config.athena.workgroup;
-        process.env.ATHENA_RESULTS_BUCKET = config.athena.results_bucket;
-    }
-
-    if (config.secrets) {
-        process.env.CONFIGURATION_SECRET_ARN = config.secrets.configuration_secret_arn;
-    }
-
-    if (config.features) {
-        process.env.ENABLE_ANALYTICS = String(config.features.enable_analytics);
-        process.env.ENABLE_RATE_LIMITING = String(config.features.enable_rate_limiting);
-        process.env.ENABLE_ADVANCED_SECURITY = String(config.features.enable_advanced_security);
-    }
-
-    if (config.limits) {
-        process.env.MAX_API_KEYS_PER_USER = String(config.limits.max_api_keys_per_user);
-        process.env.SESSION_TIMEOUT_HOURS = String(config.limits.session_timeout_hours);
-        process.env.MAX_QUERY_TIMEOUT_SECONDS = String(config.limits.max_query_timeout_seconds);
-    }
-}
+// Import everything after setting NODE_ENV
+import { ALBEvent, ALBResult } from "aws-lambda";
+import express from "express";
+import { handler } from "./index.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -233,7 +191,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 API development server running at http://localhost:${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`📝 Environment: ${environment}`);
     console.log("\nAvailable endpoints:");
     console.log("  GET  /health");
     console.log("  GET  /");
