@@ -14,11 +14,6 @@ export interface AthenaClientConfig {
     pollingIntervalMs?: number;
 }
 
-export interface SqlParameter {
-    name: string;
-    value: string | number | boolean | null;
-}
-
 export type SqlParameterValue = string | number | boolean | null;
 
 export class AthenaClient {
@@ -59,25 +54,6 @@ export class AthenaClient {
     private formatParameterForExecution(value: SqlParameterValue): string {
         if (value === null) {
             return "NULL";
-        }
-
-        if (typeof value === "boolean") {
-            return value ? "TRUE" : "FALSE";
-        }
-
-        return String(value);
-    }
-
-    /**
-     * Format a parameter value based on its type (legacy method for backward compatibility)
-     */
-    private formatParameterValue(value: string | number | boolean | null): string {
-        if (value === null) {
-            return "NULL";
-        }
-
-        if (typeof value === "string") {
-            return `'${this.escapeString(value)}'`;
         }
 
         if (typeof value === "boolean") {
