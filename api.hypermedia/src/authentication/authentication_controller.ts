@@ -5,7 +5,7 @@ import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
-import { AuthenticateSchema, SignoutSchema } from "./schemas";
+import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
 
 // type AuthMessage = z.infer<typeof AuthMessageSchema>;
 
@@ -23,8 +23,8 @@ export class AuthenticationController extends BaseController {
      * Authenticate a user with a JWT token.
      * Returns hypermedia response with available actions based on user's permissions.
      */
-    @Route("POST", "/signin")
-    async authenticate(event: ExtendedALBEvent): Promise<ALBResult> {
+    @Route("POST", "/auth/federate")
+    async federate(event: ExtendedALBEvent): Promise<ALBResult> {
         const { headers, body } = this.parseRequest(event, AuthenticateSchema);
 
         const authMessage = {
@@ -65,6 +65,68 @@ export class AuthenticationController extends BaseController {
         return response;
     }
 
+    @Route("POST", "/auth/verify")
+    async verify(event: ExtendedALBEvent): Promise<ALBResult> {
+        const { headers } = this.parseRequest(event, VerifySchema);
+
+        let sessionToken: string;
+
+        // Check authorization header for SessionToken
+        if (headers.authorization) {
+            if (!headers.authorization.startsWith("SessionToken ")) {
+                throw new UnauthorizedError("Only SessionToken authentication is supported for verify");
+            }
+            sessionToken = headers.authorization.replace("SessionToken ", "");
+        } else {
+            // Fall back to cookie
+            const cookieToken = AuthenticationCookieRepository.get(event);
+            if (!cookieToken) {
+                throw new UnauthorizedError("No valid session found");
+            }
+            sessionToken = cookieToken;
+        }
+
+        const verifyResult = await this.authenticator.verify({
+            sessionToken,
+            ipAddress: headers["x-forwarded-for"],
+            userAgent: headers["user-agent"],
+        });
+
+        if (!verifyResult.authContext.identity) {
+            throw new UnauthorizedError("Session verification failed");
+        }
+
+        // Create response with user info and hypermedia links
+        const response = this.success(event, {
+            authenticated: true,
+            user: verifyResult.authContext.identity,
+            authContext: {
+                type: verifyResult.authContext.access.type,
+                expiresAt: verifyResult.authContext.access.dateExpires,
+            },
+            links: this.buildUserLinks(verifyResult.authContext.identity),
+        }, {
+            metadata: {
+                title: "Authentication Verification",
+                description: "Current session status and user information",
+                resourceType: "SessionStatus",
+            }
+        });
+
+        // Refresh cookie if using cookie authentication and client accepts HTML
+        if (!headers.authorization && this.shouldSetAuthCookie(event)) {
+            AuthenticationCookieRepository.set(
+                response,
+                sessionToken,
+                verifyResult.authContext.access.dateExpires
+                    ? Math.floor((verifyResult.authContext.access.dateExpires.getTime() - Date.now()) / 1000)
+                    : 60 * 60 * 24 * 7
+            );
+        }
+
+        return response;
+    }
+
     /**
      * Build hypermedia links based on user's permissions.
      */
@@ -91,8 +153,8 @@ export class AuthenticationController extends BaseController {
         return links;
     }
 
-    @Route("POST", "/signout")
-    async signout(event: ExtendedALBEvent): Promise<ALBResult> {
+    @Route("POST", "/auth/revoke")
+    async revoke(event: ExtendedALBEvent): Promise<ALBResult> {
         const { headers } = this.parseRequest(event, SignoutSchema);
 
         await this.authenticator.revoke({
