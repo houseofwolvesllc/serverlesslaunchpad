@@ -33,11 +33,13 @@ function AutoLogin({ setHasTriedAutoLogin }: { setHasTriedAutoLogin: (hasTriedAu
             await new Promise((resolve) => setTimeout(resolve, 3000));
 
             try {
-                await auth.authorize();
+                await auth.verifySession();
             } catch (error) {
                 if (!(error instanceof AuthError)) {
-                    console.error('Unexpected error:', error);
+                    console.error('Unexpected error during session verification:', error);
                 }
+                // Verification failures are expected when no valid session exists
+                // The user will be redirected to login by the routing logic
             } finally {
                 setHasTriedAutoLogin(true);
                 setIsLoading(false);

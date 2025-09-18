@@ -1,18 +1,37 @@
-import * as amplify from 'aws-amplify/auth';
-import { AmplifyErrorParams } from '@aws-amplify/core/internals/utils';
-
-// placeholder for now
+// Enhanced User interface to support hypermedia API response
 export interface User {
+    sessionKey?: string;
     username: string;
     email: string;
     firstName: string;
     lastName: string;
     name: string;
+    // Hypermedia-specific properties
+    links?: Array<{ rel: string[]; href: string; method?: string }>;
+    authContext?: {
+        type?: string;
+        expiresAt?: string;
+        access?: {
+            sessionToken?: string;
+            dateExpires?: Date;
+        };
+    };
 }
 
-export class AuthError extends amplify.AuthError {
-    constructor(params: AmplifyErrorParams) {
-        super(params);
+export class AuthError extends Error {
+    public code?: string;
+    public name: string;
+    
+    constructor(params: { name?: string; message: string; code?: string } | Error) {
+        if (params instanceof Error) {
+            super(params.message);
+            this.name = params.name || 'AuthError';
+            this.code = (params as any).code;
+        } else {
+            super(params.message);
+            this.name = params.name || 'AuthError';
+            this.code = params.code;
+        }
         Object.setPrototypeOf(this, AuthError.prototype);
     }
 }

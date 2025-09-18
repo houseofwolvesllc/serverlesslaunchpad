@@ -1,5 +1,5 @@
 import { ApiLogger } from "../logging";
-import { ExtendedALBEvent } from "../common/extended_alb_event";
+import { ExtendedALBEvent } from "../extended_alb_event";
 import { getContainer } from "../container";
 
 /**
