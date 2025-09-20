@@ -56,10 +56,7 @@ dev-start:
 	@./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
 	@echo ""
 	@echo "🚀 Starting development servers..."
-	@cd web && npm run local &
-	@cd api.hypermedia && npm run local local &
-	@sleep 5
-	@echo "   Development servers started with continuous logging"
+	@npm run dev
 	@echo ""
 	@echo "✨ Development environment is ready!"
 	@echo ""
@@ -73,7 +70,10 @@ dev-start:
 # Stop all services
 dev-stop:
 	@echo "🛑 Stopping services..."
-	@echo "   Killing Node.js processes on ports 3001 and 5173..."
+	@echo "   Killing development processes..."
+	@pkill -f "concurrently" 2>/dev/null || true
+	@pkill -f "tsx watch" 2>/dev/null || true
+	@pkill -f "npm run local" 2>/dev/null || true
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 	@npm run dev:clean 2>/dev/null || true

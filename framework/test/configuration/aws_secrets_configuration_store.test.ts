@@ -2,6 +2,7 @@ import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-sec
 import { mockClient } from "aws-sdk-client-mock";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { Environment } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
 import { AwsSecretsConfigurationStore } from "../../src/configuration/aws_secrets_configuration_store";
 
 describe("AwsSecretsConfigurationStore", () => {
@@ -21,7 +22,7 @@ describe("AwsSecretsConfigurationStore", () => {
         const mockSecretsManagerClient = mockClient(SecretsManagerClient);
         mockSecretsManagerClient.on(GetSecretValueCommand).resolves(mockSecretValue);
 
-        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "development" as any);
+        const store = new AwsSecretsConfigurationStore(mockConfigSchema, Environment.Development);
         const result = await store.get();
 
         expect(result.AWS_S3_BUCKET).toEqual("test-bucket");
@@ -38,7 +39,7 @@ describe("AwsSecretsConfigurationStore", () => {
         const mockSecretsManagerClient = mockClient(SecretsManagerClient);
         mockSecretsManagerClient.on(GetSecretValueCommand).resolves(mockSecretValue);
 
-        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "development" as any);
+        const store = new AwsSecretsConfigurationStore(mockConfigSchema, Environment.Development);
         await expect(store.get()).rejects.toThrow();
     });
 });

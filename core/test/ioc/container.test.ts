@@ -135,7 +135,7 @@ describe("Container", () => {
             @Injectable()
             class UserService {
                 constructor(private userRepository: AbstractUserRepository) {}
-                getUser(id: string) {
+                getUser(id: string): { id: string; name: string } {
                     return this.userRepository.getUser(id);
                 }
             }
@@ -161,7 +161,7 @@ describe("Container", () => {
             @Injectable()
             class UserService {
                 constructor(@Inject("userRepository") private userRepository: AbstractUserRepository) {}
-                getUser(id: string) {
+                getUser(id: string): { id: string; name: string } {
                     return this.userRepository.getUser(id);
                 }
             }
@@ -182,7 +182,7 @@ describe("Container", () => {
             @Injectable()
             class UserService {
                 constructor(private userRepository: AbstractUserRepository) {}
-                getUser(id: string) {
+                getUser(id: string): { id: string; name: string } {
                     return this.userRepository.getUser(id);
                 }
             }

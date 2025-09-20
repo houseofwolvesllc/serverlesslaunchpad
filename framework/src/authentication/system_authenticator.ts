@@ -103,7 +103,11 @@ export class SystemAuthenticator implements Authenticator {
         }
     }
 
-    private async generateSessionSignature(message: { sessionKey: string; ipAddress: string; userAgent: string }): Promise<string> {
+    private async generateSessionSignature(message: {
+        sessionKey: string;
+        ipAddress: string;
+        userAgent: string;
+    }): Promise<string> {
         const config = await this.configuration.get();
         return crypto
             .createHash("sha256")
