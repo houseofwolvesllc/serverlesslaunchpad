@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "local": "vite --mode moto 2>&1 | tee ../logs/web.log",
+    "local:watch": "nodemon --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --exec \"vite --mode moto\" --delay 1 2>&1 | tee ../logs/web.log",
     "local:development": "vite --mode development",
     "local:staging": "vite --mode staging",
     "local:production": "vite --mode production",
@@ -35,6 +36,7 @@
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "nodemon": "^3.1.10",
     "postcss": "^8.4.32",
     "postcss-preset-mantine": "^1.17.0",
     "postcss-simple-vars": "^7.0.1",

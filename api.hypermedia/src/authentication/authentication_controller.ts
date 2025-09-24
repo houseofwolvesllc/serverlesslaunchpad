@@ -25,9 +25,6 @@ export class AuthenticationController extends BaseController {
      */
     @Route("POST", "/auth/federate")
     async federate(event: ExtendedALBEvent): Promise<ALBResult> {
-        console.log("FEDERATE");
-        console.log("AUTHENTICATOR", this.authenticator);
-
         const { headers, body } = this.parseRequest(event, AuthenticateSchema);
 
         const authMessage = {

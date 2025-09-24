@@ -10,11 +10,12 @@
     "scripts": {
         "clean": "rimraf coverage build tmp dist",
         "prebuild": "echo 'Starting build...'",
-        "build": "tsc && fix-esm-import-path dist",
-        "build:prod": "tsc && fix-esm-import-path dist",
-        "build:watch": "tsc --watch & fix-esm-import-path dist",
-        "build:release": "npm run clean && tsc && fix-esm-import-path dist",
+        "build": "tsc && tsc-alias && cp -r config dist/",
+        "build:prod": "tsc && tsc-alias && cp -r config dist/",
+        "build:watch": "tsc --watch & tsc-alias --watch",
+        "build:release": "npm run clean && tsc && tsc-alias && cp -r config dist/",
         "local": "npm run build && node dist/src/dev_server.js local 2>&1 | tee ../logs/api.log",
+        "local:watch": "npm run build && nodemon --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --watch dist --exec \"node dist/src/dev_server.js local\" --delay 1 2>&1 | tee ../logs/api.log",
         "local:development": "npm run build && node dist/src/dev_server.js development",
         "local:staging": "npm run build && node dist/src/dev_server.js staging",
         "local:production": "npm run build && node dist/src/dev_server.js production",
@@ -36,9 +37,10 @@
         "eslint-config-prettier": "~8.5",
         "eslint-plugin-vitest": "^0.0.29",
         "express": "^4.19.2",
-        "fix-esm-import-path": "^1.10.3",
+        "nodemon": "^3.1.10",
         "prettier": "~2.8",
         "rimraf": "~3.0",
+        "tsc-alias": "^1.8.16",
         "vitest": "^3.0.8"
     },
     "dependencies": {
