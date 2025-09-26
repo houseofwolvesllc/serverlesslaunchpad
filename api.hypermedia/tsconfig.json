@@ -1,17 +1,16 @@
 // https://www.typescriptlang.org/tsconfig
 {
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "src",
     "outDir": "dist"
   },
   "extends": "../tsconfig.json",
   "include": [
-    "src/**/*",
-    "test/**/*",
+    "src/**/*"
   ],
   "exclude": [
     "src/**/*.d.*",
-    "test/**/*.d.*"
+    "test/**/*"
   ],
   "tsc-alias": {
     "resolveFullPaths": true,

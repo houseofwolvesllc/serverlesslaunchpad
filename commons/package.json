@@ -4,8 +4,8 @@
     "author": "k-gar",
     "description": "Library for common types, schemas, and utils shared across the Serverless Launchpad platform.",
     "private": true,
-    "main": "dist/src/index.js",
-    "types": "dist/src/index.d.ts",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "type": "module",
     "scripts": {
         "build": "tsc && tsc-alias",

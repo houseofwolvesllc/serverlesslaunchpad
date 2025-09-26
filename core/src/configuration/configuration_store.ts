@@ -5,6 +5,10 @@ export enum Environment {
     Production = "production",
 }
 
+export interface ConfigurationOptions {
+    refresh?: boolean;  // Force cache bypass
+}
+
 export abstract class ConfigurationStore<T> {
-    abstract get(): Promise<T>;
+    abstract get(options?: ConfigurationOptions): Promise<T>;
 }
