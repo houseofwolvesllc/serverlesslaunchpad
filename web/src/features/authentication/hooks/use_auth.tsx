@@ -1,7 +1,7 @@
 import { Amplify } from 'aws-amplify';
 import * as amplify from 'aws-amplify/auth';
 import { useContext } from 'react';
-import WebConfigurationLoader from '../../../configuration/web_config_loader';
+import WebConfigurationStore from '../../../configuration/web_config_store';
 import { apiClient } from '../../../services/api.client';
 import { CookieService } from '../../../services/cookie.service';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
@@ -12,7 +12,7 @@ let amplifyConfigured = false;
 async function ensureAmplifyConfigured() {
     if (amplifyConfigured) return;
 
-    const config = await WebConfigurationLoader.load();
+    const config = await WebConfigurationStore.getConfig();
 
     // Configure Amplify v6 with environment config and Moto-specific settings
     const amplifyConfig: any = {
@@ -69,7 +69,7 @@ export const useAuth = function () {
 
     async function federateSession(authSession: amplify.AuthSession): Promise<User> {
         try {
-            const config = await WebConfigurationLoader.load();
+            const config = await WebConfigurationStore.getConfig();
             if (config.features.debug_mode) {
                 console.log('🔗 Federating Cognito session to hypermedia API', authSession);
                 console.log('ID Token:', authSession.tokens?.idToken?.toString());
@@ -131,7 +131,7 @@ export const useAuth = function () {
 
     async function verifySession(): Promise<User> {
         try {
-            const config = await WebConfigurationLoader.load();
+            const config = await WebConfigurationStore.getConfig();
 
             // Check for session cookie first - fail fast if missing
             if (!CookieService.hasSessionCookie()) {
@@ -178,7 +178,7 @@ export const useAuth = function () {
             return verifiedUser;
 
         } catch (error) {
-            const currentConfig = await WebConfigurationLoader.load();
+            const currentConfig = await WebConfigurationStore.getConfig();
             if (currentConfig.features.debug_mode) {
                 console.error('❌ Session verification failed:', error);
             }
@@ -209,7 +209,7 @@ export const useAuth = function () {
 
     async function revokeSession(authSession: amplify.AuthSession): Promise<void> {
         try {
-            const config = await WebConfigurationLoader.load();
+            const config = await WebConfigurationStore.getConfig();
             if (config.features.debug_mode) {
                 console.log('🔓 Revoking hypermedia API session', authSession);
             }
