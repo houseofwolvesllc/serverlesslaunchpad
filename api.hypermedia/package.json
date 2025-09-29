@@ -15,7 +15,7 @@
         "build:watch": "tsc --watch & tsc-alias --watch",
         "build:release": "npm run clean && tsc && tsc-alias && cp -r config dist/",
         "local": "npm run build && node dist/dev_server.js local 2>&1 | tee ../logs/api.log",
-        "local:watch": "npm run build && nodemon --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --watch dist --exec \"node dist/dev_server.js local\" --delay 1 2>&1 | tee ../logs/api.log",
+        "local:watch": "nodemon --watch src --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --exec \"npm run build && node dist/dev_server.js local\" --ext ts --delay 1 2>&1 | tee ../logs/api.log",
         "local:development": "npm run build && node dist/dev_server.js development",
         "local:staging": "npm run build && node dist/dev_server.js staging",
         "local:production": "npm run build && node dist/dev_server.js production",
