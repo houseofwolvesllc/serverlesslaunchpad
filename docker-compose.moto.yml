@@ -8,16 +8,40 @@ services:
       # Enable all services your app needs
       - MOTO_HOST=0.0.0.0
       - MOTO_PORT=5000
+      # Disable Cognito IDP (handled by cognito-local)
+      - MOTO_COGNITO_IDP_ENABLED=false
       # Enable specific services
       - MOTO_COGNITO_IDP_USER_POOL_DOMAIN_CERT_VALIDATION=false
     command: ["-H", "0.0.0.0", "-p", "5000"]
     networks:
       - serverlesslaunchpad
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/moto-api/reset"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+
+  cognito-local:
+    container_name: serverlesslaunchpad-cognito-local
+    image: jagregory/cognito-local:latest
+    ports:
+      - "9229:9229"              # Cognito Local port (external:internal)
+    volumes:
+      - ./.cognito:/app/.cognito  # Persist user pools and users
+    environment:
+      - PORT=9229
+      - DEBUG=true
+      - HOST=localhost
+    networks:
+      - serverlesslaunchpad
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9229/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      moto:
+        condition: service_healthy
 
 networks:
   serverlesslaunchpad:

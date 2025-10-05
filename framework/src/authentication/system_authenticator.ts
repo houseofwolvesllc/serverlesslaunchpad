@@ -5,15 +5,15 @@ import {
     Authenticator,
     Features,
     Injectable,
+    JwtVerifier,
     RevokeMessage,
     Role,
     SessionRepository,
     UserRepository,
     VerifyMessage,
 } from "@houseofwolves/serverlesslaunchpad.core";
-import { CognitoJwtVerifier } from "aws-jwt-verify";
 import crypto from "crypto";
-import { ApplicationSecretsStore, InfrastructureConfigurationStore } from "../configuration";
+import { ApplicationSecretsStore } from "../configuration";
 
 @Injectable()
 export class SystemAuthenticator implements Authenticator {
@@ -21,12 +21,12 @@ export class SystemAuthenticator implements Authenticator {
         private readonly userRepository: UserRepository,
         private readonly sessionRepository: SessionRepository,
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly infrastructureConfig: InfrastructureConfigurationStore,
-        private readonly secretsConfig: ApplicationSecretsStore
+        private readonly secretsConfig: ApplicationSecretsStore,
+        private readonly jwtVerifier: JwtVerifier
     ) {}
 
     async authenticate(message: AuthenticateMessage): Promise<AuthenticateResult> {
-        const isAuthenticated = await this.verifyAccessToken(message.accessToken);
+        const isAuthenticated = await this.jwtVerifier.verify(message.accessToken);
         if (isAuthenticated) {
             let user = await this.userRepository.getUserByEmail({ email: message.email });
 
@@ -76,24 +76,6 @@ export class SystemAuthenticator implements Authenticator {
                 },
             },
         };
-    }
-
-    private async verifyAccessToken(accessToken: string): Promise<boolean> {
-        const infraConfig = await this.infrastructureConfig.get();
-
-        const verifier = CognitoJwtVerifier.create({
-            userPoolId: infraConfig.cognito.user_pool_id,
-            tokenUse: "access",
-            clientId: infraConfig.cognito.client_id,
-        });
-
-        try {
-            await verifier.verify(accessToken);
-            return true;
-        } catch (error) {
-            // Token verification failed - this is expected for invalid tokens
-            return false;
-        }
     }
 
     private async generateSessionSignature(message: {

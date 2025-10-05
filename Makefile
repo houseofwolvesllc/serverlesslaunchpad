@@ -1,5 +1,5 @@
 # Serverless Launchpad Development Makefile
-.PHONY: help dev-start dev-stop dev-reset dev-logs dev-status test-local clean
+.PHONY: help dev-start dev-stop dev-reset dev-status test-local clean
 
 # Default target
 help:
@@ -11,10 +11,7 @@ help:
 	@echo "  make dev-stop     - Stop all services"
 	@echo "  make dev-restart  - Restart all services"
 	@echo "  make dev-reset    - Reset Moto data and restart"
-	@echo "  make api-logs     - View API server logs"
-	@echo "  make web-logs     - View web server logs"
 	@echo "  make moto-logs    - View Moto logs"
-	@echo "  make all-logs     - View all logs together with prefixes"
 	@echo "  make dev-status   - Check status of all services"
 	@echo ""
 	@echo "Cloud Environments:"
@@ -61,7 +58,7 @@ dev-start:
 	done
 	@echo ""
 	@echo "🔧 Running initialization scripts..."
-	@./moto/init/01-cognito.sh >> logs/moto.log 2>&1
+	@./moto/init/01-cognito-local.sh >> logs/moto.log 2>&1
 	@./moto/init/02-s3.sh >> logs/moto.log 2>&1
 	@./moto/init/03-secrets.sh >> logs/moto.log 2>&1
 	@./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
@@ -81,7 +78,7 @@ dev-start:
 	@echo "  API:        http://localhost:3001"
 	@echo "  Web:        http://localhost:5173"
 	@echo ""
-	@echo "View logs with: make api-logs, make web-logs, make moto-logs, or make all-logs"
+	@echo "View Moto logs with: make moto-logs"
 	@echo "Check status with: make dev-status"
 
 # Stop all services
@@ -119,30 +116,10 @@ dev-reset:
 	@echo ""
 	@$(MAKE) dev-start
 
-# View API logs
-api-logs:
-	@echo "📋 API logs (Ctrl+C to exit):"
-	@tail -f logs/api.log
-
-# View Web logs  
-web-logs:
-	@echo "📋 Web logs (Ctrl+C to exit):"
-	@tail -f logs/web.log
-
 # View Moto logs
 moto-logs:
 	@echo "📋 Moto logs (Ctrl+C to exit):"
 	@tail -f logs/moto.log
-
-# View all logs together
-all-logs:
-	@echo "📋 All logs (API + Web + Moto) - Ctrl+C to exit:"
-	@echo ""
-	@bash -c 'trap "kill 0; exit" INT; \
-	tail -f logs/api.log 2>/dev/null | sed "s/^/[API] /" & \
-	tail -f logs/web.log 2>/dev/null | sed "s/^/[WEB] /" & \
-	tail -f logs/moto.log 2>/dev/null | sed "s/^/[MOTO] /" & \
-	wait'
 
 # Check status of all services
 dev-status:
@@ -182,20 +159,6 @@ test-local:
 	cd core && npm test && \
 	cd ../framework && npm test && \
 	cd ../api.hypermedia && npm test
-
-# Test authentication flow
-test-auth:
-	@echo "🔐 Testing authentication flow..."
-	@echo ""
-	@echo "1. Testing Cognito connection..."
-	@aws --endpoint-url=http://localhost:5555 cognito-idp list-user-pools --max-results 1 >/dev/null && \
-		echo "   ✅ Cognito is accessible" || echo "   ❌ Cognito not accessible"
-	@echo ""
-	@echo "2. Testing user authentication..."
-	@echo "   Test user: testuser@example.com"
-	@echo "   Password: TestPass123!"
-	@# Add actual authentication test here
-	@echo "   ✅ Authentication test placeholder"
 
 # Clean up all containers and data
 clean:

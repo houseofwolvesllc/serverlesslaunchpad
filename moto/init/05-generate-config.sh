@@ -1,10 +1,11 @@
 #!/bin/bash
 # Generate infrastructure.json configuration files for both API and Web services
-# This script consolidates configuration from all Moto initialization scripts
+# This script consolidates configuration from Moto and cognito-local initialization scripts
 
 set -e
 
 AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localhost:5555}
+COGNITO_LOCAL_ENDPOINT=${COGNITO_LOCAL_ENDPOINT:-http://localhost:9229}
 AWS_REGION=${AWS_DEFAULT_REGION:-us-west-2}
 
 echo "========================================="
@@ -36,6 +37,12 @@ generate_infrastructure_config() {
         --region $AWS_REGION \
         --query 'Parameter.Value' \
         --output text 2>/dev/null || echo "")
+
+    local cognito_endpoint=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
+        --name "/serverlesslaunchpad/local/cognito/endpoint-url" \
+        --region $AWS_REGION \
+        --query 'Parameter.Value' \
+        --output text 2>/dev/null || echo "$COGNITO_LOCAL_ENDPOINT")
 
     local upload_bucket=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
         --name "/serverlesslaunchpad/local/s3/uploads-bucket" \
@@ -74,7 +81,8 @@ generate_infrastructure_config() {
     "user_pool_id": "$pool_id",
     "client_id": "$client_id",
     "identity_pool_id": "$identity_pool_id",
-    "user_pool_provider_url": "$AWS_ENDPOINT_URL"
+    "user_pool_provider_url": "$cognito_endpoint",
+    "endpoint_url": "$cognito_endpoint"
   },
 
   "athena": {
@@ -113,6 +121,7 @@ generate_infrastructure_config() {
 
   "development": {
     "moto_url": "$AWS_ENDPOINT_URL",
+    "cognito_local_url": "$cognito_endpoint",
     "node_env": "development"
   }
 }

@@ -20,6 +20,7 @@ export const WebConfigSchema = z.object({
         client_id: z.string(),
         identity_pool_id: z.string().optional(),
         user_pool_provider_url: z.string().optional(),
+        endpoint_url: z.string().optional(), // For local development with cognito-local
         // Note: client_secret explicitly excluded - never exposed to frontend
     }),
 
@@ -53,14 +54,6 @@ export const WebConfigSchema = z.object({
     alb: z
         .object({
             dns_name: z.string().optional(),
-        })
-        .optional(),
-
-    // Development/debugging configuration
-    development: z
-        .object({
-            moto_url: z.string().optional(),
-            node_env: z.string().default('development'),
         })
         .optional(),
 
