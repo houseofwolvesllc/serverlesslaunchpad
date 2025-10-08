@@ -4,63 +4,45 @@
 
 set -e
 
-AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localhost:5555}
-COGNITO_LOCAL_ENDPOINT=${COGNITO_LOCAL_ENDPOINT:-http://localhost:9229}
-AWS_REGION=${AWS_DEFAULT_REGION:-us-west-2}
+# Source centralized configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 
 echo "========================================="
 echo "Generating Infrastructure Configuration"
 echo "========================================="
+echo "Environment: ${ENVIRONMENT}"
+echo ""
+
+# Wait for Moto to be ready
+wait_for_moto || exit 1
+
+echo ""
 
 # Function to generate infrastructure configuration JSON
 generate_infrastructure_config() {
     local output_file="$1"
-    local environment="local"
 
     echo "Generating configuration file: $output_file"
 
     # Get configuration values from SSM (populated by other init scripts)
-    local pool_id=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/cognito/user-pool-id" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "")
+    local pool_id=$(get_ssm_parameter "${SSM_COGNITO_POOL_ID}" "")
 
-    local client_id=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/cognito/client-id" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "")
+    local client_id=$(get_ssm_parameter "${SSM_COGNITO_CLIENT_ID}" "")
 
-    local identity_pool_id=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/cognito/identity-pool-id" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "")
+    local identity_pool_id=$(get_ssm_parameter "${SSM_COGNITO_IDENTITY_POOL}" "")
 
-    local cognito_endpoint=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/cognito/endpoint-url" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "$COGNITO_LOCAL_ENDPOINT")
+    local cognito_endpoint=$(get_ssm_parameter "${SSM_COGNITO_ENDPOINT}" "${COGNITO_LOCAL_ENDPOINT}")
 
-    local upload_bucket=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/s3/uploads-bucket" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "serverlesslaunchpad-local-uploads")
+    local upload_bucket=$(get_ssm_parameter "${SSM_S3_UPLOADS_BUCKET}" "${S3_UPLOADS_BUCKET}")
 
-    local static_bucket=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/s3/static-bucket" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "serverlesslaunchpad-local-static")
+    local static_bucket=$(get_ssm_parameter "${SSM_S3_STATIC_BUCKET}" "${S3_STATIC_BUCKET}")
 
-    local athena_bucket=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/s3/athena-results-bucket" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "serverlesslaunchpad-local-athena-results")
+    local athena_bucket=$(get_ssm_parameter "${SSM_S3_ATHENA_BUCKET}" "${S3_ATHENA_RESULTS_BUCKET}")
+
+    local athena_workgroup=$(get_ssm_parameter "${SSM_ATHENA_WORKGROUP}" "${ATHENA_WORKGROUP}")
+
+    local glue_database=$(get_ssm_parameter "${SSM_GLUE_DATABASE}" "${GLUE_DATABASE}")
 
     # Generate timestamp
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
@@ -68,13 +50,13 @@ generate_infrastructure_config() {
     # Generate the infrastructure configuration JSON
     cat > "$output_file" << EOF
 {
-  "environment": "$environment",
+  "environment": "${ENVIRONMENT}",
   "_generated": "$timestamp",
-  "_source": "Generated from local Moto environment",
+  "_source": "Generated from ${ENVIRONMENT} Moto environment",
 
   "aws": {
-    "region": "$AWS_REGION",
-    "endpoint_url": "$AWS_ENDPOINT_URL"
+    "region": "${AWS_REGION}",
+    "endpoint_url": "${AWS_ENDPOINT_URL}"
   },
 
   "cognito": {
@@ -86,7 +68,8 @@ generate_infrastructure_config() {
   },
 
   "athena": {
-    "workgroup": "serverlesslaunchpad-local-workgroup",
+    "database_name": "$glue_database",
+    "workgroup": "$athena_workgroup",
     "data_bucket": "$static_bucket",
     "results_bucket": "$athena_bucket"
   },
@@ -120,7 +103,7 @@ generate_infrastructure_config() {
   },
 
   "development": {
-    "moto_url": "$AWS_ENDPOINT_URL",
+    "moto_url": "${AWS_ENDPOINT_URL}",
     "cognito_local_url": "$cognito_endpoint",
     "node_env": "development"
   }
@@ -138,11 +121,7 @@ max_attempts=10
 attempt=1
 
 while [ $attempt -le $max_attempts ]; do
-    pool_id=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-        --name "/serverlesslaunchpad/local/cognito/user-pool-id" \
-        --region $AWS_REGION \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "")
+    pool_id=$(get_ssm_parameter "${SSM_COGNITO_POOL_ID}" "")
 
     if [ -n "$pool_id" ]; then
         echo "✓ Found configuration in SSM"
