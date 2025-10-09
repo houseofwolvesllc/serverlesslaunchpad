@@ -103,7 +103,7 @@ export class Container {
               params.map((param: any, index: number) => {
                   if (!param) {
                       throw new ContainerError(
-                          `Cannot resolve parameter of type ${param} for ${descriptor.implementation.name}`
+                          `Cannot resolve parameter of type ${param} for ${descriptor!.implementation.name}`
                       );
                   }
 
@@ -116,7 +116,7 @@ export class Container {
             if (param === undefined) {
                 const paramType = params[index];
                 throw new ContainerError(
-                    `Cannot resolve dependency '${paramType.name}' for parameter ${index} of '${descriptor.implementation.name}' constructor. No binding found for ${paramType.name}.`
+                    `Cannot resolve dependency '${paramType.name}' for parameter ${index} of '${descriptor!.implementation.name}' constructor. No binding found for ${paramType.name}.`
                 );
             }
         });
