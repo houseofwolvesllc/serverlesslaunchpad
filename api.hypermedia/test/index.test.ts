@@ -24,6 +24,6 @@ describe("ALB Handler", () => {
 
         expect(result.statusCode).toBe(200);
         expect(result.headers?.["Content-Type"]).toBe("application/xhtml+xml");
-        expect(result.body).toContain("Welcome to Serverless Launchpad API");
+        expect(result.body).toContain("Serverless Launchpad API");
     });
 });

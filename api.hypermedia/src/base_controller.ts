@@ -18,10 +18,20 @@ import { XhtmlAdapter } from "./content_types/xhtml_adapter";
 
 /**
  * Response data interface for content adapters
+ *
+ * This interface structures the response for content type adapters (JSON, XHTML).
+ * For hypermedia responses, use HAL resource adapters which implement the HalObject interface.
+ *
+ * @see https://stateless.group/hal_specification.html
  */
 export interface ResponseData<T = unknown> {
+    /** HTTP status code */
     status?: number;
+
+    /** Response data - can be plain object or HalObject from adapter */
     data?: T;
+
+    /** Error information for error responses */
     error?: {
         status: number;
         title: string;
@@ -30,26 +40,6 @@ export interface ResponseData<T = unknown> {
         timestamp?: string;
         traceId?: string;
         violations?: Array<{ field: string; message: string }>;
-    };
-    links?: Array<{ rel: string[]; href: string; title?: string }>;
-    actions?: Array<{
-        name: string;
-        title: string;
-        method: string;
-        href: string;
-        type?: string;
-        fields?: Array<{
-            name: string;
-            type: string;
-            required?: boolean;
-            value?: any;
-        }>;
-    }>;
-    metadata?: {
-        title?: string;
-        description?: string;
-        resourceType?: string;
-        resourceUri?: string;
     };
 }
 
@@ -137,33 +127,31 @@ export abstract class BaseController {
 
     /**
      * Build a successful ALB response with content negotiation
+     *
+     * @param event - The ALB event
+     * @param data - The response data (should be a HalObject from an adapter)
+     * @param options - Additional options for status code and headers
      */
     protected success<T>(
         event: ExtendedALBEvent,
-        data: T, 
+        data: T,
         options: {
             status?: number;
             headers?: Record<string, string>;
-            links?: ResponseData["links"];
-            actions?: ResponseData["actions"];
-            metadata?: ResponseData["metadata"];
         } = {}
     ): ALBResult {
         const contentType = getAcceptedContentType(event);
         const status = options.status || 200;
-        
+
         const responseData: ResponseData = {
             status,
-            data,
-            links: options.links,
-            actions: options.actions,
-            metadata: options.metadata
+            data
         };
-        
-        const body = contentType === CONTENT_TYPES.JSON 
+
+        const body = contentType === CONTENT_TYPES.JSON
             ? BaseController.jsonAdapter.format(responseData)
             : BaseController.xhtmlAdapter.format(responseData);
-        
+
         return {
             statusCode: status,
             headers: {

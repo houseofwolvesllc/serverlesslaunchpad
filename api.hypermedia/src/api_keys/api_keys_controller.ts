@@ -5,6 +5,8 @@ import { AuthenticatedALBEvent } from "../extended_alb_event";
 import { Cache, Log, Protected } from "../decorators/index";
 import { Route } from "../router";
 import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas";
+import { ApiKeyCollectionAdapter } from "./api_key_collection_adapter";
+import { ApiKeyDeletionAdapter } from "./api_key_deletion_adapter";
 
 /**
  * API Keys endpoint controller
@@ -45,15 +47,18 @@ export class ApiKeysController extends BaseController {
             userId,
             pagingInstruction
         });
-        
-        return this.success(event, {
-            apiKeys: result.items,
-            paging: {
+
+        const adapter = new ApiKeyCollectionAdapter(
+            userId,
+            result.items,
+            {
                 next: result.pagingInstructions.next,
                 previous: result.pagingInstructions.previous,
                 current: result.pagingInstructions.current
             }
-        });
+        );
+
+        return this.success(event, adapter);
     }
 
     /**
@@ -84,10 +89,9 @@ export class ApiKeysController extends BaseController {
             userId,
             apiKeys: apiKeyIds
         });
-        
-        return this.success(event, { 
-            message: `Deleted ${apiKeyIds.length} API keys for user ${userId}`,
-            deletedCount: apiKeyIds.length
-        });
+
+        const adapter = new ApiKeyDeletionAdapter(userId, apiKeyIds.length);
+
+        return this.success(event, adapter);
     }
 }

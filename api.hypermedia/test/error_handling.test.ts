@@ -103,10 +103,9 @@ describe("Error Handling", () => {
             expect(result.headers?.["Content-Type"]).toBe("application/json");
 
             const body = JSON.parse(result.body || "{}");
-            expect(body.class).toContain("error");
-            expect(body.class).toContain("not-found-error");
-            expect(body.properties.status).toBe(404);
-            expect(body.properties.title).toBe("Not Found");
+            // HAL format: properties are flat at top level
+            expect(body.status).toBe(404);
+            expect(body.title).toBe("Not Found");
         });
     });
 
@@ -144,28 +143,26 @@ describe("Error Handling", () => {
     });
 
     describe("Error Response Formats", () => {
-        it("should format errors in JSON/Siren format", async () => {
+        it("should format errors in JSON/HAL format", async () => {
             const event = createMockEvent("GET", "/non-existent", "application/json");
             const result = await handler(event);
 
             const body = JSON.parse(result.body || "{}");
 
-            // Verify Siren structure
-            expect(body).toHaveProperty("class");
-            expect(body).toHaveProperty("properties");
-            expect(body).toHaveProperty("links");
+            // Verify HAL structure - properties are flat at top level
+            expect(body).toHaveProperty("status");
+            expect(body).toHaveProperty("title");
+            expect(body).toHaveProperty("detail");
+            expect(body).toHaveProperty("instance");
+            expect(body).toHaveProperty("timestamp");
+            expect(body).toHaveProperty("traceId");
 
-            // Verify error properties
-            expect(body.properties).toHaveProperty("status");
-            expect(body.properties).toHaveProperty("title");
-            expect(body.properties).toHaveProperty("detail");
-            expect(body.properties).toHaveProperty("instance");
-            expect(body.properties).toHaveProperty("timestamp");
-            expect(body.properties).toHaveProperty("traceId");
-
-            // Verify links
-            expect(body.links).toContainEqual(expect.objectContaining({ rel: ["home"], href: "/" }));
-            expect(body.links).toContainEqual(expect.objectContaining({ rel: ["help"], href: "/docs" }));
+            // HAL uses _links object instead of links array
+            expect(body).toHaveProperty("_links");
+            expect(body._links).toHaveProperty("home");
+            expect(body._links.home).toHaveProperty("href", "/");
+            expect(body._links).toHaveProperty("sitemap");
+            expect(body._links.sitemap).toHaveProperty("href", "/sitemap");
         });
 
         it("should format errors in XHTML format", async () => {
