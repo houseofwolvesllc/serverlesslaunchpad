@@ -1,4 +1,5 @@
 import { Session } from "@houseofwolves/serverlesslaunchpad.core";
+import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.commons";
 import { HalResourceAdapter } from "../content_types/hal_adapter";
 
 /**
@@ -8,11 +9,7 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
     constructor(
         private userId: string,
         private sessions: Session[],
-        private pagingData: {
-            next?: string;
-            previous?: string;
-            current?: string;
-        }
+        private pagingData: PagingInstructions
     ) {
         super();
     }
@@ -53,11 +50,8 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
     }
 
     get paging() {
-        return {
-            next: this.pagingData.next,
-            previous: this.pagingData.previous,
-            current: this.pagingData.current
-        };
+        // Return paging instructions as-is (objects, not serialized strings)
+        return this.pagingData;
     }
 
     get count() {

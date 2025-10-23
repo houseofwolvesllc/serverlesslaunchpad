@@ -4,9 +4,9 @@ import { BaseController } from "../base_controller";
 import { AuthenticatedALBEvent } from "../extended_alb_event";
 import { Cache, Log, Protected } from "../decorators/index";
 import { Route } from "../router";
+import { MessageAdapter } from "../content_types/message_adapter";
 import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas";
 import { ApiKeyCollectionAdapter } from "./api_key_collection_adapter";
-import { ApiKeyDeletionAdapter } from "./api_key_deletion_adapter";
 
 /**
  * API Keys endpoint controller
@@ -48,14 +48,11 @@ export class ApiKeysController extends BaseController {
             pagingInstruction
         });
 
+        // Pass paging instructions as-is (no serialization needed)
         const adapter = new ApiKeyCollectionAdapter(
             userId,
             result.items,
-            {
-                next: result.pagingInstructions.next,
-                previous: result.pagingInstructions.previous,
-                current: result.pagingInstructions.current
-            }
+            result.pagingInstructions
         );
 
         return this.success(event, adapter);
@@ -90,7 +87,19 @@ export class ApiKeysController extends BaseController {
             apiKeys: apiKeyIds
         });
 
-        const adapter = new ApiKeyDeletionAdapter(userId, apiKeyIds.length);
+        const adapter = new MessageAdapter({
+            selfHref: `/users/${userId}/api_keys/delete`,
+            message: `Deleted ${apiKeyIds.length} API keys for user ${userId}`,
+            links: {
+                apiKeys: {
+                    href: `/users/${userId}/api_keys/list`,
+                    title: "View remaining API keys"
+                }
+            },
+            properties: {
+                deletedCount: apiKeyIds.length
+            }
+        });
 
         return this.success(event, adapter);
     }

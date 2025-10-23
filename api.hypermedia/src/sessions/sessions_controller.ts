@@ -4,9 +4,9 @@ import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
+import { MessageAdapter } from "../content_types/message_adapter.js";
 import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
 import { SessionCollectionAdapter } from "./session_collection_adapter.js";
-import { SessionDeletionAdapter } from "./session_deletion_adapter.js";
 
 /**
  * Sessions endpoint controller demonstrating proper decorator usage
@@ -51,14 +51,11 @@ export class SessionsController extends BaseController {
             pagingInstruction
         });
 
+        // Pass paging instructions as-is (no serialization needed)
         const adapter = new SessionCollectionAdapter(
             userId,
             sessions.items,
-            {
-                next: sessions.pagingInstructions.next,
-                previous: sessions.pagingInstructions.previous,
-                current: sessions.pagingInstructions.current
-            }
+            sessions.pagingInstructions
         );
 
         return this.success(event, adapter);
@@ -94,7 +91,19 @@ export class SessionsController extends BaseController {
             sessionIds
         });
 
-        const adapter = new SessionDeletionAdapter(userId, sessionIds.length);
+        const adapter = new MessageAdapter({
+            selfHref: `/users/${userId}/sessions/delete`,
+            message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
+            links: {
+                sessions: {
+                    href: `/users/${userId}/sessions/list`,
+                    title: "View remaining sessions"
+                }
+            },
+            properties: {
+                deletedCount: sessionIds.length
+            }
+        });
 
         return this.success(event, adapter);
     }

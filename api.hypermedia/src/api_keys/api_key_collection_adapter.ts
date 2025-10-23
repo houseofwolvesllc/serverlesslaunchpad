@@ -1,4 +1,5 @@
 import { ApiKey } from "@houseofwolves/serverlesslaunchpad.core";
+import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.commons";
 import { HalResourceAdapter } from "../content_types/hal_adapter";
 
 /**
@@ -8,11 +9,7 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
     constructor(
         private userId: string,
         private apiKeys: ApiKey[],
-        private pagingData: {
-            next?: string;
-            previous?: string;
-            current?: string;
-        }
+        private pagingData: PagingInstructions
     ) {
         super();
     }
@@ -43,9 +40,10 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
             apiKeys: this.apiKeys.map(apiKey => ({
                 apiKeyId: apiKey.apiKeyId,
                 userId: apiKey.userId,
-                name: apiKey.name,
+                description: apiKey.description,
+                apiKey: apiKey.apiKey,
                 dateCreated: apiKey.dateCreated.toISOString(),
-                dateExpires: apiKey.dateExpires?.toISOString(),
+                dateLastAccessed: apiKey.dateLastAccessed.toISOString(),
                 _links: {
                     self: this.createLink(`/users/${this.userId}/api_keys/${apiKey.apiKeyId}`)
                 }
@@ -54,11 +52,8 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
     }
 
     get paging() {
-        return {
-            next: this.pagingData.next,
-            previous: this.pagingData.previous,
-            current: this.pagingData.current
-        };
+        // Return paging instructions as-is (objects, not serialized strings)
+        return this.pagingData;
     }
 
     get count() {

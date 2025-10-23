@@ -1,9 +1,23 @@
 import WebConfigurationStore from '../configuration/web_config_store';
 
+/**
+ * HAL (Hypertext Application Language) response structure
+ * The response data properties are at the root level, not nested under 'data'
+ *
+ * @see https://datatracker.ietf.org/doc/html/draft-kelly-json-hal-11
+ */
 export interface ApiResponse<T = any> {
-    data: T;
-    _links?: Record<string, { href: string; method?: string }>;
+    /** HAL hypermedia links */
+    _links?: Record<string, { href: string; title?: string; templated?: boolean }>;
+
+    /** HAL embedded resources */
     _embedded?: Record<string, any>;
+
+    /** HAL action templates (HAL-FORMS) */
+    _templates?: Record<string, any>;
+
+    /** Resource properties (merged with this interface) */
+    [key: string]: any;
 }
 
 export interface ApiError {
@@ -107,6 +121,8 @@ export class ApiClient {
                 console.log(`✅ API Response: ${response.status}`, data);
             }
 
+            // HAL responses are returned directly with _links and _embedded at root
+            // Return as-is for HAL compatibility (response IS the data + hypermedia controls)
             return data;
         } catch (error) {
             clearTimeout(timeoutId);
@@ -200,7 +216,8 @@ export class ApiClient {
     // Health check method
     async health(): Promise<{ status: string; timestamp: string }> {
         const response = await this.get<{ status: string; timestamp: string }>('/health');
-        return response.data;
+        // HAL response: properties at root level
+        return { status: response.status, timestamp: response.timestamp };
     }
 }
 
