@@ -1,6 +1,5 @@
 // Enhanced User interface to support hypermedia API response
 export interface User {
-    sessionKey?: string;
     username: string;
     email: string;
     firstName: string;
@@ -10,7 +9,7 @@ export interface User {
     links?: Record<string, { href: string; title?: string }>;
     // Access context from _embedded.access in HAL response
     authContext?: {
-        type: "session" | "apiKey" | "unknown";
+        type: 'session' | 'apiKey' | 'unknown';
         description?: string;
         ipAddress: string;
         userAgent: string;
@@ -23,7 +22,7 @@ export interface User {
 export class AuthError extends Error {
     public code?: string;
     public name: string;
-    
+
     constructor(params: { name?: string; message: string; code?: string } | Error) {
         if (params instanceof Error) {
             super(params.message);

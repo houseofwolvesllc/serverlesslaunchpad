@@ -19,15 +19,19 @@ export class SitemapAdapter extends HalResourceAdapter {
 
     private buildNavigationTree(): NavigationItem[] {
         const items: NavigationItem[] = [
-            this.buildAuthMenu(),
+            this.buildHomeLink(),
         ];
 
-        // Add user management menu for authenticated users
+        // Add login for unauthenticated users, account menu for authenticated
         if (this.user) {
-            items.push(this.buildUsersMenu());
+            items.push(this.buildDocumentationLink());
+            items.push(this.buildAccountMenu());
+        } else {
+            items.push(this.buildLoginLink());
+            items.push(this.buildDocumentationLink());
         }
 
-        // Conditionally add admin menu based on role
+        // Add admin menu for admin users
         if (this.user && this.hasRole(this.user, Role.Admin)) {
             items.push(this.buildAdminMenu());
         }
@@ -35,95 +39,62 @@ export class SitemapAdapter extends HalResourceAdapter {
         return items;
     }
 
-    private buildAuthMenu(): NavigationItem {
-        const items: NavigationItem[] = [
-            {
-                id: "federate",
-                title: "Login",
-                href: "/auth/federate",
-                method: "POST",
-                description: "Authenticate with JWT token"
-            }
-        ];
-
-        // Add verify and revoke for authenticated users
-        if (this.user) {
-            items.push(
-                {
-                    id: "verify",
-                    title: "Verify Session",
-                    href: "/auth/verify",
-                    method: "POST"
-                },
-                {
-                    id: "revoke",
-                    title: "Logout",
-                    href: "/auth/revoke",
-                    method: "POST"
-                }
-            );
-        }
-
+    private buildHomeLink(): NavigationItem {
         return {
-            id: "authentication",
-            title: "Authentication",
-            icon: "lock",
-            items
+            id: "home",
+            title: "Home",
+            href: "/",
+            icon: "home"
         };
     }
 
-    private buildUsersMenu(): NavigationItem {
+    private buildLoginLink(): NavigationItem {
         return {
-            id: "users",
-            title: "User Management",
-            href: "/users",
-            icon: "users",
+            id: "login",
+            title: "Login",
+            href: "/auth/federate",
+            method: "POST",
+            icon: "login"
+        };
+    }
+
+    private buildDocumentationLink(): NavigationItem {
+        return {
+            id: "documentation",
+            title: "Documentation",
+            href: "/docs",
+            icon: "file-text"
+        };
+    }
+
+    private buildAccountMenu(): NavigationItem {
+        return {
+            id: "account",
+            title: "My Account",
+            icon: "user-circle",
             items: [
                 {
                     id: "sessions",
                     title: "Sessions",
-                    href: "/users/{userId}/sessions/",
+                    href: "/users/{userId}/sessions/list",
+                    method: "POST",
                     templated: true,
-                    description: "Manage user sessions",
-                    items: [
-                        {
-                            id: "list-sessions",
-                            title: "List Sessions",
-                            href: "/users/{userId}/sessions/",
-                            method: "GET",
-                            templated: true
-                        },
-                        {
-                            id: "delete-sessions",
-                            title: "Delete Sessions",
-                            href: "/users/{userId}/sessions/delete",
-                            method: "POST",
-                            templated: true
-                        }
-                    ]
+                    icon: "clock"
                 },
                 {
                     id: "api-keys",
                     title: "API Keys",
-                    href: "/users/{userId}/api_keys/",
+                    href: "/users/{userId}/api_keys/list",
+                    method: "POST",
                     templated: true,
-                    description: "Manage API keys",
-                    items: [
-                        {
-                            id: "list-api-keys",
-                            title: "List API Keys",
-                            href: "/users/{userId}/api_keys/",
-                            method: "GET",
-                            templated: true
-                        },
-                        {
-                            id: "delete-api-keys",
-                            title: "Delete API Keys",
-                            href: "/users/{userId}/api_keys/delete",
-                            method: "POST",
-                            templated: true
-                        }
-                    ]
+                    icon: "key"
+                },
+                {
+                    id: "logout",
+                    title: "Logout",
+                    href: "/auth/revoke",
+                    method: "POST",
+                    icon: "logout"
                 }
             ]
         };

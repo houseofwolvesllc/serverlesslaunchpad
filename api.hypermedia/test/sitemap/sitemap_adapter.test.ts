@@ -20,10 +20,12 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter.navigation;
 
-        expect(nav.items).toHaveLength(3);
-        expect(nav.items[0].id).toBe("authentication");
-        expect(nav.items[1].id).toBe("users");
-        expect(nav.items[2].id).toBe("admin");
+        // Admin sees: home, documentation, account, admin
+        expect(nav.items).toHaveLength(4);
+        expect(nav.items.find(i => i.id === "home")).toBeDefined();
+        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
+        expect(nav.items.find(i => i.id === "account")).toBeDefined();
+        expect(nav.items.find(i => i.id === "admin")).toBeDefined();
     });
 
     it("should exclude admin menu for regular users", () => {
@@ -32,7 +34,11 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter.navigation;
 
-        expect(nav.items).toHaveLength(2);
+        // Regular user sees: home, documentation, account (no admin)
+        expect(nav.items).toHaveLength(3);
+        expect(nav.items.find(i => i.id === "home")).toBeDefined();
+        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
+        expect(nav.items.find(i => i.id === "account")).toBeDefined();
         expect(nav.items.find(i => i.id === "admin")).toBeUndefined();
     });
 
@@ -41,24 +47,24 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter.navigation;
 
-        expect(nav.items).toHaveLength(1);
-        expect(nav.items[0].id).toBe("authentication");
-        expect(nav.items[0].items?.length).toBe(1);
-        expect(nav.items[0].items?.[0].id).toBe("federate");
+        // Unauthenticated sees: home, login, documentation
+        expect(nav.items).toHaveLength(3);
+        expect(nav.items.find(i => i.id === "home")).toBeDefined();
+        expect(nav.items.find(i => i.id === "login")).toBeDefined();
+        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
     });
 
-    it("should create recursive structure with nested items", () => {
+    it("should create structure with nested items under account", () => {
         const user = createMockUser({ role: Role.User });
         const adapter = new SitemapAdapter(user);
 
-        const usersMenu = adapter.navigation.items.find(i => i.id === "users");
+        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
 
-        expect(usersMenu?.items).toBeDefined();
-        expect(usersMenu?.items?.length).toBeGreaterThan(0);
-
-        const sessionsItem = usersMenu?.items?.find(i => i.id === "sessions");
-        expect(sessionsItem?.items).toBeDefined();
-        expect(sessionsItem?.items?.length).toBeGreaterThan(0);
+        expect(accountMenu?.items).toBeDefined();
+        expect(accountMenu?.items?.length).toBe(3); // sessions, api-keys, logout
+        expect(accountMenu?.items?.find(i => i.id === "sessions")).toBeDefined();
+        expect(accountMenu?.items?.find(i => i.id === "api-keys")).toBeDefined();
+        expect(accountMenu?.items?.find(i => i.id === "logout")).toBeDefined();
     });
 
     it("should serialize to valid HAL JSON", () => {
@@ -81,24 +87,23 @@ describe("SitemapAdapter", () => {
         expect(Object.keys(json._links).sort()).toEqual(["home", "self"]);
     });
 
-    it("should include auth actions for authenticated users", () => {
+    it("should include logout in account menu for authenticated users", () => {
         const user = createMockUser({ role: Role.User });
         const adapter = new SitemapAdapter(user);
 
-        const authMenu = adapter.navigation.items.find(i => i.id === "authentication");
-        const authItems = authMenu?.items || [];
+        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
+        const logoutItem = accountMenu?.items?.find(i => i.id === "logout");
 
-        expect(authItems.find(i => i.id === "federate")).toBeDefined();
-        expect(authItems.find(i => i.id === "verify")).toBeDefined();
-        expect(authItems.find(i => i.id === "revoke")).toBeDefined();
+        expect(logoutItem).toBeDefined();
+        expect(logoutItem?.href).toBe("/auth/revoke");
     });
 
     it("should mark templated URIs correctly", () => {
         const user = createMockUser({ role: Role.User });
         const adapter = new SitemapAdapter(user);
 
-        const usersMenu = adapter.navigation.items.find(i => i.id === "users");
-        const sessionsItem = usersMenu?.items?.find(i => i.id === "sessions");
+        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
+        const sessionsItem = accountMenu?.items?.find(i => i.id === "sessions");
 
         expect(sessionsItem?.templated).toBe(true);
         expect(sessionsItem?.href).toContain("{userId}");

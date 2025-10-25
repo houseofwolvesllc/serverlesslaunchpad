@@ -1,64 +1,24 @@
-import { AppShell, Burger, Text, Image } from '@mantine/core';
+import { AppShell, Burger, Text, Image, Skeleton, Alert, Stack } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
 import { AuthenticationContext, useAuth } from '../authentication';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
-import {
-    IconNotes,
-    IconCalendarStats,
-    IconGauge,
-    IconPresentationAnalytics,
-    IconFileAnalytics,
-    IconAdjustments,
-    IconLock,
-} from '@tabler/icons-react';
+import { IconAlertCircle, IconRefresh } from '@tabler/icons-react';
 import { UserButton } from '../../components/user_button/user_button';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
 import classes from './dashboard.module.css';
 import { useContext } from 'react';
 import { LoadingContext } from '../../context/loading_context';
 import { useNavigate } from 'react-router-dom';
-
-const mockdata = [
-    { label: 'Dashboard', icon: IconGauge },
-    {
-        label: 'Market news',
-        icon: IconNotes,
-        initiallyOpened: true,
-        links: [
-            { label: 'Overview', link: '/blah' },
-            { label: 'Forecasts', link: '/' },
-            { label: 'Outlook', link: '/' },
-            { label: 'Real time', link: '/' },
-        ],
-    },
-    {
-        label: 'Releases',
-        icon: IconCalendarStats,
-        links: [
-            { label: 'Upcoming releases', link: '/' },
-            { label: 'Previous releases', link: '/' },
-            { label: 'Releases schedule', link: '/' },
-        ],
-    },
-    { label: 'Analytics', icon: IconPresentationAnalytics },
-    { label: 'Contracts', icon: IconFileAnalytics },
-    { label: 'Settings', icon: IconAdjustments },
-    {
-        label: 'Security',
-        icon: IconLock,
-        links: [
-            { label: 'Enable 2FA', link: '/' },
-            { label: 'Change password', link: '/' },
-            { label: 'Recovery codes', link: '/' },
-        ],
-    },
-];
+import { useSitemap } from '../sitemap/hooks/use_sitemap';
 
 export const Dashboard = () => {
     const auth = useAuth();
     const { setIsLoading } = useContext(LoadingContext);
     const { signedInUser } = useContext(AuthenticationContext);
     const navigate = useNavigate();
+
+    // Fetch navigation from sitemap API
+    const { navigation, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
 
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
@@ -67,7 +27,48 @@ export const Dashboard = () => {
     const lorem =
         'Lorem ipsum dolor sit amet consectetur adipisicing elit. Eos ullam, ex cum repellat alias ea nemo. Ducimus ex nesciunt hic ad saepe molestiae nobis necessitatibus laboriosam officia, reprehenderit, earum fugiat?';
 
-    const links = mockdata.map((item) => <LinksGroup {...item} key={item.label} />);
+    // Split navigation into main nav (home, documentation, admin) and account nav
+    const accountNav = navigation.find((item) => item.label === 'My Account');
+    const mainNav = navigation.filter((item) => item.label !== 'My Account');
+
+    // Render main navigation links or loading/error state
+    const renderNavigation = () => {
+        if (isSitemapLoading) {
+            return (
+                <Stack gap="md">
+                    <Skeleton height={40} radius="md" />
+                    <Skeleton height={40} radius="md" />
+                    <Skeleton height={40} radius="md" />
+                </Stack>
+            );
+        }
+
+        if (sitemapError) {
+            return (
+                <Alert
+                    icon={<IconAlertCircle size={16} />}
+                    title="Navigation Error"
+                    color="yellow"
+                    variant="light"
+                    styles={{ root: { marginBottom: rem(16) } }}
+                >
+                    <Text size="sm" mb="xs">
+                        Failed to load navigation menu.
+                    </Text>
+                    <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconRefresh size={14} />}
+                        onClick={refetch}
+                    >
+                        Retry
+                    </Button>
+                </Alert>
+            );
+        }
+
+        return mainNav.map((item) => <LinksGroup {...item} key={item.label} />);
+    };
 
     const onSignOut = async () => {
         console.log('DASHBOARD SIGN OUT');
@@ -96,11 +97,11 @@ export const Dashboard = () => {
             </AppShell.Header>
             <AppShell.Navbar p="md" pt="0" pb="0">
                 <AppShell.Section grow component={ScrollArea} className={classes.links}>
-                    <div className={classes.linksInner}>{links}</div>
+                    <div className={classes.linksInner}>{renderNavigation()}</div>
                 </AppShell.Section>
                 <AppShell.Section>
                     <div className={classes.footer}>
-                        <UserButton />
+                        <UserButton accountNav={accountNav} />
                     </div>
                 </AppShell.Section>
             </AppShell.Navbar>
