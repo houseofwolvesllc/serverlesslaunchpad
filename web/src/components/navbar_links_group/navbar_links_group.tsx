@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { Group, Box, Collapse, ThemeIcon, Text, UnstyledButton, rem } from '@mantine/core';
 import { IconCalendarStats, IconChevronRight } from '@tabler/icons-react';
+import { useNavigate, NavigateFunction } from 'react-router-dom';
 import classes from './navbar_links_group.module.css';
 
 interface LinksGroupProps {
     icon: React.FC<any>;
     label: string;
     initiallyOpened?: boolean;
-    links?: { label: string; link?: string; onClick?: () => Promise<void> }[];
+    links?: { label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }[];
 }
 
 export function LinksGroup({ icon: Icon, label, initiallyOpened, links }: LinksGroupProps) {
     const hasLinks = Array.isArray(links);
     const [opened, setOpened] = useState(initiallyOpened || false);
+    const navigate = useNavigate();
+
     const items = (hasLinks ? links : []).map((link) => (
         <Text<'a'>
             component="a"
@@ -21,7 +24,21 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, links }: LinksG
             key={link.label}
             onClick={async (event) => {
                 event.preventDefault();
-                await link.onClick?.();
+
+                try {
+                    // If there's a custom onClick handler (e.g., for POST actions), use it
+                    if (link.onClick) {
+                        await link.onClick(navigate);
+                    }
+                    // Otherwise, use React Router to navigate (for GET links)
+                    else if (link.link) {
+                        navigate(link.link);
+                    }
+                } catch (error) {
+                    // Error already handled by action handler with notifications
+                    // This catch is just for safety to prevent unhandled promise rejections
+                    console.error('Navigation error:', error);
+                }
             }}
         >
             {link.label}

@@ -1,31 +1,20 @@
 import { AppShell, Burger, Text, Image, Skeleton, Alert, Stack } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { AuthenticationContext, useAuth } from '../authentication';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react';
 import { UserButton } from '../../components/user_button/user_button';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
 import classes from './dashboard.module.css';
-import { useContext } from 'react';
-import { LoadingContext } from '../../context/loading_context';
-import { useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 
 export const Dashboard = () => {
-    const auth = useAuth();
-    const { setIsLoading } = useContext(LoadingContext);
-    const { signedInUser } = useContext(AuthenticationContext);
-    const navigate = useNavigate();
-
     // Fetch navigation from sitemap API
     const { navigation, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
 
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
-
-    const lorem =
-        'Lorem ipsum dolor sit amet consectetur adipisicing elit. Eos ullam, ex cum repellat alias ea nemo. Ducimus ex nesciunt hic ad saepe molestiae nobis necessitatibus laboriosam officia, reprehenderit, earum fugiat?';
 
     // Split navigation into main nav (home, documentation, admin) and account nav
     const accountNav = navigation.find((item) => item.label === 'My Account');
@@ -70,14 +59,6 @@ export const Dashboard = () => {
         return mainNav.map((item) => <LinksGroup {...item} key={item.label} />);
     };
 
-    const onSignOut = async () => {
-        console.log('DASHBOARD SIGN OUT');
-        setIsLoading(true);
-        await auth.signOut();
-        setIsLoading(false);
-        navigate('/auth/signin');
-    };
-
     return (
         <AppShell
             header={{ height: 60, collapsed: !pinned }}
@@ -106,17 +87,8 @@ export const Dashboard = () => {
                 </AppShell.Section>
             </AppShell.Navbar>
             <AppShell.Main>
-                Main
-                <br />
-                <div>Authenticated as {signedInUser?.username}</div>
-                <Button onClick={onSignOut}>Logout</Button>
-                {Array(40)
-                    .fill(0)
-                    .map((_, index) => (
-                        <Text size="lg" key={index} my="md" maw={600} mx="auto">
-                            {lorem}
-                        </Text>
-                    ))}
+                {/* Render nested route content here */}
+                <Outlet />
             </AppShell.Main>
         </AppShell>
     );

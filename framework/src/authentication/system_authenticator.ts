@@ -56,9 +56,9 @@ export class SystemAuthenticator implements Authenticator {
                     identity: user,
                     access: {
                         type: "session",
+                        sessionId: session.sessionId,
                         ipAddress: message.ipAddress,
                         userAgent: message.userAgent,
-                        sessionToken: message.sessionKey + user.userId,
                         dateLastAccessed: session.dateLastAccessed,
                         dateExpires: session.dateExpires,
                     },
@@ -124,6 +124,7 @@ export class SystemAuthenticator implements Authenticator {
                     identity: result.user,
                     access: {
                         type: "session",
+                        sessionId: result.session.sessionId,
                         ipAddress: result.session.ipAddress,
                         userAgent: result.session.userAgent,
                         dateLastAccessed: result.session.dateLastAccessed,
@@ -156,7 +157,7 @@ export class SystemAuthenticator implements Authenticator {
                         type: "apiKey",
                         ipAddress: message.ipAddress,
                         userAgent: message.userAgent,
-                        description: result.apiKey.description,
+                        description: result.apiKey.label,
                         dateLastAccessed: result.apiKey.dateLastAccessed,
                     },
                 },

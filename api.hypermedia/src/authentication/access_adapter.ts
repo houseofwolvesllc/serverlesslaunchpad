@@ -5,7 +5,7 @@ export interface AccessContext {
     description?: string;
     ipAddress: string;
     userAgent: string;
-    sessionToken?: string;
+    sessionId?: string;
     dateLastAccessed?: Date;
     dateExpires?: Date;
 }
@@ -34,8 +34,8 @@ export class AccessAdapter extends HalResourceAdapter {
         return this.access.userAgent;
     }
 
-    get sessionToken() {
-        return this.access.sessionToken;
+    get sessionId() {
+        return this.access.sessionId;
     }
 
     get dateLastAccessed() {
@@ -47,8 +47,8 @@ export class AccessAdapter extends HalResourceAdapter {
     }
 
     get _links(): HalObject["_links"] {
-        if (this.access.type === "session" && this.access.sessionToken) {
-            return this.selfLink(`/users/${this.userId}/sessions/${this.access.sessionToken}`);
+        if (this.access.type === "session" && this.access.sessionId) {
+            return this.selfLink(`/users/${this.userId}/sessions/${this.access.sessionId}`);
         }
 
         return {};

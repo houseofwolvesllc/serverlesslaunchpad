@@ -1,9 +1,9 @@
 import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller";
+import { Protected } from "../decorators/protected";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
-import { Protected } from "../decorators/protected";
 
 /**
  * Root API Response Structure
@@ -14,12 +14,15 @@ interface RootResponse {
     version: string;
     environment: string;
     authenticated: boolean;
-    _links: Record<string, {
-        href: string;
-        title?: string;
-        templated?: boolean;
-        method?: string;
-    }>;
+    _links: Record<
+        string,
+        {
+            href: string;
+            title?: string;
+            templated?: boolean;
+            method?: string;
+        }
+    >;
 }
 
 /**
@@ -46,9 +49,9 @@ export class RootController extends BaseController {
             _links: {
                 self: {
                     href: "/",
-                    title: "API Root"
-                }
-            }
+                    title: "API Root",
+                },
+            },
         };
 
         // Unauthenticated links - available to all users
@@ -56,41 +59,39 @@ export class RootController extends BaseController {
             response._links["auth:federate"] = {
                 href: "/auth/federate",
                 title: "Federate Identity Provider Token",
-                method: "POST"
+                method: "POST",
             };
             response._links["sitemap"] = {
                 href: "/sitemap",
-                title: "API Navigation"
+                title: "API Navigation",
             };
         }
 
         // Authenticated links - only available after sign-in
         if (isAuthenticated && userId) {
-            response._links["user"] = {
-                href: `/users/${userId}`,
-                title: "Current User"
-            };
             response._links["auth:verify"] = {
                 href: "/auth/verify",
                 title: "Verify Session",
-                method: "POST"
+                method: "POST",
             };
             response._links["auth:revoke"] = {
                 href: "/auth/revoke",
                 title: "Revoke Session",
-                method: "POST"
+                method: "POST",
             };
             response._links["sessions"] = {
-                href: `/users/${userId}/sessions`,
-                title: "User Sessions"
+                href: `/users/${userId}/sessions/list`,
+                title: "User Sessions",
+                method: "POST"
             };
             response._links["api-keys"] = {
-                href: `/users/${userId}/api-keys`,
-                title: "User API Keys"
+                href: `/users/${userId}/api_keys/list`,
+                title: "User API Keys",
+                method: "POST"
             };
             response._links["sitemap"] = {
                 href: "/sitemap",
-                title: "API Navigation"
+                title: "API Navigation",
             };
         }
 
