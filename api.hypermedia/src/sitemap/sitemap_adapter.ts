@@ -1,9 +1,21 @@
 import { User, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
+import { Router } from "../router";
 import { NavigationItem } from "./types";
+import { AuthenticationController } from "../authentication/authentication_controller";
+import { SessionsController } from "../sessions/sessions_controller";
+import { ApiKeysController } from "../api_keys/api_keys_controller";
+import { RootController } from "../root/root_controller";
+import { SitemapController } from "./sitemap_controller";
 
+/**
+ * Sitemap adapter using reverse routing for navigation
+ *
+ * Uses Router.buildHref() to generate all URLs from route metadata,
+ * ensuring the sitemap stays in sync with @Route decorators.
+ */
 export class SitemapAdapter extends HalResourceAdapter {
-    constructor(private user?: User) {
+    constructor(private user: User | undefined, private router: Router) {
         super();
     }
 
@@ -20,15 +32,12 @@ export class SitemapAdapter extends HalResourceAdapter {
     private buildNavigationTree(): NavigationItem[] {
         const items: NavigationItem[] = [
             this.buildHomeLink(),
+            this.buildDocumentationLink(),
         ];
 
-        // Add login for unauthenticated users, account menu for authenticated
+        // Add account menu for authenticated users
         if (this.user) {
-            items.push(this.buildDocumentationLink());
             items.push(this.buildAccountMenu());
-        } else {
-            items.push(this.buildLoginLink());
-            items.push(this.buildDocumentationLink());
         }
 
         // Add admin menu for admin users
@@ -43,18 +52,8 @@ export class SitemapAdapter extends HalResourceAdapter {
         return {
             id: "home",
             title: "Home",
-            href: "/",
+            href: this.router.buildHref(RootController, 'getRoot', {}),
             icon: "home"
-        };
-    }
-
-    private buildLoginLink(): NavigationItem {
-        return {
-            id: "login",
-            title: "Login",
-            href: "/auth/federate",
-            method: "POST",
-            icon: "login"
         };
     }
 
@@ -62,12 +61,15 @@ export class SitemapAdapter extends HalResourceAdapter {
         return {
             id: "documentation",
             title: "Documentation",
-            href: "/docs",
+            href: "/docs", // No route yet - placeholder
             icon: "file-text"
         };
     }
 
     private buildAccountMenu(): NavigationItem {
+        // At this point, this.user is guaranteed to exist (checked by caller)
+        const userId = this.user!.userId;
+
         return {
             id: "account",
             title: "My Account",
@@ -76,23 +78,21 @@ export class SitemapAdapter extends HalResourceAdapter {
                 {
                     id: "sessions",
                     title: "Sessions",
-                    href: "/users/{userId}/sessions/list",
+                    href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
                     method: "POST",
-                    templated: true,
                     icon: "clock"
                 },
                 {
                     id: "api-keys",
                     title: "API Keys",
-                    href: "/users/{userId}/api_keys/list",
+                    href: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
                     method: "POST",
-                    templated: true,
                     icon: "key"
                 },
                 {
                     id: "logout",
                     title: "Logout",
-                    href: "/auth/revoke",
+                    href: this.router.buildHref(AuthenticationController, 'revoke', {}),
                     method: "POST",
                     icon: "logout"
                 }
@@ -129,10 +129,20 @@ export class SitemapAdapter extends HalResourceAdapter {
     }
 
     get _links(): HalObject["_links"] {
-        return {
-            self: this.createLink("/sitemap"),
-            home: this.createLink("/")
+        const links: HalObject["_links"] = {
+            self: this.createLink(this.router.buildHref(SitemapController, 'getSitemap', {})),
+            home: this.createLink(this.router.buildHref(RootController, 'getRoot', {}))
         };
+
+        // Add federate link for unauthenticated users
+        if (!this.user) {
+            links['auth:federate'] = this.createLink(
+                this.router.buildHref(AuthenticationController, 'federate', {}),
+                { title: 'Federate Session' }
+            );
+        }
+
+        return links;
     }
 
     protected getBaseLinks(): Record<string, import("../content_types/hal_adapter").HalLink> | undefined {

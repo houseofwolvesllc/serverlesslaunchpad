@@ -9,6 +9,8 @@
     ],
     "declaration": true,
     "inlineSources": true,
+    "outDir": "dist",
+    "rootDir": ".",
     "types": [],
     "typeRoots": [
       "./node_modules/@types"
@@ -17,6 +19,7 @@
   "exclude": [
     "node_modules",
     "cdk.out",
+    "dist",
     "vitest.config.mts"
   ]
 }

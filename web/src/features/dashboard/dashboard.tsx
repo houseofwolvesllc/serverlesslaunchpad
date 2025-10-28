@@ -1,19 +1,31 @@
 import { ActionIcon, Alert, AppShell, Box, Button, Group, Image, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
 import { IconAlertCircle, IconChevronRight, IconMenu2, IconRefresh } from '@tabler/icons-react';
-import { Outlet } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { useMemo } from 'react';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
 import { UserButton } from '../../components/user_button/user_button';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
+import { generateRoutesFromSitemap } from '../../routing/route_generator';
+import { NoMatch } from '../../components/no_match';
+import { DashboardHome } from './dashboard_home';
 import classes from './dashboard.module.css';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
-    const { navigation, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
+    const { navigation, rawItems, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
 
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
+
+    // Generate dynamic routes from sitemap
+    const dynamicRoutes = useMemo(() => {
+        if (!rawItems || rawItems.length === 0) {
+            return [];
+        }
+        return generateRoutesFromSitemap(rawItems);
+    }, [rawItems]);
 
     // Split navigation into main nav (home, documentation, admin) and account nav
     const accountNav = navigation.find((item) => item.label === 'My Account');
@@ -108,8 +120,19 @@ export const Dashboard = () => {
                 </AppShell.Section>
             </AppShell.Navbar>
             <AppShell.Main>
-                {/* Render nested route content here */}
-                <Outlet />
+                {/* Render dynamic routes from sitemap */}
+                <Routes>
+                    {/* Home/default route */}
+                    <Route index element={<DashboardHome />} />
+
+                    {/* Dynamic routes from sitemap */}
+                    {dynamicRoutes.map((route, index) => (
+                        <Route key={route.path || index} path={route.path} element={route.element} />
+                    ))}
+
+                    {/* Fallback for unknown routes */}
+                    <Route path="*" element={<NoMatch />} />
+                </Routes>
             </AppShell.Main>
         </AppShell>
     );

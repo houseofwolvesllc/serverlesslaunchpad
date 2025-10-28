@@ -24,14 +24,6 @@ export const StackConfigurationSchema = z.object({
         idleTimeout: z.number().default(60),
     }),
 
-    // Athena configuration
-    athena: z.object({
-        workGroupName: z.string(),
-        resultsBucketRetention: z.number().min(1), // days
-        enforceWorkGroupConfiguration: z.boolean().default(true),
-        publishCloudWatchMetrics: z.boolean().default(true),
-    }),
-
     // Secrets configuration
     secrets: z.object({
         secretName: z.string(),
@@ -53,11 +45,14 @@ export const configurations: Record<
     {
         api?: Partial<StackConfiguration["api"]>;
         alb?: Partial<StackConfiguration["alb"]>;
-        athena?: Partial<StackConfiguration["athena"]>;
         secrets?: Partial<StackConfiguration["secrets"]>;
         tags?: Partial<StackConfiguration["tags"]>;
     }
 > = {
+    local: {
+        // Uses defaults from getConfiguration function
+    },
+
     development: {
         // Uses defaults from getConfiguration function
     },
@@ -103,13 +98,6 @@ export function getConfiguration(environment: Environment): StackConfiguration {
             healthCheckInterval: 30,
             idleTimeout: 60,
             ...envConfig.alb,
-        },
-        athena: {
-            workGroupName: `serverlesslaunchpad_workgroup_${environment}`,
-            resultsBucketRetention: environment === "production" ? 365 : environment === "staging" ? 30 : 7,
-            enforceWorkGroupConfiguration: true,
-            publishCloudWatchMetrics: true,
-            ...envConfig.athena,
         },
         secrets: {
             secretName: `serverlesslaunchpad/${environment}`,

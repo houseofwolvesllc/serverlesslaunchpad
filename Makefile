@@ -61,11 +61,8 @@ dev-start:
 	@./moto/init/01-cognito-local.sh >> logs/moto.log 2>&1
 	@./moto/init/02-s3.sh >> logs/moto.log 2>&1
 	@./moto/init/03-secrets.sh >> logs/moto.log 2>&1
-	# Athena/Glue disabled - not needed for core API/web development
-	# Uncomment if you need Athena query capabilities:
-	# @./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
-	@./moto/init/05-generate-config.sh >> logs/moto.log 2>&1
-	@./moto/init/06-dynamodb-tables.sh >> logs/moto.log 2>&1
+	@./moto/init/04-generate-config.sh >> logs/moto.log 2>&1
+	@./moto/init/05-dynamodb-tables.sh >> logs/moto.log 2>&1
 	@echo ""
 	@echo "🔧 Building workspace packages..."
 	@cd core && npm run build >/dev/null 2>&1
@@ -195,14 +192,6 @@ moto-services:
 	@echo "SSM Parameters:"
 	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
 	aws --endpoint-url=http://localhost:5555 --region us-west-2 ssm get-parameters-by-path --path /serverlesslaunchpad 2>/dev/null | jq -r '.Parameters[] | "  - \(.Name): \(.Value)"' || echo "  No parameters found"
-	@echo ""
-	@echo "Athena Workgroups:"
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 athena list-work-groups 2>/dev/null | jq -r '.WorkGroups[] | "  - \(.Name)"' || echo "  No workgroups found"
-	@echo ""
-	@echo "Glue Databases:"
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 glue get-databases 2>/dev/null | jq -r '.DatabaseList[] | "  - \(.Name)"' || echo "  No databases found"
 
 # Cloud environment commands
 cloud-dev:

@@ -47,6 +47,8 @@ interface CachedSitemap {
 export interface UseSitemapResult {
     /** Transformed navigation items ready for rendering */
     navigation: LinksGroupProps[];
+    /** Raw sitemap items from API (for route generation) */
+    rawItems: NavigationItem[];
     /** Loading state */
     isLoading: boolean;
     /** Error state (undefined if no error) */
@@ -89,6 +91,7 @@ const RETRY_DELAY = 1000;
  */
 export function useSitemap(): UseSitemapResult {
     const [navigation, setNavigation] = useState<LinksGroupProps[]>([]);
+    const [rawItems, setRawItems] = useState<NavigationItem[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | undefined>(undefined);
 
@@ -200,6 +203,9 @@ export function useSitemap(): UseSitemapResult {
                     items = await fetchSitemap();
                 }
 
+                // Store raw items for route generation
+                setRawItems(items);
+
                 // Transform navigation items
                 const transformed = transformNavigationItems(items, userContext);
 
@@ -209,6 +215,9 @@ export function useSitemap(): UseSitemapResult {
 
                 const error = err instanceof Error ? err : new Error('Failed to load sitemap');
                 setError(error);
+
+                // Clear raw items on error
+                setRawItems([]);
 
                 // Use fallback navigation on error
                 const fallback = createFallbackNavigation(userContext);
@@ -244,6 +253,7 @@ export function useSitemap(): UseSitemapResult {
 
     return {
         navigation,
+        rawItems,
         isLoading,
         error,
         refetch,

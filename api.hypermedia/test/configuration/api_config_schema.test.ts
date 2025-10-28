@@ -11,11 +11,6 @@ describe("ApiConfigSchema", () => {
         cognito: {
             user_pool_id: 'us-west-2_test123',
             client_id: 'client123'
-        },
-        athena: {
-            workgroup: 'test-workgroup',
-            data_bucket: 'test-data-bucket',
-            results_bucket: 'test-results-bucket'
         }
     };
 
@@ -50,11 +45,6 @@ describe("ApiConfigSchema", () => {
             cognito: {
                 user_pool_id: 'test-pool',
                 client_id: 'test-client'
-            },
-            athena: {
-                workgroup: 'test-workgroup',
-                data_bucket: 'test-data',
-                results_bucket: 'test-results'
             }
         };
 

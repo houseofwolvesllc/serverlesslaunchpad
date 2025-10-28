@@ -4,7 +4,7 @@ import { BaseController } from "../base_controller";
 import { MessageAdapter } from "../content_types/message_adapter";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
-import { Route } from "../router";
+import { Route, Router } from "../router";
 import { AuthContext, AuthContextAdapter } from "./auth_context_adapter";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
@@ -17,7 +17,7 @@ import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
  */
 @Injectable()
 export class AuthenticationController extends BaseController {
-    constructor(private authenticator: Authenticator) {
+    constructor(private authenticator: Authenticator, private router: Router) {
         super();
     }
 
@@ -124,16 +124,34 @@ export class AuthenticationController extends BaseController {
     async revoke(event: ExtendedALBEvent): Promise<ALBResult> {
         const { headers } = this.parseRequest(event, SignoutSchema);
 
+        // Get session token from either Authorization header or cookie
+        let sessionToken: string;
+        if (headers.authorization && headers.authorization.startsWith("SessionToken ")) {
+            sessionToken = headers.authorization.replace("SessionToken ", "");
+        } else {
+            // Fall back to cookie
+            const cookieToken = AuthenticationCookieRepository.get(event);
+            if (!cookieToken) {
+                throw new UnauthorizedError("No valid session found");
+            }
+            sessionToken = cookieToken;
+        }
+
         await this.authenticator.revoke({
-            sessionToken: headers.authorization.replace("SessionToken ", ""),
+            sessionToken,
             ipAddress: headers["x-forwarded-for"],
             userAgent: headers["user-agent"],
         });
 
-        // Create HAL response for successful revocation
+        // Action response - no self link, provide navigation to federate
         const adapter = new MessageAdapter({
-            selfHref: "/auth/revoke",
             message: "Session revoked successfully",
+            links: {
+                federate: {
+                    href: this.router.buildHref(AuthenticationController, 'federate', {}),
+                    title: "Federate Session"
+                },
+            },
         });
 
         const response = this.success(event, adapter);

@@ -20,13 +20,6 @@ export const ApiConfigSchema = z.object({
         user_pool_provider_url: z.string().optional(),
     }),
 
-    // Athena configuration - API needs full access for queries
-    athena: z.object({
-        workgroup: z.string(),
-        data_bucket: z.string(),
-        results_bucket: z.string(),
-    }),
-
     // Lambda configuration
     lambda: z
         .object({

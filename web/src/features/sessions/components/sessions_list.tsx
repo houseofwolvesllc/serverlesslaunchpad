@@ -1,7 +1,7 @@
-import { Alert, Button, Group, Paper, Stack, Table, Text, Title } from '@mantine/core';
+import { ActionIcon, Alert, Button, Checkbox, Group, Paper, Stack, Table, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconRefresh } from '@tabler/icons-react';
+import { IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useSessions } from '../hooks/use_sessions';
 import { DeleteSessionsModal } from './delete_sessions_modal';
 import { PaginationControls } from './pagination_controls';
@@ -53,13 +53,13 @@ export function SessionsList() {
     };
 
     const handleDeleteConfirm = async () => {
-        const sessionTokens = Array.from(selectedIds);
-        const result = await deleteSessions(sessionTokens);
+        const sessionIds = Array.from(selectedIds);
+        const result = await deleteSessions(sessionIds);
 
         if (result.success) {
             notifications.show({
                 title: 'Success',
-                message: `Deleted ${sessionTokens.length} session${sessionTokens.length > 1 ? 's' : ''}`,
+                message: `Deleted ${sessionIds.length} session${sessionIds.length > 1 ? 's' : ''}`,
                 color: 'green',
             });
             closeDeleteModal();
@@ -72,62 +72,65 @@ export function SessionsList() {
         }
     };
 
-    const allSelectableSelected =
-        sessions.length > 0 &&
-        sessions.filter((s) => s.sessionToken !== currentSessionToken).every((s) => selectedIds.has(s.sessionToken));
+    // Calculate selectable sessions (exclude current session)
+    const selectableSessions = sessions.filter((s) => s.sessionId !== currentSessionToken);
+    const allSelectableSelected = selectableSessions.length > 0 && selectableSessions.every((s) => selectedIds.has(s.sessionId));
+    const someSelected = selectedIds.size > 0 && !allSelectableSelected;
 
-    const sessionsToDelete = sessions.filter((s) => selectedIds.has(s.sessionToken));
+    const sessionsToDelete = sessions.filter((s) => selectedIds.has(s.sessionId));
 
     return (
-        <Paper p="md" shadow="sm">
+        <Paper p="md" withBorder>
             <Stack gap="md">
+                {/* Header */}
                 <Group justify="space-between">
-                    <Title order={2}>Sessions</Title>
-                    <Button
-                        leftSection={<IconRefresh size={16} />}
-                        variant="subtle"
-                        onClick={refresh}
-                        loading={loading}
-                    >
-                        Refresh
-                    </Button>
+                    <Text size="lg" fw={600}>
+                        Sessions
+                    </Text>
+                    <Group gap="sm">
+                        <Button
+                            variant="outline"
+                            color="red"
+                            leftSection={<IconTrash size={16} />}
+                            onClick={handleDeleteClick}
+                            disabled={selectedIds.size === 0 || loading}
+                        >
+                            Delete ({selectedIds.size})
+                        </Button>
+                        <ActionIcon variant="subtle" onClick={refresh} disabled={loading} title="Refresh">
+                            <IconRefresh size={18} />
+                        </ActionIcon>
+                    </Group>
                 </Group>
 
+                {/* Error Alert */}
                 {error && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="red" title="Error">
+                    <Alert color="red" title="Error">
                         {error}
                     </Alert>
                 )}
 
-                <Group justify="space-between">
-                    <Group>
-                        <input
-                            type="checkbox"
-                            checked={allSelectableSelected}
-                            onChange={(e) => handleSelectAll(e.target.checked)}
-                            disabled={loading || sessions.length === 0}
-                            style={{ cursor: 'pointer' }}
-                            aria-label="Select all sessions on this page"
-                        />
-                        <Text size="sm">Select All</Text>
-                    </Group>
-                    <Button color="red" disabled={selectedIds.size === 0 || loading} onClick={handleDeleteClick}>
-                        Delete Selected ({selectedIds.size})
-                    </Button>
-                </Group>
-
+                {/* Loading Skeleton */}
                 {loading && sessions.length === 0 ? (
                     <SessionsTableSkeleton />
                 ) : sessions.length === 0 ? (
-                    <Text c="dimmed" ta="center" py="xl">
-                        No sessions found
-                    </Text>
+                    <Alert color="blue" title="No Sessions">
+                        No sessions found.
+                    </Alert>
                 ) : (
                     <>
-                        <Table highlightOnHover>
+                        {/* Table */}
+                        <Table>
                             <Table.Thead>
                                 <Table.Tr>
-                                    <Table.Th style={{ width: 40 }}></Table.Th>
+                                    <Table.Th style={{ width: 40 }}>
+                                        <Checkbox
+                                            checked={allSelectableSelected}
+                                            indeterminate={someSelected}
+                                            onChange={(event) => handleSelectAll(event.currentTarget.checked)}
+                                            aria-label="Select all sessions on this page"
+                                        />
+                                    </Table.Th>
                                     <Table.Th>Device</Table.Th>
                                     <Table.Th>IP Address</Table.Th>
                                     <Table.Th>Last Access</Table.Th>
