@@ -206,43 +206,14 @@ export abstract class HalResourceAdapter implements HalObject {
         };
     }
 
-    toJSON(): HalObject {
-        const result: HalObject = {};
-
-        // First, add prototype getters (like _links, _embedded, message, etc.)
-        const proto = Object.getPrototypeOf(this);
-        const descriptors = Object.getOwnPropertyDescriptors(proto);
-
-        for (const [key, descriptor] of Object.entries(descriptors)) {
-            if (descriptor.get && key !== "constructor") {
-                const value = (this as any)[key];
-                if (value !== undefined) {
-                    result[key] = value;
-                }
-            }
-        }
-
-        // Second, add instance properties (like dynamically added properties in MessageAdapter)
-        const ownKeys = Object.keys(this);
-        for (const key of ownKeys) {
-            // Skip private properties (starting with _ or containing "config")
-            if (!key.startsWith('_') && key !== 'config' && !key.startsWith('private')) {
-                const value = (this as any)[key];
-                if (value !== undefined && !result.hasOwnProperty(key)) {
-                    result[key] = value;
-                }
-            }
-        }
-
-        // Automatically inject base navigation links
-        const baseLinks = this.getBaseLinks();
-        if (result._links && baseLinks) {
-            result._links = {
-                ...baseLinks,
-                ...result._links  // Context links override base links
-            };
-        }
-
-        return result;
-    }
+    /**
+     * Serialize the adapter to a HAL-compliant JSON object.
+     *
+     * Each adapter must explicitly implement this method to control
+     * which properties are serialized, preventing accidental leakage
+     * of private constructor parameters.
+     *
+     * @returns HAL-formatted object ready for JSON.stringify()
+     */
+    abstract toJSON(): HalObject;
 }

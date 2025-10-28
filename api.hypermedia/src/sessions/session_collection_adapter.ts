@@ -70,4 +70,13 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
     get count() {
         return this.sessions.length;
     }
+
+    toJSON() {
+        return {
+            count: this.count,
+            paging: this.paging,
+            _links: this._links,
+            _embedded: this._embedded,
+        };
+    }
 }
