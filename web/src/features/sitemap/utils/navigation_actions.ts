@@ -10,6 +10,7 @@
 import { NavigateFunction } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { apiClient, ApiClientError } from '../../../services/api.client';
+import { logger } from '../../../logging/logger';
 
 /**
  * Extract resource name from href for display purposes
@@ -147,7 +148,7 @@ export async function executePostAction(
         });
 
         // Log error for debugging
-        console.error('POST action failed:', {
+        logger.error('POST action failed', {
             href,
             title,
             error,

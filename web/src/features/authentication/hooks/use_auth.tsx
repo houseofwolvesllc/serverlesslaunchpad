@@ -5,6 +5,7 @@ import WebConfigurationStore from '../../../configuration/web_config_store';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint, refreshCapabilities } from '../../../services/entry_point_provider';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
+import { logger } from '../../../logging/logger';
 
 // Amplify configuration will be loaded asynchronously
 let amplifyConfigured = false;
@@ -47,7 +48,8 @@ async function ensureAmplifyConfigured() {
         }
     }
 
-    console.log('🔧 [AUTH] Configuring Amplify with:', {
+    logger.debug('Configuring Amplify', {
+        context: 'AUTH',
         region: amplifyConfig.Auth.Cognito.region,
         userPoolId: amplifyConfig.Auth.Cognito.userPoolId,
         clientId: amplifyConfig.Auth.Cognito.userPoolClientId,
@@ -58,7 +60,7 @@ async function ensureAmplifyConfigured() {
     Amplify.configure(amplifyConfig);
     amplifyConfigured = true;
 
-    console.log('✅ [AUTH] Amplify configured successfully');
+    logger.debug('Amplify configured successfully', { context: 'AUTH' });
 }
 
 export const useAuth = function () {
@@ -89,7 +91,6 @@ export const useAuth = function () {
 
     async function federateSession(authSession: amplify.AuthSession): Promise<User> {
         try {
-            const config = await WebConfigurationStore.getConfig();
             const entryPoint = getEntryPoint();
 
             // Discover federation endpoint
@@ -98,12 +99,12 @@ export const useAuth = function () {
                 throw new Error('Session federation not available from API. Please contact support.');
             }
 
-            if (config.features.debug_mode) {
-                console.log('🔗 Federating Cognito session to hypermedia API', authSession);
-                console.log('🔍 Discovered federation endpoint:', federateHref);
-                console.log('ID Token:', authSession.tokens?.idToken?.toString());
-                console.log('Access Token:', authSession.tokens?.accessToken?.toString());
-            }
+            logger.debug('Federating Cognito session to hypermedia API', {
+                context: 'SESSION_FEDERATION',
+                federateHref,
+                hasIdToken: !!authSession.tokens?.idToken,
+                hasAccessToken: !!authSession.tokens?.accessToken
+            });
 
             const sessionKey = crypto.randomUUID().replace(/-/g, "").toLowerCase();
             const cognitoToken = authSession.tokens?.idToken?.toString();
@@ -119,7 +120,7 @@ export const useAuth = function () {
                 firstName: (payload?.given_name as string) || "",
                 lastName: (payload?.family_name as string) || "",
             };
-            console.log('Federation request:', federateRequest);
+            logger.debug('Federation request', { federateRequest });
 
             // Call the hypermedia API federate endpoint using discovered URL
             try {
@@ -132,18 +133,15 @@ export const useAuth = function () {
                     body: JSON.stringify(federateRequest),
                 });
 
-                if (config.features.debug_mode) {
-                    console.log('✅ Session federated with hypermedia API', response);
-                    console.log('📦 _embedded.access:', response._embedded?.access);
-                    console.log('🎫 sessionToken from API:', response._embedded?.access?.sessionToken);
-                }
+                logger.debug('Session federated with hypermedia API', {
+                    hasAccess: !!response._embedded?.access,
+                    hasSessionToken: !!response._embedded?.access?.sessionToken
+                });
 
                 // Refresh capabilities now that we're authenticated
                 await refreshCapabilities();
 
-                if (config.features.debug_mode) {
-                    console.log('🔄 Capabilities refreshed after federation');
-                }
+                logger.debug('Capabilities refreshed after federation');
 
                 // HAL response: properties are at root level with _links and _embedded
                 return {
@@ -156,11 +154,11 @@ export const useAuth = function () {
                     authContext: response._embedded?.access,
                 };
             } catch (error) {
-                console.error('❌ API federation failed:', error);
+                logger.error('API federation failed', { error });
                 throw new Error(`Failed to federate with hypermedia API: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         } catch (error) {
-            console.error('Authorization failed:', error);
+            logger.error('Authorization failed', { error });
             throw error;
         }
     }
@@ -178,10 +176,7 @@ export const useAuth = function () {
                 });
             }
 
-            const currentConfig = await WebConfigurationStore.getConfig();
-            if (currentConfig.features.debug_mode) {
-                console.log('🔍 Discovered verification endpoint:', verifyHref);
-            }
+            logger.debug('Discovered verification endpoint', { verifyHref });
 
             const response = await apiClient.request(verifyHref, {
                 method: 'POST',
@@ -190,9 +185,10 @@ export const useAuth = function () {
                 },
             });
 
-            if (currentConfig.features.debug_mode) {
-                console.log('✅ Session verified with hypermedia API', response);
-            }
+            logger.debug('Session verified with hypermedia API', {
+                hasResponse: !!response,
+                hasAccess: !!response._embedded?.access
+            });
 
             // HAL response: properties are at root level with _links and _embedded
             // Create user object compatible with existing interface
@@ -212,10 +208,7 @@ export const useAuth = function () {
             return verifiedUser;
 
         } catch (error) {
-            const currentConfig = await WebConfigurationStore.getConfig();
-            if (currentConfig.features.debug_mode) {
-                console.error('❌ Session verification failed:', error);
-            }
+            logger.error('Session verification failed', { error });
 
             // Handle API client errors
             if (error instanceof Error && error.name === 'ApiClientError') {
@@ -240,39 +233,30 @@ export const useAuth = function () {
 
     async function revokeSession(sessionToken: string | undefined): Promise<void> {
         try {
-            const config = await WebConfigurationStore.getConfig();
             const entryPoint = getEntryPoint();
 
-            if (config.features.debug_mode) {
-                console.log('🔓 Revoking hypermedia API session');
-                console.log('SessionToken:', sessionToken ? `${sessionToken.substring(0, 10)}...` : 'undefined');
-            }
+            logger.debug('Revoking hypermedia API session', {
+                hasSessionToken: !!sessionToken
+            });
 
             // Session revocation requires SessionToken in Authorization header
             // API keys cannot be revoked through this endpoint
             if (!sessionToken) {
-                if (config.features.debug_mode) {
-                    console.warn('⚠️ No session token available for revocation');
-                }
-
+                logger.warn('No session token available for revocation');
                 return;
             }
 
             // Discover revoke endpoint
             const revokeHref = await entryPoint.getLinkHref('auth:revoke');
             if (!revokeHref) {
-                if (config.features.debug_mode) {
-                    console.warn('⚠️ Revoke endpoint not available from API - continuing with sign out');
-                }
+                logger.warn('Revoke endpoint not available from API - continuing with sign out');
                 return;
             }
 
             // Call the hypermedia API revoke endpoint with SessionToken
             try {
-                if (config.features.debug_mode) {
-                    console.log('🔍 Discovered revoke endpoint:', revokeHref);
-                    console.log('🌐 Calling discovered revoke endpoint with SessionToken');
-                }
+                logger.debug('Calling revoke endpoint with SessionToken', { revokeHref });
+
                 await apiClient.request(revokeHref, {
                     method: 'POST',
                     headers: {
@@ -280,25 +264,20 @@ export const useAuth = function () {
                         'Content-Type': 'application/json',
                     },
                 });
-                if (config.features.debug_mode) {
-                    console.log('✅ Session revoked with hypermedia API');
-                }
+
+                logger.debug('Session revoked with hypermedia API');
 
                 // Refresh capabilities back to unauthenticated state
                 await refreshCapabilities();
 
-                if (config.features.debug_mode) {
-                    console.log('🔄 Capabilities refreshed to unauthenticated state');
-                }
+                logger.debug('Capabilities refreshed to unauthenticated state');
             } catch (error) {
-                if (config.features.debug_mode) {
-                    console.warn('⚠️ API revoke failed', error);
-                }
+                logger.warn('API revoke failed', { error });
                 // Note: We don't rethrow here - revoke is best-effort during sign out
                 // The user will still be signed out locally even if API revoke fails
             }
         } catch (error) {
-            console.error('Revoke session failed:', error);
+            logger.error('Revoke session failed', { error });
             // Don't throw - sign out should continue even if revoke fails
         }
     }
@@ -340,12 +319,12 @@ export const useAuth = function () {
                     case 'PasswordResetRequiredException':
                         return SignInStep.RESET_PASSWORD;
                     default:
-                        console.error('Authentication error:', error);
+                        logger.error('Authentication error', { error });
                         throw new AuthError(error);
                 }
             }
 
-            console.error('Unexpected error:', error);
+            logger.error('Unexpected error during sign up', { error });
             throw error;
         }
     }
@@ -368,7 +347,7 @@ export const useAuth = function () {
                     return SignInStep.SIGNIN;
             }
         } catch (error) {
-            console.error('Unexpected error:', error);
+            logger.error('Unexpected error during confirm sign up', { error });
             throw error;
         }
     }
@@ -379,12 +358,12 @@ export const useAuth = function () {
 
     async function resetPassword(username: string) {
         const result = await amplify.resetPassword({ username });
-        console.log('result', result);
+        logger.debug('Password reset initiated', { hasResult: !!result });
     }
 
     async function confirmResetPassword(confirmationEmail: string, confirmationCode: string, newPassword: string) {
         try {
-            console.log('SUBMITTED');
+            logger.debug('Confirming password reset');
             await amplify.confirmResetPassword({
                 username: confirmationEmail || '',
                 confirmationCode,
@@ -395,7 +374,7 @@ export const useAuth = function () {
                 throw new AuthError(error);
             }
 
-            console.error('Unexpected error:', error);
+            logger.error('Unexpected error during confirm reset password', { error });
             throw error;
         }
     }
@@ -440,32 +419,31 @@ export const useAuth = function () {
                 }
             }
 
-            console.error('Unexpected error:', error);
+            logger.error('Unexpected error during sign in', { error });
         }
     }
 
     async function signOut() {
         try {
-            const config = await WebConfigurationStore.getConfig();
-            if (config.features.debug_mode) {
-                console.log('👤 Signed in user:', signedInUser);
-                console.log('🔑 Auth context:', signedInUser?.authContext);
-            }
+            logger.debug('Sign out initiated', {
+                hasSignedInUser: !!signedInUser,
+                hasAuthContext: !!signedInUser?.authContext
+            });
 
             // Get sessionToken from current user context
             const sessionToken = signedInUser?.authContext?.sessionToken;
-            if (config.features.debug_mode) {
-                console.log('🎫 Extracted sessionToken:', sessionToken ? 'present' : 'missing');
-            }
+            logger.debug('Extracted sessionToken', {
+                hasSessionToken: !!sessionToken
+            });
 
             if (sessionToken) {
                 await revokeSession(sessionToken);
-            } else if (config.features.debug_mode) {
-                console.warn('⚠️ No sessionToken found in user context, skipping revoke');
+            } else {
+                logger.warn('No sessionToken found in user context, skipping revoke');
             }
         } catch (error) {
             // User might not be signed in, continue with signout
-            console.warn('⚠️ Error during signout revoke:', error);
+            logger.warn('Error during signout revoke', { error });
         }
 
         await amplify.signOut();

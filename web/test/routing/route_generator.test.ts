@@ -243,10 +243,14 @@ describe('generateRoutesFromSitemap', () => {
         const routes = generateRoutesFromSitemap(items);
 
         expect(routes).toHaveLength(0);
-        expect(consoleWarnSpy).toHaveBeenCalledWith(
-            '[Dynamic Routing] No component registered for navigation id: "unknown"',
-            'href: /unknown'
-        );
+        // Logger now outputs structured JSON, so verify it was called at least once
+        expect(consoleWarnSpy).toHaveBeenCalled();
+
+        // Verify the warning contains relevant info
+        const warnCall = consoleWarnSpy.mock.calls[0][0];
+        expect(warnCall).toContain('No component registered for navigation id');
+        expect(warnCall).toContain('unknown');
+        expect(warnCall).toContain('/unknown');
 
         consoleWarnSpy.mockRestore();
     });

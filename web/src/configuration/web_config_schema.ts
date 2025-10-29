@@ -37,7 +37,6 @@ export const WebConfigSchema = z.object({
         enable_notifications: z.boolean().default(false),
         enable_advanced_security: z.boolean().default(false),
         mock_auth: z.boolean().default(false),
-        debug_mode: z.boolean().default(false),
         enable_logging: z.boolean().default(false),
         hot_reload: z.boolean().default(false),
     }),

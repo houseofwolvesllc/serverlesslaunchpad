@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { LoadingContext } from '../../../context/loading_context';
 import { AuthenticationContext, useAuth } from '../../authentication';
 import { AuthError, User } from '../types';
+import { logger } from '../../../logging/logger';
 
 export const AuthenticationProvider = ({ children }: { children: React.ReactNode }) => {
     const [signedInUser, setSignedInUser] = useState<User | undefined>();
@@ -35,7 +36,7 @@ function AutoLogin({ setHasTriedAutoLogin }: { setHasTriedAutoLogin: (hasTriedAu
                 await auth.verifySession();
             } catch (error) {
                 if (!(error instanceof AuthError)) {
-                    console.error('Unexpected error during session verification:', error);
+                    logger.error('Unexpected error during session verification', { error });
                 }
                 // Verification failures are expected when no valid session exists
                 // The user will be redirected to login by the routing logic
