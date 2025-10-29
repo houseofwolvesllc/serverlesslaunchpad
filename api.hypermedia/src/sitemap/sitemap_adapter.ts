@@ -32,7 +32,6 @@ export class SitemapAdapter extends HalResourceAdapter {
     private buildNavigationTree(): NavigationItem[] {
         const items: NavigationItem[] = [
             this.buildHomeLink(),
-            this.buildDocumentationLink(),
         ];
 
         // Add account menu for authenticated users
@@ -52,17 +51,8 @@ export class SitemapAdapter extends HalResourceAdapter {
         return {
             id: "home",
             title: "Home",
-            href: this.router.buildHref(RootController, 'getRoot', {}),
+            href: "/",  // Dashboard home route
             icon: "home"
-        };
-    }
-
-    private buildDocumentationLink(): NavigationItem {
-        return {
-            id: "documentation",
-            title: "Documentation",
-            href: "/docs", // No route yet - placeholder
-            icon: "file-text"
         };
     }
 

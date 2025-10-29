@@ -38,6 +38,8 @@ export interface LinksGroupProps {
     icon: Icon;
     label: string;
     initiallyOpened?: boolean;
+    link?: string;
+    newTab?: boolean;
     links?: { label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }[];
 }
 
@@ -119,6 +121,19 @@ export function transformNavigationItem(
     // Get icon component
     const icon = getIcon(item.icon);
 
+    // Handle parent-level href
+    let parentLink: string | undefined = undefined;
+    if (item.href) {
+        parentLink = item.href;
+
+        // Expand templated URIs for parent
+        if (item.templated && userContext?.userId) {
+            parentLink = expandTemplatedUri(parentLink, {
+                userId: userContext.userId,
+            });
+        }
+    }
+
     // Transform child items if present
     let links:
         | Array<{ label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }>
@@ -157,6 +172,8 @@ export function transformNavigationItem(
         icon,
         label: item.title,
         initiallyOpened: false, // Can be made configurable later
+        link: parentLink,
+        newTab: false, // API sitemap items never open in new tab
         links,
     };
 }
@@ -207,6 +224,8 @@ export function createFallbackNavigation(userContext?: UserContext): LinksGroupP
         {
             icon: getIcon('home'),
             label: 'Home',
+            link: '/',
+            newTab: false,
             links: undefined,
         },
     ];
@@ -216,6 +235,7 @@ export function createFallbackNavigation(userContext?: UserContext): LinksGroupP
         navigation.push({
             icon: getIcon('user'),
             label: 'Profile',
+            newTab: false,
             links: [
                 { label: 'My Sessions', link: `/users/${userContext.userId}/sessions` },
                 { label: 'My API Keys', link: `/users/${userContext.userId}/api_keys` },
