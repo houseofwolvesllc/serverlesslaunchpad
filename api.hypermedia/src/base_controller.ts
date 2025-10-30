@@ -13,8 +13,8 @@ import {
 } from "./errors";
 import { AuthenticatedALBEvent, ExtendedALBEvent } from "./extended_alb_event";
 import { getAcceptedContentType, CONTENT_TYPES } from "./content_types/content_negotiation";
-import { JsonAdapter } from "./content_types/json_adapter";
-import { XhtmlAdapter } from "./content_types/xhtml_adapter";
+import { HalJsonAdapter } from "./content_types/hal_json_adapter";
+import { HalXhtmlAdapter } from "./content_types/hal_xhtml_adapter";
 
 /**
  * Response data interface for content adapters
@@ -48,9 +48,10 @@ export interface ResponseData<T = unknown> {
  * for all API controllers.
  */
 export abstract class BaseController {
-    private static jsonAdapter = new JsonAdapter();
-    private static xhtmlAdapter = new XhtmlAdapter();
-    
+    // HAL adapters for all responses (api.hypermedia always returns HAL)
+    private static jsonAdapter = new HalJsonAdapter();
+    private static xhtmlAdapter = new HalXhtmlAdapter();
+
     // Export error classes as static properties for easy access
     static readonly ValidationError = ValidationError;
     static readonly UnauthorizedError = UnauthorizedError;
@@ -128,8 +129,11 @@ export abstract class BaseController {
     /**
      * Build a successful ALB response with content negotiation
      *
+     * In api.hypermedia, all responses are HAL objects with hypermedia controls.
+     * The appropriate HAL adapter is selected based on the client's Accept header.
+     *
      * @param event - The ALB event
-     * @param data - The response data (should be a HalObject from an adapter)
+     * @param data - The response data (HAL object from an adapter)
      * @param options - Additional options for status code and headers
      */
     protected success<T>(
@@ -148,9 +152,10 @@ export abstract class BaseController {
             data
         };
 
-        const body = contentType === CONTENT_TYPES.JSON
-            ? BaseController.jsonAdapter.format(responseData)
-            : BaseController.xhtmlAdapter.format(responseData);
+        // Format response using appropriate HAL adapter for content type
+        const body = (contentType === CONTENT_TYPES.XHTML || contentType === CONTENT_TYPES.HTML)
+            ? BaseController.xhtmlAdapter.format(responseData)
+            : BaseController.jsonAdapter.format(responseData);
 
         return {
             statusCode: status,

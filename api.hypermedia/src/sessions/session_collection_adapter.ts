@@ -57,8 +57,48 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
                     // Note: Individual session resource doesn't have a route yet
                     // Using path template for now - add route when implementing GET /users/{userId}/sessions/{sessionId}
                     self: this.createLink(`/users/${this.userId}/sessions/${session.sessionId}`)
+                },
+                _templates: {
+                    delete: this.createTemplate(
+                        "Delete Session",
+                        "DELETE",
+                        this.router.buildHref(SessionsController, 'deleteSessions', { userId: this.userId }),
+                        {
+                            contentType: "application/json",
+                            properties: [
+                                this.createProperty("sessionIds", {
+                                    prompt: "Session ID",
+                                    required: true,
+                                    type: "text",
+                                    value: session.sessionId
+                                })
+                            ]
+                        }
+                    )
                 }
             }))
+        };
+    }
+
+    get _templates() {
+        // Sessions collection has bulk delete but no create operation
+        return {
+            bulkDelete: this.createTemplate(
+                "Delete Selected Sessions",
+                "DELETE",
+                this.router.buildHref(SessionsController, 'deleteSessions', { userId: this.userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("sessionIds", {
+                            prompt: "Session IDs",
+                            required: true,
+                            type: "array",
+                            value: []
+                        })
+                    ]
+                }
+            )
         };
     }
 
@@ -77,6 +117,7 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
             paging: this.paging,
             _links: this._links,
             _embedded: this._embedded,
+            _templates: this._templates,
         };
     }
 }

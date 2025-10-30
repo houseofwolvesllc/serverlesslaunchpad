@@ -13,7 +13,7 @@ export const ResetPasswordForm = () => {
             email: '',
         },
         validate: {
-            email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Please provide a valid email to send the reset code to'),
+            email: (val: string) => (/^\S+@\S+$/.test(val) ? null : 'Please provide a valid email to send the reset code to'),
         },
     });
 

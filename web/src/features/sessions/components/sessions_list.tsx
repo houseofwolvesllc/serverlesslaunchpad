@@ -1,23 +1,26 @@
 import { ActionIcon, Alert, Button, Checkbox, Group, Paper, Stack, Table, Text } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { notifications } from '@mantine/notifications';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useSessions } from '../hooks/use_sessions';
-import { DeleteSessionsModal } from './delete_sessions_modal';
 import { PaginationControls } from './pagination_controls';
 import { SessionRow } from './session_row';
 import { SessionsTableSkeleton } from './sessions_table_skeleton';
+import { useSelection } from '../../../hooks/use_selection';
+import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
+import { confirmDelete } from '../../../utils/confirm_delete';
 
 /**
- * Sessions list component with pagination and bulk deletion
+ * Sessions list component with HAL-FORMS template integration
  *
  * Features:
  * - Displays all active user sessions across devices
  * - Identifies and protects the current session (cannot be deleted)
  * - Server-side pagination with configurable page sizes (10, 25, 50, 100)
- * - Multi-select with bulk deletion
+ * - Template-driven delete operations (per-session)
  * - Loading and error states
  * - Refresh functionality
+ *
+ * All operations are driven by HAL-FORMS templates from the API:
+ * - Delete operations use templates from each embedded session
  *
  * @example
  * ```tsx
@@ -30,54 +33,55 @@ import { SessionsTableSkeleton } from './sessions_table_skeleton';
  */
 export function SessionsList() {
     const {
+        data,
         sessions,
         loading,
         error,
-        selectedIds,
-        currentSessionToken,
         pagination,
-        handleSelectionChange,
-        handleSelectAll,
         handleNextPage,
         handlePreviousPage,
         handlePageSizeChange,
-        deleteSessions,
         refresh,
     } = useSessions();
 
-    const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
+    // Selection state for bulk operations
+    const {
+        selected,
+        toggleSelection,
+        toggleAll,
+        clearSelection,
+        isSelected,
+        allSelected,
+        someSelected,
+        hasSelection,
+        count: selectedCount
+    } = useSelection(sessions, 'sessionId');
 
-    const handleDeleteClick = () => {
-        if (selectedIds.size === 0) return;
-        openDeleteModal();
-    };
-
-    const handleDeleteConfirm = async () => {
-        const sessionIds = Array.from(selectedIds);
-        const result = await deleteSessions(sessionIds);
-
-        if (result.success) {
-            notifications.show({
-                title: 'Success',
-                message: `Deleted ${sessionIds.length} session${sessionIds.length > 1 ? 's' : ''}`,
-                color: 'green',
-            });
-            closeDeleteModal();
-        } else {
-            notifications.show({
-                title: 'Error',
-                message: result.error || 'Failed to delete sessions',
-                color: 'red',
-            });
+    // Template execution for bulk delete
+    const { execute: executeBulkDelete, loading: bulkDeleteLoading } = useExecuteTemplate(
+        () => {
+            clearSelection();
+            refresh();
         }
+    );
+
+    const bulkDeleteTemplate = data?._templates?.bulkDelete;
+
+    // Handle bulk delete with confirmation
+    const handleBulkDelete = () => {
+        if (!bulkDeleteTemplate) return;
+
+        confirmDelete({
+            title: 'Delete Sessions',
+            message: 'Are you sure you want to delete the selected sessions?',
+            count: selectedCount,
+            onConfirm: async () => {
+                await executeBulkDelete(bulkDeleteTemplate, {
+                    sessionIds: selected
+                });
+            }
+        });
     };
-
-    // Calculate selectable sessions (exclude current session)
-    const selectableSessions = sessions.filter((s) => s.sessionId !== currentSessionToken);
-    const allSelectableSelected = selectableSessions.length > 0 && selectableSessions.every((s) => selectedIds.has(s.sessionId));
-    const someSelected = selectedIds.size > 0 && !allSelectableSelected;
-
-    const sessionsToDelete = sessions.filter((s) => selectedIds.has(s.sessionId));
 
     return (
         <Paper p="md" withBorder>
@@ -88,15 +92,18 @@ export function SessionsList() {
                         Sessions
                     </Text>
                     <Group gap="sm">
-                        <Button
-                            variant="outline"
-                            color="red"
-                            leftSection={<IconTrash size={16} />}
-                            onClick={handleDeleteClick}
-                            disabled={selectedIds.size === 0 || loading}
-                        >
-                            Delete ({selectedIds.size})
-                        </Button>
+                        {/* Bulk delete button shows only when items selected and template exists */}
+                        {bulkDeleteTemplate && hasSelection && (
+                            <Button
+                                color="red"
+                                variant="light"
+                                leftSection={<IconTrash size={16} />}
+                                onClick={handleBulkDelete}
+                                disabled={loading || bulkDeleteLoading}
+                            >
+                                Delete Selected ({selectedCount})
+                            </Button>
+                        )}
                         <ActionIcon variant="subtle" onClick={refresh} disabled={loading} title="Refresh">
                             <IconRefresh size={18} />
                         </ActionIcon>
@@ -123,18 +130,23 @@ export function SessionsList() {
                         <Table>
                             <Table.Thead>
                                 <Table.Tr>
-                                    <Table.Th style={{ width: 40 }}>
-                                        <Checkbox
-                                            checked={allSelectableSelected}
-                                            indeterminate={someSelected}
-                                            onChange={(event) => handleSelectAll(event.currentTarget.checked)}
-                                            aria-label="Select all sessions on this page"
-                                        />
-                                    </Table.Th>
+                                    {/* Checkbox column only shows if bulk delete template exists */}
+                                    {bulkDeleteTemplate && (
+                                        <Table.Th style={{ width: 40 }}>
+                                            <Checkbox
+                                                checked={allSelected}
+                                                indeterminate={someSelected}
+                                                onChange={toggleAll}
+                                                disabled={loading}
+                                                aria-label="Select all"
+                                            />
+                                        </Table.Th>
+                                    )}
                                     <Table.Th>Device</Table.Th>
                                     <Table.Th>IP Address</Table.Th>
                                     <Table.Th>Last Access</Table.Th>
                                     <Table.Th>Created</Table.Th>
+                                    <Table.Th style={{ width: 100 }}>Actions</Table.Th>
                                 </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
@@ -142,8 +154,10 @@ export function SessionsList() {
                                     <SessionRow
                                         key={session.sessionId}
                                         session={session}
-                                        isSelected={selectedIds.has(session.sessionId)}
-                                        onSelectionChange={handleSelectionChange}
+                                        onDelete={refresh}
+                                        showCheckbox={!!bulkDeleteTemplate}
+                                        selected={isSelected(session.sessionId)}
+                                        onToggleSelect={() => toggleSelection(session.sessionId)}
                                     />
                                 ))}
                             </Table.Tbody>
@@ -154,19 +168,9 @@ export function SessionsList() {
                             onNextPage={handleNextPage}
                             onPreviousPage={handlePreviousPage}
                             onPageSizeChange={handlePageSizeChange}
-                            disabled={loading}
-                            itemLabel="sessions"
                         />
                     </>
                 )}
-
-                <DeleteSessionsModal
-                    opened={deleteModalOpened}
-                    onClose={closeDeleteModal}
-                    sessions={sessionsToDelete}
-                    onConfirm={handleDeleteConfirm}
-                    loading={loading}
-                />
             </Stack>
         </Paper>
     );

@@ -1,17 +1,23 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
-import { PageSize, PaginationState, PagingInstructions, Session, SessionsResponse, UseSessionsResult } from '../types';
+import { PageSize, PaginationState, PagingInstructions, SessionsResponse, UseSessionsResult } from '../types';
 
 /**
- * Custom hook for managing user sessions with cursor-based pagination
+ * Custom hook for managing user sessions with HAL-FORMS templates
+ *
+ * Returns the full HAL object containing:
+ * - _embedded.sessions: Array of session resources
+ * - _templates: Available operations (delete)
+ * - _links: Navigation links
+ * - paging: Pagination metadata
  *
  * Provides functionality to:
  * - Fetch sessions from the hypermedia API with cursor-based pagination
  * - Identify and protect the current active session
- * - Select and bulk delete sessions
+ * - Select sessions for bulk operations
  * - Persist pagination preferences to localStorage
  * - Handle loading and error states
  *
@@ -26,6 +32,7 @@ import { PageSize, PaginationState, PagingInstructions, Session, SessionsRespons
  * ```tsx
  * function SessionsPage() {
  *   const {
+ *     data,
  *     sessions,
  *     loading,
  *     error,
@@ -36,24 +43,31 @@ import { PageSize, PaginationState, PagingInstructions, Session, SessionsRespons
  *     handleNextPage,
  *     handlePreviousPage,
  *     handlePageSizeChange,
- *     deleteSessions,
  *     refresh,
  *   } = useSessions();
+ *
+ *   const deleteTemplate = data?._templates?.delete;
  *
  *   if (loading) return <SessionsTableSkeleton />;
  *   if (error) return <Alert color="red">{error}</Alert>;
  *
  *   return (
- *     <Table>
- *       {sessions.map(session => (
- *         <SessionRow
- *           key={session.sessionToken}
- *           session={session}
- *           selected={selectedIds.has(session.sessionToken)}
- *           onSelectionChange={handleSelectionChange}
- *         />
- *       ))}
- *     </Table>
+ *     <>
+ *       {deleteTemplate && (
+ *         <Button onClick={() => openDeleteModal()}>
+ *           {deleteTemplate.title}
+ *         </Button>
+ *       )}
+ *       <Table>
+ *         {sessions.map(session => (
+ *           <SessionRow
+ *             key={session.sessionId}
+ *             session={session}
+ *             onDelete={refresh}
+ *           />
+ *         ))}
+ *       </Table>
+ *     </>
  *   );
  * }
  * ```
@@ -63,7 +77,8 @@ export function useSessions(): UseSessionsResult {
     const currentSessionId = signedInUser?.authContext?.sessionId || null;
     const location = useLocation();
 
-    const [sessions, setSessions] = useState<Session[]>([]);
+    // State
+    const [data, setData] = useState<SessionsResponse | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true); // Start with loading true
     const [error, setError] = useState<string | null>(null);
@@ -76,6 +91,18 @@ export function useSessions(): UseSessionsResult {
         const saved = localStorage.getItem('sessions_page_size');
         return saved ? (parseInt(saved, 10) as PageSize) : 25;
     });
+
+    /**
+     * Extract sessions array from HAL response and mark current session
+     */
+    const sessions = useMemo(() => {
+        if (!data?._embedded?.sessions) return [];
+
+        return data._embedded.sessions.map((session) => ({
+            ...session,
+            isCurrent: session.sessionId === currentSessionId,
+        }));
+    }, [data, currentSessionId]);
 
     const pagination: PaginationState = {
         hasNext: !!pagingInstructions?.next,
@@ -129,24 +156,19 @@ export function useSessions(): UseSessionsResult {
 
             const response = (await apiClient.post(sessionsEndpoint, body)) as SessionsResponse;
 
-            // Mark current session
-            const sessionsWithCurrent = response._embedded.sessions.map((session) => ({
-                ...session,
-                isCurrent: session.sessionId === currentSessionId,
-            }));
-
-            setSessions(sessionsWithCurrent);
+            // Store full HAL object
+            setData(response);
             setPagingInstructions(response.paging);
 
             // Clear selection when data changes
             setSelectedIds(new Set());
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load sessions');
-            setSessions([]);
+            setData(null);
         } finally {
             setLoading(false);
         }
-    }, [sessionsEndpoint, pageSize, currentSessionId]);
+    }, [sessionsEndpoint, pageSize]);
 
     /**
      * Handle next page navigation
@@ -211,45 +233,6 @@ export function useSessions(): UseSessionsResult {
     );
 
     /**
-     * Delete selected sessions
-     */
-    const deleteSessions = useCallback(
-        async (sessionIds: string[]) => {
-            if (!sessionsEndpoint || sessionIds.length === 0) return { success: false };
-
-            setLoading(true);
-            setError(null);
-
-            try {
-                // Note: The delete endpoint is different - we'd need to discover it
-                // For now, assuming it follows the pattern
-                const deleteEndpoint = sessionsEndpoint.replace('/list', '/delete');
-
-                await apiClient.post(deleteEndpoint, {
-                    sessionIds: sessionIds,
-                });
-
-                // After deletion, refresh the current page
-                if (pagingInstructions?.current) {
-                    await fetchSessions(pagingInstructions.current);
-                } else {
-                    await fetchSessions();
-                }
-
-                setSelectedIds(new Set());
-                return { success: true };
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to delete sessions';
-                setError(errorMessage);
-                return { success: false, error: errorMessage };
-            } finally {
-                setLoading(false);
-            }
-        },
-        [sessionsEndpoint, pagingInstructions, fetchSessions]
-    );
-
-    /**
      * Refresh sessions list
      */
     const refresh = useCallback(() => {
@@ -271,12 +254,7 @@ export function useSessions(): UseSessionsResult {
 
         if (navigationData && sessionsEndpoint) {
             // Use the data from navigation instead of fetching
-            const sessionsWithCurrent = navigationData._embedded.sessions.map((session) => ({
-                ...session,
-                isCurrent: session.sessionId === currentSessionId,
-            }));
-
-            setSessions(sessionsWithCurrent);
+            setData(navigationData);
             setPagingInstructions(navigationData.paging);
             setError(null); // Clear any previous errors
             setLoading(false); // Ensure loading is false
@@ -289,9 +267,10 @@ export function useSessions(): UseSessionsResult {
             setHasInitiallyLoaded(true);
             fetchSessions();
         }
-    }, [sessionsEndpoint, location.state, currentSessionId, hasInitiallyLoaded, fetchSessions]);
+    }, [sessionsEndpoint, location.state, hasInitiallyLoaded, fetchSessions]);
 
     return {
+        data,
         sessions,
         loading,
         error,
@@ -303,7 +282,6 @@ export function useSessions(): UseSessionsResult {
         handleNextPage,
         handlePreviousPage,
         handlePageSizeChange,
-        deleteSessions,
         refresh,
     };
 }

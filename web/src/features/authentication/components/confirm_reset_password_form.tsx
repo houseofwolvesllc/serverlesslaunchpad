@@ -17,13 +17,20 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AuthError, passwordPolicyValidator, useAuth } from '../../authentication';
 import { notifications } from '@mantine/notifications';
 
+interface FormValues {
+    confirmationEmail: string;
+    confirmationCode: string;
+    newPassword: string;
+    confirmNewPassword: string;
+}
+
 export const ConfirmResetPasswordForm = () => {
     const auth = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const confirmationEmail = (searchParams.get('email') || '').trim().replace(/\s/g, '+');
 
-    const form = useForm({
+    const form = useForm<FormValues>({
         initialValues: {
             confirmationEmail: confirmationEmail,
             confirmationCode: '',
@@ -31,10 +38,10 @@ export const ConfirmResetPasswordForm = () => {
             confirmNewPassword: '',
         },
         validate: {
-            confirmationEmail: (val) => (val ? null : 'Confirmation email is required'),
-            confirmationCode: (val) => (val ? null : 'Confirmation code is required'),
+            confirmationEmail: (val: string) => (val ? null : 'Confirmation email is required'),
+            confirmationCode: (val: string) => (val ? null : 'Confirmation code is required'),
             newPassword: passwordPolicyValidator,
-            confirmNewPassword: (val, values) => (val === values.newPassword ? null : 'Passwords do not match'),
+            confirmNewPassword: (val: string, values: FormValues) => (val === values.newPassword ? null : 'Passwords do not match'),
         },
     });
 
@@ -107,7 +114,8 @@ export const ConfirmResetPasswordForm = () => {
                     <Text size="lg" fw={500} mb="md">
                         Reset Your Password
                     </Text>
-                    <form id="confirm-reset-password-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
+                    <form id="confirm-reset-password-form" onSubmit={form.onSubmit((values: FormValues) => onSubmit(values))}>
+
                         <Stack>
                             <Input type="hidden" {...form.getInputProps('confirmationEmail')} />
                             <TextInput
