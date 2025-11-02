@@ -93,8 +93,17 @@ export const useAuth = function () {
         try {
             const entryPoint = getEntryPoint();
 
-            // Discover federation endpoint
-            const federateHref = await entryPoint.getLinkHref('auth:federate');
+            // Debug: Check what templates are available
+            const root = await entryPoint.fetch();
+            logger.debug('Entry point templates available', {
+                templates: Object.keys(root._templates || {}),
+                authenticated: root.authenticated,
+                hasVerify: !!root._templates?.verify,
+                hasFederate: !!root._templates?.federate
+            });
+
+            // Discover federation endpoint (now in templates for POST operations)
+            const federateHref = await entryPoint.getTemplateTarget('federate');
             if (!federateHref) {
                 throw new Error('Session federation not available from API. Please contact support.');
             }
@@ -158,7 +167,12 @@ export const useAuth = function () {
                 throw new Error(`Failed to federate with hypermedia API: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         } catch (error) {
-            logger.error('Authorization failed', { error });
+            logger.error('Authorization failed', {
+                error,
+                errorMessage: error instanceof Error ? error.message : String(error),
+                errorName: error instanceof Error ? error.name : 'Unknown',
+                errorStack: error instanceof Error ? error.stack : undefined
+            });
             throw error;
         }
     }
@@ -167,8 +181,8 @@ export const useAuth = function () {
         try {
             const entryPoint = getEntryPoint();
 
-            // Discover verification endpoint
-            const verifyHref = await entryPoint.getLinkHref('auth:verify');
+            // Discover verification endpoint (now in templates for POST operations)
+            const verifyHref = await entryPoint.getTemplateTarget('verify');
             if (!verifyHref) {
                 throw new AuthError({
                     name: 'VerifyNotAvailable',
@@ -246,8 +260,8 @@ export const useAuth = function () {
                 return;
             }
 
-            // Discover revoke endpoint
-            const revokeHref = await entryPoint.getLinkHref('auth:revoke');
+            // Discover revoke endpoint (now in templates for POST operations)
+            const revokeHref = await entryPoint.getTemplateTarget('revoke');
             if (!revokeHref) {
                 logger.warn('Revoke endpoint not available from API - continuing with sign out');
                 return;

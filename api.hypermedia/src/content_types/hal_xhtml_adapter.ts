@@ -69,6 +69,7 @@ export class HalXhtmlAdapter {
 </head>
 <body>
     <article class="hal-resource" vocab="${this.halNamespace}">
+        ${this.renderNav(hal)}
         ${this.renderProperties(hal)}
         ${this.renderEmbedded(hal)}
         ${this.renderLinks(hal)}
@@ -213,12 +214,109 @@ ${forms}
     }
 
     /**
+     * Render navigation structure (_nav)
+     */
+    private renderNav(hal: HalObject): string {
+        if (!hal._nav || !Array.isArray(hal._nav) || hal._nav.length === 0) {
+            return '';
+        }
+
+        const groups = hal._nav.map((group: any) => {
+            return this.renderNavGroup(group, hal);
+        }).join('\n');
+
+        return `  <nav class="hal-nav">
+    <h2>Navigation</h2>
+${groups}
+  </nav>`;
+    }
+
+    /**
+     * Render a navigation group
+     */
+    private renderNavGroup(group: any, hal: HalObject, depth: number = 0): string {
+        const items = group.items?.map((item: any) => {
+            // Check if this is a nested group
+            if (item.items) {
+                return this.renderNavGroup(item, hal, depth + 1);
+            }
+            return this.renderNavItem(item, hal);
+        }).join('\n') || '';
+
+        const groupClass = depth === 0 ? 'hal-nav-group' : 'hal-nav-subgroup';
+
+        return `    <div class="${groupClass}">
+      <h3>${this.escapeHtml(group.title)}</h3>
+      <ul>
+${items}
+      </ul>
+    </div>`;
+    }
+
+    /**
+     * Render a navigation item (link or template reference)
+     */
+    private renderNavItem(item: any, hal: HalObject): string {
+        const rel = item.rel;
+        const type = item.type;
+        const customTitle = item.title;
+
+        if (type === 'link') {
+            // Look up link in _links
+            const link = hal._links?.[rel];
+            if (!link) return '';
+
+            const linkObj = Array.isArray(link) ? link[0] : link;
+            const title = customTitle || linkObj.title || rel;
+            const href = linkObj.href;
+
+            return `        <li><a href="${this.escapeHtml(href)}" rel="${this.escapeHtml(rel)}">${this.escapeHtml(title)}</a></li>`;
+        } else if (type === 'template') {
+            // Look up template in _templates
+            const template = hal._templates?.[rel];
+            if (!template) return '';
+
+            const title = customTitle || template.title || rel;
+            const target = template.target || '';
+            const method = (template.method || 'POST').toLowerCase();
+
+            // Render as inline form with just a submit button
+            const methodField = (method === 'delete' || method === 'put')
+                ? `<input type="hidden" name="_method" value="${this.escapeHtml(method)}" />`
+                : '';
+
+            // Include hidden fields from template properties
+            const hiddenFields = (template.properties || [])
+                .filter((prop: any) => prop.type === 'hidden')
+                .map((prop: any) => {
+                    const value = prop.value !== undefined ? ` value="${this.escapeHtml(String(prop.value))}"` : '';
+                    return `<input type="hidden" name="${this.escapeHtml(prop.name)}"${value} />`;
+                })
+                .join('');
+
+            return `        <li>
+          <form action="${this.escapeHtml(target)}" method="post" style="display: inline;">
+            ${methodField}${hiddenFields}
+            <button type="submit" class="nav-button">${this.escapeHtml(title)}</button>
+          </form>
+        </li>`;
+        }
+
+        return '';
+    }
+
+    /**
      * Render single template as HTML form
      */
     private renderTemplate(name: string, template: HalTemplate): string {
         const method = (template.method || 'POST').toLowerCase();
         const action = template.target || '';
         const title = template.title || name;
+
+        // Add _method field for DELETE/PUT (method override)
+        const methodField = (method === 'delete' || method === 'put')
+            ? `      <input type="hidden" name="_method" value="${this.escapeHtml(method)}" />\n`
+            : '';
 
         const fields = (template.properties || []).map(prop => {
             return this.renderTemplateProperty(prop);
@@ -229,7 +327,7 @@ ${forms}
           method="post"
           data-method="${this.escapeHtml(method)}">
       <h4>${this.escapeHtml(title)}</h4>
-${fields}
+${methodField}${fields}
       <button type="submit">${this.escapeHtml(title)}</button>
     </form>`;
     }
@@ -242,6 +340,14 @@ ${fields}
         const type = prop.type || 'text';
         const value = prop.value !== undefined ? ` value="${this.escapeHtml(String(prop.value))}"` : '';
         const prompt = prop.prompt || prop.name;
+
+        // Build validation attributes
+        let validationAttrs = '';
+        if (prop.min !== undefined) validationAttrs += ` min="${this.escapeHtml(String(prop.min))}"`;
+        if (prop.max !== undefined) validationAttrs += ` max="${this.escapeHtml(String(prop.max))}"`;
+        if (prop.minLength !== undefined) validationAttrs += ` minlength="${this.escapeHtml(String(prop.minLength))}"`;
+        if (prop.maxLength !== undefined) validationAttrs += ` maxlength="${this.escapeHtml(String(prop.maxLength))}"`;
+        if (prop.regex) validationAttrs += ` pattern="${this.escapeHtml(prop.regex)}"`;
 
         // Handle select/options
         if (prop.options && prop.options.length > 0) {
@@ -257,18 +363,39 @@ ${options}
       </label>`;
         }
 
+        // Handle array type (comma-separated input)
+        if (type === 'array') {
+            const arrayValue = Array.isArray(prop.value) ? prop.value.join(', ') : '';
+            return `      <label>
+        ${this.escapeHtml(prompt)}:
+        <input type="text"
+               name="${this.escapeHtml(prop.name)}"
+               value="${this.escapeHtml(arrayValue)}"
+               placeholder="Comma-separated values"
+               data-type="array"${required}${validationAttrs} />
+        <small style="display: block; color: #666; margin-top: 0.25rem;">Enter values separated by commas</small>
+      </label>`;
+        }
+
         // Handle textarea
         if (type === 'textarea') {
             return `      <label>
         ${this.escapeHtml(prompt)}:
-        <textarea name="${this.escapeHtml(prop.name)}"${required}>${value ? this.escapeHtml(String(prop.value)) : ''}</textarea>
+        <textarea name="${this.escapeHtml(prop.name)}"${required}${validationAttrs}>${value ? this.escapeHtml(String(prop.value)) : ''}</textarea>
       </label>`;
+        }
+
+        // Handle hidden inputs (no label)
+        if (type === 'hidden') {
+            return `      <input type="hidden"
+               name="${this.escapeHtml(prop.name)}"${value} />`;
         }
 
         // Handle regular input
         return `      <label>
         ${this.escapeHtml(prompt)}:
-        <input type="${this.escapeHtml(type)}" name="${this.escapeHtml(prop.name)}"${value}${required} />
+        <input type="${this.escapeHtml(type)}"
+               name="${this.escapeHtml(prop.name)}"${value}${required}${validationAttrs} />
       </label>`;
     }
 
@@ -318,6 +445,73 @@ ${options}
       }
       dd {
         margin: 0.25rem 0 0.5rem 1rem;
+      }
+
+      /* Navigation Structure (_nav) */
+      .hal-nav {
+        margin: 0 0 2rem 0;
+        padding: 1.5rem;
+        background: #f0f7ff;
+        border-radius: 0.5rem;
+        border: 1px solid #0066cc;
+      }
+      .hal-nav h2 {
+        margin-top: 0;
+        color: #0066cc;
+        border-bottom: 2px solid #0066cc;
+        padding-bottom: 0.5rem;
+      }
+      .hal-nav-group {
+        margin: 1rem 0;
+      }
+      .hal-nav-group h3 {
+        font-size: 1.1rem;
+        margin: 0.5rem 0;
+        color: #333;
+      }
+      .hal-nav-subgroup {
+        margin-left: 1rem;
+        padding-left: 1rem;
+        border-left: 2px solid #ccc;
+      }
+      .hal-nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0;
+      }
+      .hal-nav li {
+        margin: 0.25rem 0;
+      }
+      .hal-nav a {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #fff;
+        color: #0066cc;
+        text-decoration: none;
+        border-radius: 0.25rem;
+        border: 1px solid #0066cc;
+        transition: background 0.2s, color 0.2s;
+      }
+      .hal-nav a:hover {
+        background: #0066cc;
+        color: #fff;
+      }
+      .hal-nav button.nav-button {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #fff;
+        color: #0066cc;
+        border: 1px solid #0066cc;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: normal;
+        transition: background 0.2s, color 0.2s;
+        margin: 0;
+      }
+      .hal-nav button.nav-button:hover {
+        background: #0066cc;
+        color: #fff;
       }
 
       /* Embedded Resources */

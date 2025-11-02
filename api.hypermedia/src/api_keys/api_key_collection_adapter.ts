@@ -58,31 +58,14 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                     // Using path template for now - add route when implementing GET /users/{userId}/api-keys/{apiKeyId}
                     self: this.createLink(`/users/${this.userId}/api-keys/${apiKey.apiKeyId}`),
                 },
-                _templates: {
-                    delete: this.createTemplate(
-                        "Delete API Key",
-                        "DELETE",
-                        this.router.buildHref(ApiKeysController, 'deleteApiKeys', { userId: this.userId }),
-                        {
-                            contentType: "application/json",
-                            properties: [
-                                this.createProperty("apiKeyIds", {
-                                    prompt: "API Key ID",
-                                    required: true,
-                                    type: "text",
-                                    value: apiKey.apiKeyId
-                                })
-                            ]
-                        }
-                    )
-                }
+                // No individual delete template - use bulk delete only
             })),
         };
     }
 
     get _templates() {
-        return {
-            create: this.createTemplate(
+        const templates: any = {
+            default: this.createTemplate(
                 "Create API Key",
                 "POST",
                 this.router.buildHref(ApiKeysController, 'createApiKey', { userId: this.userId }),
@@ -114,6 +97,49 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                 }
             )
         };
+
+        // Add pagination templates when applicable
+        const listEndpoint = this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId });
+
+        if (this.pagingData.next) {
+            templates.next = this.createTemplate(
+                "Next Page",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden",
+                            value: JSON.stringify(this.pagingData.next)
+                        })
+                    ]
+                }
+            );
+        }
+
+        if (this.pagingData.previous) {
+            templates.prev = this.createTemplate(
+                "Previous Page",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden",
+                            value: JSON.stringify(this.pagingData.previous)
+                        })
+                    ]
+                }
+            );
+        }
+
+        return templates;
     }
 
     get paging() {

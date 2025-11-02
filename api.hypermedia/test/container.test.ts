@@ -64,35 +64,6 @@ describe("AppContainer", () => {
         expect(secretsConfig.constructor.name).toBe("ApplicationSecretsStore");
     });
 
-    it.skip("should resolve concrete controllers without explicit binding", () => {
-        // Define a test controller
-        @Injectable()
-        class TestController {
-            constructor(private sessionRepository: SessionRepository, private userRepository: UserRepository) {}
-
-            getSessionRepository() {
-                return this.sessionRepository;
-            }
-
-            getUserRepository() {
-                return this.userRepository;
-            }
-        }
-
-        // Controllers can be resolved without binding since they're concrete classes
-        const controller = container.resolve(TestController);
-        expect(controller).toBeDefined();
-        expect(controller).toBeInstanceOf(TestController);
-
-        // Dependencies should be properly injected
-        expect(controller.getSessionRepository()).toBeDefined();
-        expect(controller.getUserRepository()).toBeDefined();
-
-        // Dependencies should be singletons
-        expect(controller.getSessionRepository()).toStrictEqual(container.resolve(SessionRepository));
-        expect(controller.getUserRepository()).toStrictEqual(container.resolve(UserRepository));
-    });
-
     it("should resolve InfrastructureConfigurationStore as distinct type", () => {
         const container = getContainer();
 

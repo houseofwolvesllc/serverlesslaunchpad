@@ -19,7 +19,8 @@ export const DeleteApiKeysSchema = z.object({
         userId: z.string()
     }),
     body: z.object({
-        apiKeyIds: z.array(z.string()).min(1, "Must provide at least one API key ID")
+        apiKeyIds: z.array(z.string()).min(1, "Must provide at least one API key ID"),
+        _method: z.string().optional() // Allow method override for DELETE via POST
     })
 });
 

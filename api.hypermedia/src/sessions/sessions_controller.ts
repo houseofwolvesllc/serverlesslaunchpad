@@ -96,13 +96,23 @@ export class SessionsController extends BaseController {
             sessionIds
         });
 
-        // Action response - no self link, use collection link with title
+        // Action response - no self link, use collection template (POST operation)
         const adapter = new MessageAdapter({
             message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
-            links: {
+            templates: {
                 collection: {
-                    href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
-                    title: "Sessions"
+                    title: "View Sessions",
+                    method: "POST",
+                    target: this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
                 }
             },
             properties: {

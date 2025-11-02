@@ -3,6 +3,7 @@ import '@mantine/notifications/styles.css';
 import { Router } from './components/router';
 import { LoadingOverlay, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { ModalsProvider } from '@mantine/modals';
 import { BrowserRouter } from 'react-router-dom';
 import { LoadingContext } from './context/loading_context';
 import { AuthenticationProvider } from './features/authentication/providers/authentication_provider';
@@ -13,15 +14,17 @@ export const App = () => {
 
     return (
         <MantineProvider>
-            <LoadingContext.Provider value={{ isLoading, setIsLoading }}>
-                <LoadingOverlay visible={isLoading} />
-                <BrowserRouter>
-                    <Notifications />
-                    <AuthenticationProvider>
-                        <Router />
-                    </AuthenticationProvider>
-                </BrowserRouter>
-            </LoadingContext.Provider>
+            <ModalsProvider>
+                <LoadingContext.Provider value={{ isLoading, setIsLoading }}>
+                    <LoadingOverlay visible={isLoading} />
+                    <BrowserRouter>
+                        <Notifications />
+                        <AuthenticationProvider>
+                            <Router />
+                        </AuthenticationProvider>
+                    </BrowserRouter>
+                </LoadingContext.Provider>
+            </ModalsProvider>
         </MantineProvider>
     );
 };
