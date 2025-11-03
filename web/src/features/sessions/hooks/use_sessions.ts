@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../../../constants/pagination';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@houseofwolves/serverlesslaunchpad.types/pagination';
 import { PageSize, PaginationState, PagingInstructions, SessionsResponse, UseSessionsResult } from '../types';
 
 /**

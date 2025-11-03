@@ -1,4 +1,4 @@
-import { HalObject, HalTemplate, HalTemplateProperty } from '../types/hal';
+import { HalObject, HalTemplate, HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { apiClient } from '../services/api.client';
 
 /**

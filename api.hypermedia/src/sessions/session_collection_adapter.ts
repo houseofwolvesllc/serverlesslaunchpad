@@ -1,5 +1,5 @@
 import { Session } from "@houseofwolves/serverlesslaunchpad.core";
-import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.commons";
+import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { HalResourceAdapter } from "../content_types/hal_adapter";
 import { Router } from "../router";
 import { SessionsController } from "./sessions_controller";

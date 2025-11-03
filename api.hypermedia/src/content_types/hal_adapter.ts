@@ -1,94 +1,21 @@
 /**
- * HAL (Hypertext Application Language) type definitions
+ * HAL (Hypertext Application Language) adapter base class
+ *
+ * This module provides the HalResourceAdapter base class for creating HAL resources.
+ * Type definitions are imported from the centralized types package.
+ *
  * @see https://datatracker.ietf.org/doc/html/draft-kelly-json-hal-11
  */
 
-/**
- * HAL link object
- */
-export interface HalLink {
-    /** The URI of the linked resource */
-    href: string;
-    /** Human-readable title for the link */
-    title?: string;
-    /** Media type hint */
-    type?: string;
-    /** Whether the href is a URI template (RFC 6570) */
-    templated?: boolean;
-    /** Language of the target resource */
-    hreflang?: string;
-    /** Name for distinguishing between multiple links with same relation */
-    name?: string;
-}
+import type {
+    HalLink,
+    HalTemplate,
+    HalTemplateProperty,
+    HalObject
+} from '@houseofwolves/serverlesslaunchpad.types';
 
-/**
- * HAL-FORMS template for describing available actions
- * @see https://rwcbook.github.io/hal-forms/
- */
-export interface HalTemplate {
-    /** Human-readable title for the action */
-    title: string;
-    /** HTTP method (GET, POST, PUT, DELETE, PATCH, etc.) */
-    method: string;
-    /** Target URI for the action */
-    target: string;
-    /** Optional content type for request body */
-    contentType?: string;
-    /** Optional properties/fields for the action */
-    properties?: HalTemplateProperty[];
-}
-
-/**
- * Property definition for HAL-FORMS template
- */
-export interface HalTemplateProperty {
-    /** Property name */
-    name: string;
-    /** Human-readable prompt */
-    prompt?: string;
-    /** Whether the property is required */
-    required?: boolean;
-    /** Default or current value */
-    value?: any;
-    /** Data type (text, number, date, etc.) */
-    type?: string;
-    /** Regular expression for validation */
-    regex?: string;
-    /** Minimum value (for numbers/dates) */
-    min?: number | string;
-    /** Maximum value (for numbers/dates) */
-    max?: number | string;
-    /** Options for select/dropdown fields */
-    options?: Array<{ value: string; prompt: string }>;
-    /** Minimum length (for strings) */
-    minLength?: number;
-    /** Maximum length (for strings) */
-    maxLength?: number;
-}
-
-/**
- * HAL object structure
- * Represents a resource with hypermedia controls
- */
-export interface HalObject {
-    /** Reserved: Hypermedia links */
-    _links?: {
-        [rel: string]: HalLink | HalLink[];
-    };
-
-    /** Reserved: Embedded resources */
-    _embedded?: {
-        [rel: string]: HalObject | HalObject[];
-    };
-
-    /** Reserved: Available actions (HAL-FORMS extension) */
-    _templates?: {
-        [name: string]: HalTemplate;
-    };
-
-    /** Resource properties (any additional fields) */
-    [key: string]: any;
-}
+// Re-export types for backward compatibility
+export type { HalLink, HalTemplate, HalTemplateProperty, HalObject };
 
 /**
  * Abstract base class for HAL resource adapters
