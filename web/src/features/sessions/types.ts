@@ -1,3 +1,5 @@
+import type { PageSize } from '../../constants/pagination';
+
 /**
  * Session resource from API (HAL format)
  */
@@ -25,10 +27,10 @@ export interface PaginationState {
 }
 
 /**
- * Page size options
+ * Page size type
+ * Re-export from shared pagination constants
  */
-export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
-export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+export type { PageSize };
 
 /**
  * Paging instruction for cursor-based pagination

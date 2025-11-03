@@ -11,11 +11,11 @@
  * - Role-based filtering
  */
 
-import { getIcon } from './icon_mapper';
 import type { Icon } from '@tabler/icons-react';
-import { createPostActionHandler } from './navigation_actions';
 import type { NavigateFunction } from 'react-router-dom';
 import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
+import { getIcon } from './icon_mapper';
+import { createPostActionHandler } from './navigation_actions';
 
 /**
  * Navigation item structure from the API
@@ -110,10 +110,7 @@ export function shouldIncludeItem(item: NavigationItem, userRole?: string): bool
  * @param userContext - User context for template expansion and role filtering
  * @returns Transformed LinksGroupProps, or null if item should be filtered out
  */
-export function transformNavigationItem(
-    item: NavigationItem,
-    userContext?: UserContext
-): LinksGroupProps | null {
+export function transformNavigationItem(item: NavigationItem, userContext?: UserContext): LinksGroupProps | null {
     // Filter based on role
     if (!shouldIncludeItem(item, userContext?.role)) {
         return null;
@@ -155,9 +152,7 @@ export function transformNavigationItem(
 
                 // Create onClick handler for POST methods
                 const onClick =
-                    childItem.method === 'POST' && href
-                        ? createPostActionHandler(href, childItem.title)
-                        : undefined;
+                    childItem.method === 'POST' && href ? createPostActionHandler(href, childItem.title) : undefined;
 
                 return {
                     label: childItem.title,
@@ -203,10 +198,7 @@ export function transformNavigationItem(
  * // Returns: [{ icon: IconUsers, label: 'User Management', links: [{ label: 'Sessions', link: '/users/123/sessions' }] }]
  * ```
  */
-export function transformNavigationItems(
-    items: NavigationItem[],
-    userContext?: UserContext
-): LinksGroupProps[] {
+export function transformNavigationItems(items: NavigationItem[], userContext?: UserContext): LinksGroupProps[] {
     return items
         .map((item) => transformNavigationItem(item, userContext))
         .filter((item): item is LinksGroupProps => item !== null);
@@ -220,7 +212,7 @@ export function transformNavigationItems(
  * @param userContext - User context for personalization
  * @returns Minimal fallback navigation
  */
-export function createFallbackNavigation(userContext?: UserContext): LinksGroupProps[] {
+export function createFallbackNavigation(_userContext?: UserContext): LinksGroupProps[] {
     const navigation: LinksGroupProps[] = [
         {
             icon: getIcon('home'),
@@ -231,19 +223,6 @@ export function createFallbackNavigation(userContext?: UserContext): LinksGroupP
         },
     ];
 
-    // Add user-specific items if authenticated
-    if (userContext?.userId) {
-        navigation.push({
-            icon: getIcon('user'),
-            label: 'Profile',
-            newTab: false,
-            links: [
-                { label: 'My Sessions', link: `/users/${userContext.userId}/sessions` },
-                { label: 'My API Keys', link: `/users/${userContext.userId}/api_keys` },
-            ],
-        });
-    }
-
     return navigation;
 }
 
@@ -253,17 +232,51 @@ export function createFallbackNavigation(userContext?: UserContext): LinksGroupP
  * Converts the new hierarchical NavGroup[] structure from the API into
  * the LinksGroupProps[] format expected by the LinksGroup component.
  *
+ * Prepends hardcoded static navigation items (Home, API Documentation) that are
+ * managed by the web client, not the API sitemap.
+ *
  * @param navGroups - NavGroup array from API's _nav property
  * @param resolveItem - Function to resolve NavItem refs to actual links/templates
  * @returns Array of LinksGroupProps ready for rendering
  */
 export function transformNavStructure(
-    navGroups: NavGroup[],
+    nav: (NavItem | NavGroup)[],
     resolveItem: (item: NavItem) => ResolvedNavItem | null
 ): LinksGroupProps[] {
     const result: LinksGroupProps[] = [];
 
-    for (const group of navGroups) {
+    for (const item of nav) {
+        // Handle root-level NavItems
+        if ('rel' in item) {
+            const navItem = item as NavItem;
+            const resolved = resolveItem(navItem);
+
+            if (!resolved) continue;
+
+            const icon = getIcon(navItem.rel);
+
+            result.push({
+                icon,
+                label: resolved.title,
+                link: resolved.type === 'link' ? resolved.href : undefined,
+                newTab: resolved.href?.startsWith('http'), // Open external links in new tab
+                // Template items get onClick handler
+                links:
+                    resolved.type === 'template' && resolved.method === 'POST'
+                        ? [
+                              {
+                                  label: resolved.title,
+                                  link: resolved.href,
+                                  onClick: createPostActionHandler(resolved.href, resolved.title),
+                              },
+                          ]
+                        : undefined,
+            });
+            continue;
+        }
+
+        // Handle NavGroups
+        const group = item as NavGroup;
         // Handle single-item groups (flatten to single LinksGroupProps)
         if (group.items.length === 1 && 'rel' in group.items[0]) {
             const navItem = group.items[0] as NavItem;
@@ -280,24 +293,31 @@ export function transformNavStructure(
                 link: resolved.type === 'link' ? resolved.href : undefined,
                 newTab: false,
                 // Template items get onClick handler
-                links: resolved.type === 'template' && resolved.method === 'POST'
-                    ? [{
-                        label: resolved.title,
-                        link: resolved.href,
-                        onClick: createPostActionHandler(resolved.href, resolved.title)
-                    }]
-                    : undefined
+                links:
+                    resolved.type === 'template' && resolved.method === 'POST'
+                        ? [
+                              {
+                                  label: resolved.title,
+                                  link: resolved.href,
+                                  onClick: createPostActionHandler(resolved.href, resolved.title),
+                              },
+                          ]
+                        : undefined,
             });
         }
         // Handle multi-item groups
         else {
             // For groups with multiple items, we need a parent icon
             // Use the first item's rel for icon, or default to the group title
-            const firstNavItem = group.items.find(item => 'rel' in item) as NavItem | undefined;
+            const firstNavItem = group.items.find((item) => 'rel' in item) as NavItem | undefined;
             const icon = firstNavItem ? getIcon(firstNavItem.rel) : getIcon(group.title.toLowerCase());
 
             // Transform child items
-            const childLinks: Array<{ label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }> = [];
+            const childLinks: Array<{
+                label: string;
+                link?: string;
+                onClick?: (navigate: NavigateFunction) => Promise<void>;
+            }> = [];
 
             for (const item of group.items) {
                 if ('rel' in item) {
@@ -311,12 +331,12 @@ export function transformNavStructure(
                         childLinks.push({
                             label: resolved.title,
                             link: resolved.href,
-                            onClick: createPostActionHandler(resolved.href, resolved.title)
+                            onClick: createPostActionHandler(resolved.href, resolved.title),
                         });
                     } else {
                         childLinks.push({
                             label: resolved.title,
-                            link: resolved.href
+                            link: resolved.href,
                         });
                     }
                 } else {
@@ -329,7 +349,7 @@ export function transformNavStructure(
                         if (nested.link) {
                             childLinks.push({
                                 label: nested.label,
-                                link: nested.link
+                                link: nested.link,
                             });
                         } else if (nested.links) {
                             childLinks.push(...nested.links);
@@ -343,7 +363,7 @@ export function transformNavStructure(
                     icon,
                     label: group.title,
                     newTab: false,
-                    links: childLinks
+                    links: childLinks,
                 });
             }
         }

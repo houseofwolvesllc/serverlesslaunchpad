@@ -8,23 +8,24 @@
  */
 
 import {
-    IconLock,
-    IconUsers,
-    IconShield,
-    IconChartBar,
-    IconSettings,
-    IconGauge,
-    IconCalendarStats,
-    IconHome,
-    IconFileText,
-    IconCircle,
-    IconKey,
-    IconClock,
     Icon2fa,
-    IconUserCircle,
-    IconLogout,
-    IconLogin,
+    IconApi,
+    IconCalendarStats,
+    IconChartBar,
+    IconCircle,
+    IconClock,
     IconDashboard,
+    IconFileText,
+    IconGauge,
+    IconHome,
+    IconKey,
+    IconLock,
+    IconLogin,
+    IconLogout,
+    IconSettings,
+    IconShield,
+    IconUserCircle,
+    IconUsers,
     type Icon,
 } from '@tabler/icons-react';
 
@@ -43,6 +44,7 @@ export const iconMapper: Record<string, Icon> = {
     // User Management
     users: IconUsers,
     user: IconUserCircle,
+    sessions: IconUserCircle,
     'user-circle': IconUserCircle,
 
     // Admin & Settings
@@ -56,6 +58,7 @@ export const iconMapper: Record<string, Icon> = {
     home: IconHome,
     dashboard: IconDashboard,
     gauge: IconGauge,
+    api: IconApi,
 
     // Data & Analytics
     chart: IconChartBar,
@@ -71,7 +74,6 @@ export const iconMapper: Record<string, Icon> = {
     // Time & Sessions
     clock: IconClock,
     time: IconClock,
-    sessions: IconClock,
 
     // API Keys
     'api-keys': IconKey,

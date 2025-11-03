@@ -97,6 +97,7 @@ export class DynamoDbSessionRepository extends SessionRepository {
      */
     async getSessions(message: GetSessionsMessage): Promise<Paginated<Session>> {
         const client = await this.clientFactory.getClient();
+        const limit = message.pagingInstruction?.limit ?? 25;
 
         // Validate paging instruction type
         if (message.pagingInstruction && !this.isDdbPagingInstruction(message.pagingInstruction)) {
@@ -104,6 +105,8 @@ export class DynamoDbSessionRepository extends SessionRepository {
         }
 
         // Query DynamoDB with pagination
+        // Treat both undefined and null as "no cursor" (start from beginning)
+        const exclusiveStartKey = message.pagingInstruction?.lastEvaluatedKey;
         const result = await client.query<Record<string, any>>({
             TableName: this.tableName,
             KeyConditionExpression: "userId = :userId",
@@ -111,33 +114,51 @@ export class DynamoDbSessionRepository extends SessionRepository {
                 ":userId": message.userId,
             },
             ScanIndexForward: false, // Newest first (ULID descending)
-            Limit: message.pagingInstruction?.limit,
-            ExclusiveStartKey: message.pagingInstruction?.lastEvaluatedKey,
+            Limit: limit,
+            ExclusiveStartKey: exclusiveStartKey ?? undefined, // Convert null to undefined for DynamoDB
         });
 
         const sessions = result.items.map((item) => this.mapToSession(item, client));
-        const hasMore = !!result.lastEvaluatedKey;
 
-        // Construct next instruction
-        let next: DdbPagingInstruction | undefined;
-        if (hasMore && sessions.length > 0 && message.pagingInstruction) {
-            next = {
-                lastEvaluatedKey: result.lastEvaluatedKey,
-                limit: message.pagingInstruction.limit,
+        // Construct current instruction (echo what was sent)
+        const current: DdbPagingInstruction | undefined = message.pagingInstruction;
+
+        // Construct previous instruction
+        // Can go back if we're not on page 1 (have a cursor)
+        let previous: DdbPagingInstruction | undefined;
+        const currentCursor = message.pagingInstruction?.lastEvaluatedKey;
+
+        if (currentCursor !== undefined && currentCursor !== null) {
+            // We're on page 2+, can go back
+            // previousLastEvaluatedKey tells us where the previous page is
+            const prevCursor = message.pagingInstruction?.previousLastEvaluatedKey;
+
+            previous = {
+                limit: limit,
+                lastEvaluatedKey: prevCursor ?? null,
+                previousLastEvaluatedKey: null, // Always set to null for consistency with JSON serialization
                 scanIndexForward: false,
             };
         }
 
-        // Previous pagination is complex in DynamoDB - simplified to forward-only
-        const previous: DdbPagingInstruction | undefined = undefined;
+        // Construct next instruction
+        let next: DdbPagingInstruction | undefined;
+        if (result.lastEvaluatedKey && sessions.length > 0) {
+            next = {
+                limit: limit,
+                lastEvaluatedKey: result.lastEvaluatedKey,
+                previousLastEvaluatedKey: currentCursor ?? null, // Current cursor becomes previous for next page
+                scanIndexForward: false,
+            };
+        }
 
         // Return Paginated<Session>
         return {
             items: sessions,
             pagingInstructions: {
-                current: message.pagingInstruction,
-                next: next,
                 previous: previous,
+                current: current,
+                next: next,
             },
         };
     }
@@ -299,10 +320,13 @@ export class DynamoDbSessionRepository extends SessionRepository {
 
         const ddbInstruction = pagingInstruction as DdbPagingInstruction;
 
-        // lastEvaluatedKey can be undefined (first page) or an object (subsequent pages)
-        // but NOT null (typeof null === "object" but it's not valid)
+        // lastEvaluatedKey can be:
+        // - undefined (not provided)
+        // - null (page 1, survives JSON serialization)
+        // - object (page 2+, DynamoDB cursor)
         return (
             ddbInstruction.lastEvaluatedKey === undefined ||
+            ddbInstruction.lastEvaluatedKey === null ||
             (typeof ddbInstruction.lastEvaluatedKey === "object" && ddbInstruction.lastEvaluatedKey !== null)
         );
     }

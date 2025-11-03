@@ -1,6 +1,7 @@
 import { Button, Group, Select, Stack, Text } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
-import { PAGE_SIZE_OPTIONS, PageSize, PaginationState } from '../types';
+import { PAGE_SIZE_OPTIONS } from '../../../constants/pagination';
+import { PageSize, PaginationState } from '../types';
 
 interface PaginationControlsProps {
     pagination: PaginationState;

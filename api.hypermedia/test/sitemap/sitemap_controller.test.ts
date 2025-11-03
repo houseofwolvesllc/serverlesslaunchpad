@@ -67,11 +67,10 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Admin sees: Main Navigation + Administration + User
-        expect(body._nav.length).toBe(3);
-        expect(body._nav[0].title).toBe("Main Navigation");
-        expect(body._nav[1].title).toBe("Administration");
-        expect(body._nav[2].title).toBe("User");
+        // Admin sees: Administration group + My Account group
+        expect(body._nav.length).toBe(2);
+        expect(body._nav[0].title).toBe("Administration");
+        expect(body._nav[1].title).toBe("My Account");
     });
 
     it("should return filtered sitemap for regular user", async () => {
@@ -83,10 +82,9 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Regular user sees: Main Navigation + User (no Administration)
-        expect(body._nav.length).toBe(2);
-        expect(body._nav[0].title).toBe("Main Navigation");
-        expect(body._nav[1].title).toBe("User");
+        // Regular user sees: My Account group (no Administration)
+        expect(body._nav.length).toBe(1);
+        expect(body._nav[0].title).toBe("My Account");
     });
 
     it("should return public sitemap for unauthenticated request", async () => {
@@ -97,10 +95,8 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Unauthenticated sees: Public navigation only
-        expect(body._nav.length).toBe(1);
-        expect(body._nav[0].title).toBe("Public");
-        expect(body._nav[0].items[0].rel).toBe("home");
+        // Unauthenticated sees: Empty array (web client handles static items)
+        expect(body._nav.length).toBe(0);
     });
 
     it("should include proper HAL links", async () => {
@@ -180,11 +176,11 @@ describe("SitemapController", () => {
 
         const body = JSON.parse(result.body);
 
-        const mainNav = body._nav.find((group: any) => group.title === "Main Navigation");
-        expect(mainNav).toBeDefined();
+        const myAccountGroup = body._nav.find((group: any) => group.title === "My Account");
+        expect(myAccountGroup).toBeDefined();
 
-        const sessionsItem = mainNav.items.find((item: any) => item.rel === "sessions");
-        const apiKeysItem = mainNav.items.find((item: any) => item.rel === "api-keys");
+        const sessionsItem = myAccountGroup.items.find((item: any) => item.rel === "sessions");
+        const apiKeysItem = myAccountGroup.items.find((item: any) => item.rel === "api-keys");
 
         expect(sessionsItem.type).toBe("template");
         expect(apiKeysItem.type).toBe("template");

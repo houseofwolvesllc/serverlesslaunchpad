@@ -16,7 +16,6 @@ export type {
     DeviceInfo,
     UseSessionsResult,
 } from './types';
-export { PAGE_SIZE_OPTIONS } from './types';
 
 // Utils
 export { parseUserAgent } from './utils/parse_user_agent';

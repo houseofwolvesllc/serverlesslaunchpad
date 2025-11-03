@@ -12,4 +12,3 @@ export { formatExpiration } from './utils/format_expiration';
 
 // Types
 export type { ApiKey, ApiKeysResponse, ExpirationInfo, UseApiKeysResult, PageSize, PaginationState } from './types';
-export { PAGE_SIZE_OPTIONS } from './types';

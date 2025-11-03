@@ -67,10 +67,11 @@ export interface NavGroup {
 /**
  * Root navigation structure
  *
- * The navigation is an array of top-level groups.
- * Each group represents a major section of the application.
+ * The navigation is an array of items and/or groups.
+ * Root-level items appear directly in the main navigation.
+ * Groups organize items into logical sections.
  */
-export type Navigation = NavGroup[];
+export type Navigation = (NavItem | NavGroup)[];
 
 /**
  * Type guard to check if an item is a NavItem (not a nested group)

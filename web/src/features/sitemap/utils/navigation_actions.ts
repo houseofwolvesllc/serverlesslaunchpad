@@ -71,36 +71,22 @@ export async function executePostAction(
         // Execute POST request
         const response = await apiClient.post(href);
 
-        // Use the self link from the response for navigation (HATEOAS)
-        const selfHref = response._links?.self?.href;
+        // Check for special navigation cases
+        const federateHref = response._links?.federate?.href;
 
-        if (!selfHref) {
-            // If no self link, check for other navigation hints
-            const federateHref = response._links?.federate?.href;
-            const collectionHref = response._links?.collection?.href;
-
-            // If response includes a federate link, it means session was revoked
-            // and we need to return to unauthenticated state (e.g., logout)
-            // Use full page reload to clear all React state and auth context
-            if (federateHref) {
-                window.location.href = '/auth/signin';
-                return;
-            }
-
-            // Otherwise, navigate to collection if available
-            if (collectionHref) {
-                navigate(collectionHref, {
-                    state: { data: response },
-                });
-                return;
-            }
-
-            throw new Error('Response missing _links.self.href or alternative navigation link');
+        // If response includes a federate link, it means session was revoked
+        // and we need to return to unauthenticated state (e.g., logout)
+        // Use full page reload to clear all React state and auth context
+        if (federateHref) {
+            window.location.href = '/auth/signin';
+            return;
         }
 
-        // Navigate to the self link (success is implicit by navigation)
-        navigate(selfHref, {
-            state: { data: response }, // Pass response data if needed by destination
+        // POST-only API: navigate to the href we just called
+        // The POST endpoint IS the resource identifier (no self link needed)
+        // Pass response data via navigation state for performance
+        navigate(href, {
+            state: { data: response },
         });
     } catch (error) {
         // Handle errors with user-friendly messages

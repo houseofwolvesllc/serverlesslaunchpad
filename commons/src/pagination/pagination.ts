@@ -1,11 +1,11 @@
-export abstract class PagingInstruction {
-    limit = 100;
+export interface PagingInstruction {
+    limit?: number;
 }
 
-export abstract class PagingInstructions {
-    abstract previous?: PagingInstruction;
-    abstract current?: PagingInstruction;
-    abstract next?: PagingInstruction;
+export interface PagingInstructions {
+    previous?: PagingInstruction;
+    current?: PagingInstruction;
+    next?: PagingInstruction;
 }
 
 export interface Paginated<T> {

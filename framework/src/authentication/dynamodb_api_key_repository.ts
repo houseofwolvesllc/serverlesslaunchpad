@@ -11,9 +11,9 @@ import {
     VerifyApiKeyResult,
 } from "@houseofwolves/serverlesslaunchpad.core";
 import { ulid } from "ulid";
+import { DdbPagingInstruction } from "../data/dynamodb/ddb_paging_instruction";
 import { DynamoDbClient } from "../data/dynamodb/dynamodb_client";
 import { DynamoDbClientFactory } from "../data/dynamodb/dynamodb_client_factory";
-import { DdbPagingInstruction } from "../data/dynamodb/ddb_paging_instruction";
 
 @Injectable()
 export class DynamoDbApiKeyRepository extends ApiKeyRepository {
@@ -65,6 +65,7 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
      */
     async getApiKeys(message: GetApiKeysMessage): Promise<Paginated<ApiKey>> {
         const client = await this.clientFactory.getClient();
+        const limit = message.pagingInstruction?.limit ?? 100;
 
         // Validate paging instruction type
         if (message.pagingInstruction && !this.isDdbPagingInstruction(message.pagingInstruction)) {
@@ -72,6 +73,8 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
         }
 
         // Query DynamoDB with pagination
+        // Treat both undefined and null as "no cursor" (start from beginning)
+        const exclusiveStartKey = message.pagingInstruction?.lastEvaluatedKey;
         const result = await client.query<Record<string, any>>({
             TableName: this.tableName,
             KeyConditionExpression: "userId = :userId",
@@ -79,33 +82,51 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
                 ":userId": message.userId,
             },
             ScanIndexForward: false, // Newest first (ULID descending)
-            Limit: message.pagingInstruction?.limit,
-            ExclusiveStartKey: message.pagingInstruction?.lastEvaluatedKey,
+            Limit: limit,
+            ExclusiveStartKey: exclusiveStartKey ?? undefined, // Convert null to undefined for DynamoDB
         });
 
         const apiKeys = result.items.map((item) => this.mapToApiKey(item, client));
-        const hasMore = !!result.lastEvaluatedKey;
 
-        // Construct next instruction
-        let next: DdbPagingInstruction | undefined;
-        if (hasMore && apiKeys.length > 0 && message.pagingInstruction) {
-            next = {
-                lastEvaluatedKey: result.lastEvaluatedKey,
-                limit: message.pagingInstruction.limit,
+        // Construct current instruction (echo what was sent)
+        const current: DdbPagingInstruction | undefined = message.pagingInstruction;
+
+        // Construct previous instruction
+        // Can go back if we're not on page 1 (have a cursor)
+        let previous: DdbPagingInstruction | undefined;
+        const currentCursor = message.pagingInstruction?.lastEvaluatedKey;
+
+        if (currentCursor !== undefined && currentCursor !== null) {
+            // We're on page 2+, can go back
+            // previousLastEvaluatedKey tells us where the previous page is
+            const prevCursor = message.pagingInstruction?.previousLastEvaluatedKey;
+
+            previous = {
+                limit: limit,
+                lastEvaluatedKey: prevCursor ?? null,
+                previousLastEvaluatedKey: null, // Always set to null for consistency with JSON serialization
                 scanIndexForward: false,
             };
         }
 
-        // Previous pagination is complex in DynamoDB - simplified to forward-only
-        const previous: DdbPagingInstruction | undefined = undefined;
+        // Construct next instruction
+        let next: DdbPagingInstruction | undefined;
+        if (result.lastEvaluatedKey && apiKeys.length > 0) {
+            next = {
+                limit: limit,
+                lastEvaluatedKey: result.lastEvaluatedKey,
+                previousLastEvaluatedKey: currentCursor ?? null, // Current cursor becomes previous for next page
+                scanIndexForward: false,
+            };
+        }
 
         // Return Paginated<ApiKey>
         return {
             items: apiKeys,
             pagingInstructions: {
-                current: message.pagingInstruction,
-                next: next,
                 previous: previous,
+                current: current,
+                next: next,
             },
         };
     }
@@ -218,10 +239,13 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
 
         const ddbInstruction = pagingInstruction as DdbPagingInstruction;
 
-        // lastEvaluatedKey can be undefined (first page) or an object (subsequent pages)
-        // but NOT null (typeof null === "object" but it's not valid)
+        // lastEvaluatedKey can be:
+        // - undefined (not provided)
+        // - null (page 1, survives JSON serialization)
+        // - object (page 2+, DynamoDB cursor)
         return (
             ddbInstruction.lastEvaluatedKey === undefined ||
+            ddbInstruction.lastEvaluatedKey === null ||
             (typeof ddbInstruction.lastEvaluatedKey === "object" && ddbInstruction.lastEvaluatedKey !== null)
         );
     }
