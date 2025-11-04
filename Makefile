@@ -67,7 +67,7 @@ dev-start:
 	@echo "🔧 Building workspace packages..."
 	@cd core && npm run build >/dev/null 2>&1
 	@cd framework && npm run build >/dev/null 2>&1
-	@cd commons && npm run build >/dev/null 2>&1
+	@cd types && npm run build >/dev/null 2>&1
 	@echo ""
 	@echo "🚀 Starting development servers with file watching..."
 	@npm run dev:watch
@@ -90,7 +90,7 @@ dev-stop:
 	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 	@# Kill specific process patterns
 	@pkill -f "concurrently.*WEB,API" 2>/dev/null || true
-	@pkill -f "concurrently.*COMMONS,CORE,FRAMEWORK" 2>/dev/null || true
+	@pkill -f "concurrently.*TYPES,CORE,FRAMEWORK" 2>/dev/null || true
 	@pkill -f "tsx.*dev_server" 2>/dev/null || true
 	@pkill -f "node.*dev_server" 2>/dev/null || true
 	@pkill -f "vite.*--mode" 2>/dev/null || true

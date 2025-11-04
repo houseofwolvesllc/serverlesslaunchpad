@@ -1,4 +1,4 @@
-import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
+import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.types";
 import { User } from "../users";
 
 export abstract class ApiKeyProvider {
