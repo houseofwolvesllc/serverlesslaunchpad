@@ -22,7 +22,7 @@ This project implements HAL-FORMS for true hypermedia-driven API interactions:
 
 See individual package `CLAUDE.md` files for detailed documentation:
 - `api.hypermedia/CLAUDE.md` - API HAL-FORMS implementation
-- `web/CLAUDE.md` - Web HAL-FORMS client patterns
+- `mantine.web/CLAUDE.md` - Mantine web HAL-FORMS client patterns
 
 ## Quick Start
 
@@ -35,8 +35,8 @@ npm install
 # Start local services (Moto mock AWS)
 make dev-start
 
-# Run web app
-cd web && npm run dev
+# Run web app (Mantine UI)
+cd mantine.web && npm run local
 
 # Run API locally
 cd api.hypermedia && npm run dev
@@ -50,7 +50,7 @@ npm test
 
 # Run specific package tests
 cd api.hypermedia && npm test
-cd web && npm test
+cd mantine.web && npm test
 ```
 
 ## Project Structure
@@ -59,7 +59,7 @@ This is a monorepo with the following packages:
 
 - **api.hypermedia** - HTTP API layer with HAL-FORMS support
 - **framework** - AWS service implementations
-- **web** - React SPA with HAL-FORMS client
+- **mantine.web** - React SPA with Mantine UI and HAL-FORMS client
 - **infrastructure** - CDK deployment code
 
 ## Documentation

@@ -131,7 +131,7 @@ export const Dashboard = () => {
                     <Image
                         src="/svg/serverless_launchpad_logo.svg"
                         alt="Serverless Launchpad Logo"
-                        style={{ height: rem(56) }}
+                        style={{ height: rem(56), flex: 0 }}
                     />
                 </Group>
             </AppShell.Header>

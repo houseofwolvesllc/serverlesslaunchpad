@@ -199,7 +199,7 @@ cloud-dev:
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS development environment)..."
 	@cd api.hypermedia && npm run local development > ../logs/api-dev.log 2>&1 &
-	@cd web && npm run local:development > ../logs/web-dev.log 2>&1 &
+	@cd mantine.web && npm run local:development > ../logs/web-dev.log 2>&1 &
 	@sleep 3
 	@echo "   Development servers started"
 	@echo ""
@@ -213,7 +213,7 @@ cloud-staging:
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS staging environment)..."
 	@cd api.hypermedia && npm run local staging > ../logs/api-staging.log 2>&1 &
-	@cd web && npm run local:staging > ../logs/web-staging.log 2>&1 &
+	@cd mantine.web && npm run local:staging > ../logs/web-staging.log 2>&1 &
 	@sleep 3
 	@echo "   Development servers started"
 	@echo ""
