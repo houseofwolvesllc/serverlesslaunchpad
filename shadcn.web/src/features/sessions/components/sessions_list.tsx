@@ -1,8 +1,8 @@
-import { RefreshCw, Trash, AlertCircle } from 'lucide-react';
+import { RefreshCw, Trash2, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
@@ -20,27 +20,12 @@ import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
 import { useConfirmDelete } from '../../../utils/confirm_delete';
 
 /**
- * Sessions list component with HAL-FORMS template integration
+ * Sessions list component matching svelte.web layout
  *
  * Features:
- * - Displays all active user sessions across devices
- * - Identifies and protects the current session (cannot be deleted)
- * - Server-side pagination with configurable page sizes (10, 25, 50, 100)
- * - Template-driven bulk delete operations (checkbox selection)
- * - Loading and error states
- * - Refresh functionality
- *
- * All operations are driven by HAL-FORMS templates from the API:
- * - Bulk delete uses the bulkDelete template from the collection
- *
- * @example
- * ```tsx
- * import { SessionsList } from './features/sessions';
- *
- * function AccountSecurityPage() {
- *   return <SessionsList />;
- * }
- * ```
+ * - Action buttons OUTSIDE the card
+ * - Table INSIDE the card
+ * - Pagination inside the card
  */
 export function SessionsList() {
     const {
@@ -56,7 +41,6 @@ export function SessionsList() {
     } = useSessions();
 
     // Selection state for bulk operations
-    // Filter out current session - it cannot be deleted
     const {
         selected,
         toggleSelection,
@@ -64,37 +48,36 @@ export function SessionsList() {
         clearSelection,
         isSelected,
         allSelected,
-        someSelected,
         hasSelection,
-        count: selectedCount
+        count: selected_count
     } = useSelection(sessions, 'sessionId', (session: any) => !session.isCurrent);
 
     // Template execution for bulk delete
-    const { execute: executeBulkDelete, loading: bulkDeleteLoading } = useExecuteTemplate(
+    const { execute: execute_bulk_delete, loading: bulk_delete_loading } = useExecuteTemplate(
         () => {
             clearSelection();
             refresh();
         }
     );
 
-    const bulkDeleteTemplate = data?._templates?.bulkDelete;
+    const bulk_delete_template = data?._templates?.bulkDelete;
     const { confirmDelete } = useConfirmDelete();
 
     // Handle bulk delete with confirmation
-    const handleBulkDelete = () => {
-        if (!bulkDeleteTemplate) return;
+    const handle_bulk_delete = () => {
+        if (!bulk_delete_template) return;
 
         confirmDelete({
-            title: 'Delete Sessions',
-            message: 'Are you sure you want to delete the selected sessions?',
-            count: selectedCount,
+            title: 'Delete Multiple Sessions',
+            message: `Are you sure you want to delete ${selected_count} session(s)? Users will need to sign in again on those devices. This action cannot be undone.`,
+            count: selected_count,
             onConfirm: async () => {
                 try {
-                    await executeBulkDelete(bulkDeleteTemplate, {
+                    await execute_bulk_delete(bulk_delete_template, {
                         sessionIds: selected,
                     });
                     toast.success(
-                        `Successfully deleted ${selectedCount} session${selectedCount === 1 ? '' : 's'}`
+                        `${selected_count} session(s) deleted successfully`
                     );
                 } catch (err: any) {
                     toast.error(err.message || 'Failed to delete sessions');
@@ -104,105 +87,122 @@ export function SessionsList() {
     };
 
     return (
-        <Card className="p-6">
-            <div className="flex flex-col space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Sessions</h2>
-                    <div className="flex items-center gap-2">
-                        {/* Bulk delete button shows only when items selected and template exists */}
-                        {bulkDeleteTemplate && hasSelection && (
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleBulkDelete}
-                                disabled={loading || bulkDeleteLoading}
-                            >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Delete Selected ({selectedCount})
-                            </Button>
-                        )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={refresh}
-                            disabled={loading}
-                            title="Refresh"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Error Alert */}
-                {error && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-
-                {/* Loading Skeleton */}
-                {loading && sessions.length === 0 ? (
-                    <SessionsTableSkeleton />
-                ) : sessions.length === 0 ? (
-                    <Alert>
-                        <AlertTitle>No Sessions</AlertTitle>
-                        <AlertDescription>No sessions found.</AlertDescription>
-                    </Alert>
+        <>
+            {/* Actions Toolbar - OUTSIDE card */}
+            <div className="flex items-center justify-between">
+                {hasSelection ? (
+                    <span className="text-sm font-medium">
+                        {selected_count} session(s) selected
+                    </span>
                 ) : (
-                    <>
-                        {/* Table */}
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        {/* Checkbox column only shows if bulk delete template exists */}
-                                        {bulkDeleteTemplate && (
-                                            <TableHead className="w-10">
-                                                <Checkbox
-                                                    checked={allSelected}
-                                                    onCheckedChange={toggleAll}
-                                                    disabled={loading}
-                                                    aria-label="Select all"
-                                                    className={
-                                                        someSelected && !allSelected
-                                                            ? 'data-[state=checked]:bg-primary'
-                                                            : ''
-                                                    }
-                                                />
-                                            </TableHead>
-                                        )}
-                                        <TableHead>Device</TableHead>
-                                        <TableHead>IP Address</TableHead>
-                                        <TableHead>Last Access</TableHead>
-                                        <TableHead>Created</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {sessions.map((session) => (
-                                        <SessionRow
-                                            key={session.sessionId}
-                                            session={session}
-                                            showCheckbox={!!bulkDeleteTemplate}
-                                            selected={isSelected(session.sessionId)}
-                                            onToggleSelect={() => toggleSelection(session.sessionId)}
-                                        />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        <PaginationControls
-                            pagination={pagination}
-                            onNextPage={handleNextPage}
-                            onPreviousPage={handlePreviousPage}
-                            onPageSizeChange={handlePageSizeChange}
-                        />
-                    </>
+                    <div></div>
                 )}
+                <div className="flex items-center gap-2">
+                    {hasSelection && (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-4"
+                                onClick={() => clearSelection()}
+                            >
+                                Clear Selection
+                            </Button>
+                            {bulk_delete_template && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-4"
+                                    onClick={handle_bulk_delete}
+                                    disabled={bulk_delete_loading}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Selected
+                                </Button>
+                            )}
+                        </>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-4"
+                        onClick={refresh}
+                        disabled={loading}
+                    >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh
+                    </Button>
+                </div>
             </div>
-        </Card>
+
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* Sessions Table - INSIDE card */}
+            {loading && sessions.length === 0 ? (
+                <Card>
+                    <CardContent className="p-6">
+                        <SessionsTableSkeleton />
+                    </CardContent>
+                </Card>
+            ) : sessions.length === 0 ? (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Sessions</h3>
+                        <p className="text-sm text-muted-foreground">No active sessions found.</p>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-12">
+                                    <Checkbox
+                                        checked={allSelected}
+                                        onCheckedChange={toggleAll}
+                                        disabled={loading}
+                                        aria-label="Select all sessions"
+                                    />
+                                </TableHead>
+                                <TableHead>Device & Browser</TableHead>
+                                <TableHead>IP Address</TableHead>
+                                <TableHead>Last Accessed</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {sessions.map((session) => (
+                                <SessionRow
+                                    key={session.sessionId}
+                                    session={session}
+                                    showCheckbox={true}
+                                    selected={isSelected(session.sessionId)}
+                                    onToggleSelect={() => toggleSelection(session.sessionId)}
+                                />
+                            ))}
+                        </TableBody>
+                    </Table>
+
+                    {/* Pagination - inside card at bottom */}
+                    {sessions.length > 0 && (
+                        <div className="px-6 pb-6">
+                            <PaginationControls
+                                pagination={pagination}
+                                onNextPage={handleNextPage}
+                                onPreviousPage={handlePreviousPage}
+                                onPageSizeChange={handlePageSizeChange}
+                            />
+                        </div>
+                    )}
+                </Card>
+            )}
+        </>
     );
 }

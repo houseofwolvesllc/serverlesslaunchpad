@@ -1,6 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Plus, RefreshCw, Trash, AlertCircle } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, AlertCircle, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiKeys } from '../hooks/use_api_keys';
 import { ApiKeyRow } from './api_key_row';
@@ -22,35 +22,12 @@ import { useConfirmDelete } from '../../../utils/confirm_delete';
 import { useDisclosure } from '../../../hooks/use_disclosure';
 
 /**
- * API Keys list component with HAL-FORMS template integration
+ * API Keys list component matching svelte.web layout
  *
  * Features:
- * - Displays all API keys with usage and expiration information
- * - Visual warnings for keys expiring within 30 days
- * - Server-side pagination with configurable page sizes (10, 25, 50, 100)
- * - Template-driven create operation (button only shows if template exists)
- * - Template-driven bulk delete operations (checkbox selection)
- * - Loading and error states
- * - Refresh functionality
- *
- * Expiration color coding:
- * - Red badge: Expired keys
- * - Orange badge with warning icon: Expiring within 30 days
- * - Plain text: Normal expiration or never-expiring
- *
- * All operations are driven by HAL-FORMS templates from the API:
- * - Create button text comes from template.title
- * - Create form fields come from template.properties
- * - Bulk delete uses the bulkDelete template from the collection
- *
- * @example
- * ```tsx
- * import { ApiKeysList } from './features/api_keys';
- *
- * function ApiKeysPage() {
- *   return <ApiKeysList />;
- * }
- * ```
+ * - Action buttons OUTSIDE the card
+ * - Table INSIDE the card
+ * - Pagination inside the card
  */
 export function ApiKeysList() {
     const {
@@ -65,7 +42,7 @@ export function ApiKeysList() {
         refresh,
     } = useApiKeys();
 
-    const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] =
+    const [create_modal_opened, { open: open_create_modal, close: close_create_modal }] =
         useDisclosure(false);
 
     // Selection state for bulk operations
@@ -76,42 +53,41 @@ export function ApiKeysList() {
         clearSelection,
         isSelected,
         allSelected,
-        someSelected,
         hasSelection,
-        count: selectedCount,
+        count: selected_count,
     } = useSelection(apiKeys as any[], 'apiKeyId');
 
     // Template execution for bulk delete
-    const { execute: executeBulkDelete, loading: bulkDeleteLoading } = useExecuteTemplate(() => {
+    const { execute: execute_bulk_delete, loading: bulk_delete_loading } = useExecuteTemplate(() => {
         clearSelection();
         refresh();
     });
 
     const { confirmDelete } = useConfirmDelete();
 
-    const handleCreateModalClose = () => {
-        closeCreateModal();
+    const handle_create_modal_close = () => {
+        close_create_modal();
         refresh();
     };
 
-    const createTemplate = data?._templates?.default; // HAL-FORMS standard: 'default' is the primary create template
-    const bulkDeleteTemplate = data?._templates?.bulkDelete;
+    const create_template = data?._templates?.default;
+    const bulk_delete_template = data?._templates?.bulkDelete;
 
     // Handle bulk delete with confirmation
-    const handleBulkDelete = () => {
-        if (!bulkDeleteTemplate) return;
+    const handle_bulk_delete = () => {
+        if (!bulk_delete_template) return;
 
         confirmDelete({
             title: 'Delete API Keys',
-            message: 'Are you sure you want to delete the selected API keys?',
-            count: selectedCount,
+            message: `Are you sure you want to delete ${selected_count} API key${selected_count > 1 ? 's' : ''}? This action cannot be undone and will immediately revoke access.`,
+            count: selected_count,
             onConfirm: async () => {
                 try {
-                    await executeBulkDelete(bulkDeleteTemplate, {
+                    await execute_bulk_delete(bulk_delete_template, {
                         apiKeyIds: selected,
                     });
                     toast.success(
-                        `Successfully deleted ${selectedCount} API key${selectedCount === 1 ? '' : 's'}`
+                        `Deleted ${selected_count} API key(s)`
                     );
                 } catch (err: any) {
                     toast.error(err.message || 'Failed to delete API keys');
@@ -121,96 +97,112 @@ export function ApiKeysList() {
     };
 
     return (
-        <Card className="p-6">
-            <div className="flex flex-col space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">API Keys</h2>
-                    <div className="flex items-center gap-2">
-                        {/* Bulk delete button shows only when items selected and template exists */}
-                        {bulkDeleteTemplate && hasSelection && (
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleBulkDelete}
-                                disabled={loading || bulkDeleteLoading}
-                            >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Delete Selected ({selectedCount})
-                            </Button>
-                        )}
-                        {/* Create button only shows if template exists */}
-                        {createTemplate && (
-                            <Button
-                                variant="default"
-                                size="sm"
-                                onClick={openCreateModal}
-                                disabled={loading}
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                {createTemplate.title || 'Create API Key'}
-                            </Button>
-                        )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={refresh}
-                            disabled={loading}
-                            title="Refresh"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Error Alert */}
-                {error && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-
-                {/* Loading Skeleton */}
-                {loading && !apiKeys.length ? (
-                    <ApiKeysTableSkeleton />
-                ) : apiKeys.length === 0 ? (
-                    <Alert>
-                        <AlertTitle>No API Keys</AlertTitle>
-                        <AlertDescription>
-                            You don't have any API keys yet.
-                            {createTemplate && ' Click "Create API Key" to get started.'}
-                        </AlertDescription>
-                    </Alert>
+        <>
+            {/* Actions Toolbar - OUTSIDE card */}
+            <div className="flex items-center justify-between">
+                {hasSelection ? (
+                    <span className="text-sm font-medium">
+                        {selected_count} key{selected_count > 1 ? 's' : ''} selected
+                    </span>
                 ) : (
-                    <>
-                        {/* Table */}
-                        <div className="rounded-md border">
+                    <div></div>
+                )}
+                <div className="flex items-center gap-2">
+                    {hasSelection && (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-4"
+                                onClick={() => clearSelection()}
+                            >
+                                Clear Selection
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-4"
+                                onClick={handle_bulk_delete}
+                                disabled={bulk_delete_loading}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Selected
+                            </Button>
+                        </>
+                    )}
+                    {create_template && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-4"
+                            onClick={open_create_modal}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create API Key
+                        </Button>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-4"
+                        onClick={refresh}
+                        disabled={loading}
+                    >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh
+                    </Button>
+                </div>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* API Keys Table - INSIDE card */}
+            <Card>
+                <CardContent className="p-0">
+                    {loading && apiKeys.length === 0 ? (
+                        <div className="p-6">
+                            <ApiKeysTableSkeleton />
+                        </div>
+                    ) : apiKeys.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="rounded-full bg-muted p-4 mb-4">
+                                <Key className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-lg font-semibold mb-2">No API Keys</h3>
+                            <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                                You haven't created any API keys yet. Create one to get started with programmatic access.
+                            </p>
+                            {create_template && (
+                                <Button onClick={open_create_modal}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Your First API Key
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        {/* Checkbox column only shows if bulk delete template exists */}
-                                        {bulkDeleteTemplate && (
-                                            <TableHead className="w-10">
-                                                <Checkbox
-                                                    checked={allSelected}
-                                                    onCheckedChange={toggleAll}
-                                                    disabled={loading}
-                                                    aria-label="Select all"
-                                                    className={
-                                                        someSelected && !allSelected
-                                                            ? 'data-[state=checked]:bg-primary'
-                                                            : ''
-                                                    }
-                                                />
-                                            </TableHead>
-                                        )}
-                                        <TableHead>Label</TableHead>
-                                        <TableHead>API Key</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead>Expires</TableHead>
-                                        <TableHead>Last Used</TableHead>
+                                        <TableHead className="w-12">
+                                            <Checkbox
+                                                checked={allSelected}
+                                                onCheckedChange={toggleAll}
+                                                disabled={loading}
+                                                aria-label="Select all API keys"
+                                            />
+                                        </TableHead>
+                                        <TableHead className="w-[200px]">Label</TableHead>
+                                        <TableHead className="min-w-[400px]">API Key</TableHead>
+                                        <TableHead className="w-[150px]">Created</TableHead>
+                                        <TableHead className="w-[150px]">Last Used</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -218,32 +210,38 @@ export function ApiKeysList() {
                                         <ApiKeyRow
                                             key={apiKey.apiKeyId}
                                             apiKey={apiKey}
-                                            showCheckbox={!!bulkDeleteTemplate}
+                                            showCheckbox={true}
                                             selected={isSelected(apiKey.apiKeyId)}
                                             onToggleSelect={() => toggleSelection(apiKey.apiKeyId)}
                                         />
                                     ))}
                                 </TableBody>
                             </Table>
-                        </div>
 
-                        {/* Pagination */}
-                        <PaginationControls
-                            pagination={pagination}
-                            onNextPage={handleNextPage}
-                            onPreviousPage={handlePreviousPage}
-                            onPageSizeChange={handlePageSizeChange}
-                        />
-                    </>
-                )}
-            </div>
+                            {/* Pagination - inside card at bottom */}
+                            {apiKeys.length > 0 && (
+                                <div className="px-6 pb-6">
+                                    <PaginationControls
+                                        pagination={pagination}
+                                        onNextPage={handleNextPage}
+                                        onPreviousPage={handlePreviousPage}
+                                        onPageSizeChange={handlePageSizeChange}
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Create Modal */}
-            <CreateApiKeyModal
-                template={createTemplate}
-                opened={createModalOpened}
-                onClose={handleCreateModalClose}
-            />
-        </Card>
+            {create_template && (
+                <CreateApiKeyModal
+                    template={create_template}
+                    opened={create_modal_opened}
+                    onClose={handle_create_modal_close}
+                />
+            )}
+        </>
     );
 }

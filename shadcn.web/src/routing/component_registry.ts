@@ -17,8 +17,8 @@
  */
 
 import { ComponentType } from 'react';
-import { SessionsList } from '../features/sessions';
-import { ApiKeysList } from '../features/api_keys';
+import { SessionsPage } from '../features/sessions/sessions_page';
+import { ApiKeysPage } from '../features/api_keys/api_keys_page';
 import { Admin } from '../features/admin';
 
 /**
@@ -30,8 +30,8 @@ import { Admin } from '../features/admin';
  */
 export const componentRegistry: Record<string, ComponentType> = {
     // User resources
-    sessions: SessionsList,
-    'api-keys': ApiKeysList,
+    sessions: SessionsPage,
+    'api-keys': ApiKeysPage,
 
     // Admin resources
     admin: Admin,
