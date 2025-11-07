@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { toast } from 'sonner';
+import { AlertCircle } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TemplateForm } from '../../../components/hal_forms/template_form';
 import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
 import { ApiKeyDisplay } from './api_key_display';
@@ -118,6 +120,15 @@ export function CreateApiKeyModal({ template, opened, onClose }: CreateApiKeyMod
                     />
                 ) : (
                     <div className="flex flex-col space-y-4">
+                        <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Success</AlertTitle>
+                            <AlertDescription>
+                                Your API key has been created. You can copy it now or access it
+                                anytime from the API keys list. Keep your API keys secure and
+                                never share them publicly.
+                            </AlertDescription>
+                        </Alert>
                         {createdKey && (
                             <ApiKeyDisplay
                                 apiKey={createdKey.apiKey}
