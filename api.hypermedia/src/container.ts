@@ -84,13 +84,13 @@ class AppContainer {
             .toFactory(() => {
                 const environment = AppContainer.getEnvironment();
                 const secretsConfig =
-                    environment === "local" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
+                    environment === "moto" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
 
                 const baseStore = new AwsSecretsConfigurationStore(
                     SecretsConfigSchema,
                     environment,
                     secretsConfig,
-                    "serverlesslaunchpad.secrets"
+                    "serverlesslaunchpad.com"
                 );
                 // Cache for 15 minutes - secrets may be rotated
                 const cachedStore = new CachedConfigurationStore(baseStore, 15);

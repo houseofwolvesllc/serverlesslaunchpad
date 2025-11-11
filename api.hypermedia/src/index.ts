@@ -21,6 +21,7 @@ import { HttpMethod, Router } from "./router";
 // Import controllers for route registration
 import { ApiKeysController } from "./api_keys/api_keys_controller";
 import { AuthenticationController } from "./authentication/authentication_controller";
+import { AuthenticationCookieRepository } from "./authentication/authentication_cookie_repository";
 import { RootController } from "./root/root_controller";
 import { SessionsController } from "./sessions/sessions_controller";
 import { SitemapController } from "./sitemap/sitemap_controller";
@@ -237,7 +238,7 @@ function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult
             ? jsonAdapter.format(responseData)
             : xhtmlAdapter.format(responseData);
 
-    return {
+    const response: ALBResult = {
         statusCode: status,
         headers: {
             "Content-Type": acceptedContentType,
@@ -245,4 +246,12 @@ function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult
         },
         body,
     };
+
+    // Clear session cookie on 401 errors if a session cookie was present
+    // This prevents invalid/expired cookies from causing redirect loops
+    if (status === 401 && AuthenticationCookieRepository.get(event)) {
+        AuthenticationCookieRepository.remove(response);
+    }
+
+    return response;
 }

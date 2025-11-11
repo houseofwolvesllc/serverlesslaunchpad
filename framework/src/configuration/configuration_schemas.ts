@@ -5,7 +5,7 @@ import { z } from "zod";
  * Contains only non-sensitive configuration data that can be cached indefinitely.
  */
 export const ApiConfigSchema = z.object({
-    environment: z.enum(["local", "development", "staging", "production"]),
+    environment: z.enum(["moto", "development", "staging", "production"]),
 
     // AWS configuration
     aws: z.object({
