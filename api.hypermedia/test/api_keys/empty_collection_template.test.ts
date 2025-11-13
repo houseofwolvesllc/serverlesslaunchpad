@@ -33,19 +33,19 @@ describe("ApiKeyCollectionAdapter - Empty Collection", () => {
         const templates = adapter._templates;
 
         expect(templates).toBeDefined();
-        expect(templates.default).toBeDefined();
-        expect(templates.default.title).toBe("Create API Key");
-        expect(templates.default.method).toBe("POST");
-        expect(templates.default.target).toBe("/users/user-123/api-keys/create");
+        expect(templates.create).toBeDefined();
+        expect(templates.create.title).toBe("Create API Key");
+        expect(templates.create.method).toBe("POST");
+        expect(templates.create.target).toBe("/users/user-123/api-keys/create");
     });
 
-    it("should include bulkDelete template even when collection is empty", () => {
+    it("should include bulk-delete template even when collection is empty", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, emptyApiKeys, emptyPaging, mockRouter);
         const templates = adapter._templates;
 
         expect(templates).toBeDefined();
-        expect(templates.bulkDelete).toBeDefined();
-        expect(templates.bulkDelete.title).toBe("Delete Selected API Keys");
+        expect(templates['bulk-delete']).toBeDefined();
+        expect(templates['bulk-delete'].title).toBe("Delete Selected API Keys");
     });
 
     it("should serialize templates in toJSON even when collection is empty", () => {
@@ -53,15 +53,15 @@ describe("ApiKeyCollectionAdapter - Empty Collection", () => {
         const json = adapter.toJSON();
 
         expect(json._templates).toBeDefined();
-        expect(json._templates.default).toBeDefined();
-        expect(json._templates.bulkDelete).toBeDefined();
+        expect(json._templates.create).toBeDefined();
+        expect(json._templates['bulk-delete']).toBeDefined();
         expect(json.count).toBe(0);
         expect(json._embedded.apiKeys).toHaveLength(0);
     });
 
     it("should have properly formatted create template for forms", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, emptyApiKeys, emptyPaging, mockRouter);
-        const createTemplate = adapter._templates.default;
+        const createTemplate = adapter._templates.create;
 
         expect(createTemplate.contentType).toBe("application/json");
         expect(createTemplate.properties).toBeDefined();

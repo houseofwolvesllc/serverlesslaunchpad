@@ -1,4 +1,4 @@
-import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
+import { HalObject, HalResourceAdapter } from "../content_types/hal_adapter";
 
 export interface AccessContext {
     type: "session" | "apiKey" | "unknown";
@@ -11,10 +11,7 @@ export interface AccessContext {
 }
 
 export class AccessAdapter extends HalResourceAdapter {
-    constructor(
-        private access: AccessContext,
-        private userId: string
-    ) {
+    constructor(private access: AccessContext) {
         super();
     }
 
@@ -47,10 +44,6 @@ export class AccessAdapter extends HalResourceAdapter {
     }
 
     get _links(): HalObject["_links"] {
-        if (this.access.type === "session" && this.access.sessionId) {
-            return this.selfLink(`/users/${this.userId}/sessions/${this.access.sessionId}`);
-        }
-
         return {};
     }
 

@@ -7,10 +7,13 @@
  * - Action toolbar with create/refresh/delete
  * - Field renderers based on data type
  * - Empty and loading states
+ * - Template categorization (navigation/form/action)
+ * - Context-aware template execution
  *
  * This is the main component that drastically reduces feature code.
  */
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,12 +24,23 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useHalCollection, type ColumnConfig } from '@/hooks/use_hal_collection';
 import { useSelection } from '@/hooks/use_selection';
 import { HalResourceRow } from './hal_resource_row';
 import { type FieldRenderer } from './field_renderers';
-import { type HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { TemplateForm } from '@/components/hal_forms/template_form';
+import { ConfirmationDialog } from '@/components/ui/confirmation_dialog';
+import {
+    type HalObject,
+    categorizeTemplate,
+    buildTemplateData,
+    getConfirmationConfig,
+    type TemplateExecutionContext,
+} from '@houseofwolves/serverlesslaunchpad.web.commons';
+import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import { toast } from 'sonner';
 
 export interface HalCollectionListProps {
     resource: HalObject | null | undefined;
@@ -34,6 +48,8 @@ export interface HalCollectionListProps {
     onCreate?: () => void;
     onBulkDelete?: (selectedIds: string[]) => void;
     onRowClick?: (item: HalObject) => void;
+    /** Template execution handler (for categorized templates) */
+    onTemplateExecute?: (template: HalTemplate, data: Record<string, any>) => Promise<void>;
     columnConfig?: ColumnConfig;
     customRenderers?: Record<string, FieldRenderer>;
     primaryKey?: string;
@@ -79,6 +95,7 @@ export function HalCollectionList({
     onCreate,
     onBulkDelete,
     onRowClick,
+    onTemplateExecute,
     columnConfig = {},
     customRenderers,
     primaryKey = 'id',
@@ -92,6 +109,23 @@ export function HalCollectionList({
     getRowClassName,
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
+
+    // State for confirmation dialog
+    const [confirmationState, setConfirmationState] = useState<{
+        open: boolean;
+        template: HalTemplate | null;
+        context: TemplateExecutionContext | null;
+    }>({ open: false, template: null, context: null });
+
+    // State for form dialog
+    const [formState, setFormState] = useState<{
+        open: boolean;
+        template: HalTemplate | null;
+        templateKey: string | null;
+    }>({ open: false, template: null, templateKey: null });
+
+    // Loading state for template execution
+    const [executingTemplate, setExecutingTemplate] = useState<string | null>(null);
 
     // Detect primary key from first item if not provided
     const detectedPrimaryKey =
@@ -117,18 +151,111 @@ export function HalCollectionList({
     // Determine if bulk delete is available
     const canBulkDelete = showBulkDelete && (!!bulkDeleteTemplate || !!onBulkDelete);
 
+    // Handle template execution with context
+    const executeTemplate = async (template: HalTemplate, context: TemplateExecutionContext) => {
+        try {
+            const data = buildTemplateData(context);
+
+            if (onTemplateExecute) {
+                await onTemplateExecute(template, data);
+            }
+
+            // Clear selections after successful bulk operation
+            if (context.selections && context.selections.length > 0) {
+                clearSelection();
+            }
+
+            // Refresh the list
+            if (onRefresh) {
+                await onRefresh();
+            }
+
+            toast.success(template.title || 'Action completed');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Operation failed';
+            toast.error(message);
+            throw error;
+        }
+    };
+
     // Handle create action
     const handleCreate = () => {
         if (onCreate) {
+            // Legacy onCreate handler
             onCreate();
+        } else if (createTemplate && onTemplateExecute) {
+            // Use template categorization
+            const category = categorizeTemplate('create', createTemplate);
+
+            if (category === 'form') {
+                // Show form dialog
+                setFormState({
+                    open: true,
+                    template: createTemplate,
+                    templateKey: 'create',
+                });
+            }
         }
     };
 
     // Handle bulk delete action
     const handleBulkDelete = () => {
         if (onBulkDelete) {
+            // Legacy onBulkDelete handler
             const selectedIds = Array.from(selected);
             onBulkDelete(selectedIds);
+        } else if (bulkDeleteTemplate && onTemplateExecute) {
+            // Use template categorization
+            const context: TemplateExecutionContext = {
+                template: bulkDeleteTemplate,
+                selections: Array.from(selected),
+                resource,
+            };
+
+            // Show confirmation dialog
+            setConfirmationState({
+                open: true,
+                template: bulkDeleteTemplate,
+                context,
+            });
+        }
+    };
+
+    // Handle confirmation dialog confirm
+    const handleConfirmAction = async () => {
+        if (!confirmationState.template || !confirmationState.context) return;
+
+        const templateKey = Object.keys(templates || {}).find(
+            key => templates?.[key] === confirmationState.template
+        );
+
+        setExecutingTemplate(templateKey || 'action');
+
+        try {
+            await executeTemplate(confirmationState.template, confirmationState.context);
+            setConfirmationState({ open: false, template: null, context: null });
+        } finally {
+            setExecutingTemplate(null);
+        }
+    };
+
+    // Handle form dialog submit
+    const handleFormSubmit = async (formData: Record<string, any>) => {
+        if (!formState.template) return;
+
+        setExecutingTemplate(formState.templateKey || 'form');
+
+        try {
+            const context: TemplateExecutionContext = {
+                template: formState.template,
+                formData,
+                resource,
+            };
+
+            await executeTemplate(formState.template, context);
+            setFormState({ open: false, template: null, templateKey: null });
+        } finally {
+            setExecutingTemplate(null);
         }
     };
 
@@ -270,6 +397,46 @@ export function HalCollectionList({
                     </TableBody>
                 </Table>
             </Card>
+
+            {/* Confirmation Dialog for actions */}
+            {confirmationState.template && confirmationState.context && (
+                <ConfirmationDialog
+                    open={confirmationState.open}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setConfirmationState({ open: false, template: null, context: null });
+                        }
+                    }}
+                    {...getConfirmationConfig(confirmationState.template, confirmationState.context)}
+                    onConfirm={handleConfirmAction}
+                    loading={executingTemplate !== null}
+                />
+            )}
+
+            {/* Form Dialog for create/update */}
+            {formState.template && (
+                <Dialog open={formState.open} onOpenChange={(open) => {
+                    if (!open) {
+                        setFormState({ open: false, template: null, templateKey: null });
+                    }
+                }}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{formState.template.title || 'Form'}</DialogTitle>
+                            <DialogDescription>
+                                Fill out the form below and submit.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <TemplateForm
+                            template={formState.template}
+                            onSubmit={handleFormSubmit}
+                            onCancel={() => setFormState({ open: false, template: null, templateKey: null })}
+                            loading={executingTemplate !== null}
+                            hideTitle={true}
+                        />
+                    </DialogContent>
+                </Dialog>
+            )}
         </div>
     );
 }

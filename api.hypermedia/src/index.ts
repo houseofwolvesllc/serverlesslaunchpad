@@ -14,6 +14,7 @@ import {
     UnprocessableEntityError,
     ValidationError,
 } from "./errors";
+import { parseRequestBody } from "./content_types/body_parser";
 import { ExtendedALBEvent } from "./extended_alb_event";
 import { ApiLogger } from "./logging";
 import { HttpMethod, Router } from "./router";
@@ -25,6 +26,7 @@ import { AuthenticationCookieRepository } from "./authentication/authentication_
 import { RootController } from "./root/root_controller";
 import { SessionsController } from "./sessions/sessions_controller";
 import { SitemapController } from "./sitemap/sitemap_controller";
+import { UsersController } from "./users/users_controller";
 
 const container = getContainer();
 const router = new Router();
@@ -35,7 +37,8 @@ router.registerRoutes([
     AuthenticationController,
     SessionsController,
     ApiKeysController,
-    SitemapController
+    SitemapController,
+    UsersController
 ]);
 
 // Register router as singleton in container so it can be injected into controllers
@@ -66,7 +69,13 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
     const logger = container.resolve(ApiLogger);
 
     try {
-        // Match the route
+        // Parse request body to check for method override (_method field)
+        const extendedEvent = event as ExtendedALBEvent;
+        extendedEvent.traceId = traceId;
+        const parsedBody = parseRequestBody(extendedEvent);
+
+        // Match the route using actual HTTP method (POST for method overrides)
+        // Method override is handled after routing by updating extendedEvent.httpMethod
         const routeMatch = router.match(event.httpMethod as HttpMethod, event.path);
         if (!routeMatch) {
             throw new NotFoundError(`Route not found: ${event.httpMethod} ${event.path}`);
@@ -76,11 +85,13 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
         // Controllers are concrete classes, so they can be resolved without explicit binding
         const controller = container.resolve(routeMatch.route.controllerClass);
 
-        // Inject route parameters into the event for controller access
-        // This avoids the controller having to re-parse the path
-        const extendedEvent = event as ExtendedALBEvent;
+        // Inject route parameters and override HTTP method if needed
         extendedEvent.pathParameters = routeMatch.parameters;
-        extendedEvent.traceId = traceId;
+
+        // Override httpMethod in event if _method was present
+        if (parsedBody.method) {
+            extendedEvent.httpMethod = parsedBody.method.toUpperCase();
+        }
 
         // Invoke the controller method
         const controllerMethod = controller[routeMatch.route.methodName];

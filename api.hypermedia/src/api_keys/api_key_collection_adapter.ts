@@ -58,7 +58,7 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                     }),
                 ],
             }),
-            default: this.createTemplate(
+            create: this.createTemplate(
                 "Create API Key",
                 "POST",
                 this.router.buildHref(ApiKeysController, "createApiKey", { userId: this.userId }),
@@ -73,7 +73,7 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                     ],
                 }
             ),
-            bulkDelete: this.createTemplate(
+            "bulk-delete": this.createTemplate(
                 "Delete Selected API Keys",
                 "DELETE",
                 this.router.buildHref(ApiKeysController, "deleteApiKeys", { userId: this.userId }),

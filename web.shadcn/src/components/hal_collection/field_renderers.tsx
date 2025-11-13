@@ -10,24 +10,59 @@ import { formatDistanceToNow } from 'date-fns';
 import { Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FieldType, type InferredColumn } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import {
+    FieldType,
+    type InferredColumn,
+    getEnumLabel,
+    type HalTemplateProperty,
+} from '@houseofwolves/serverlesslaunchpad.web.commons';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 
 /**
- * Text field renderer - Simple text display
+ * Text field renderer - Simple text display with array support
+ *
+ * Automatically detects arrays and renders them as badges.
  */
-export const TextRenderer: FieldRenderer = (value, column) => {
+export const TextRenderer: FieldRenderer = (value, column, item) => {
     if (value === null || value === undefined || value === '') {
         return <span className="text-muted-foreground text-sm">{column.nullText || '—'}</span>;
     }
+
+    // Handle arrays (like enabled_features) - render as badges
+    if (Array.isArray(value)) {
+        if (value.length === 0) {
+            return <span className="text-muted-foreground text-sm">{column.nullText || 'None'}</span>;
+        }
+
+        // Try to get enum property for label lookup
+        const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+        const labels = value.map(val => {
+            if (enumProperty) {
+                return getEnumLabel(val, enumProperty, String(val));
+            }
+            return String(val);
+        });
+
+        return (
+            <div className="flex flex-wrap gap-1">
+                {labels.map((label, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                        {label}
+                    </Badge>
+                ))}
+            </div>
+        );
+    }
+
     return <span className="text-sm">{String(value)}</span>;
 };
 
 /**
- * Code field renderer - Monospace text with copy button
+ * Code field renderer component - Monospace text with copy button
+ * Extracted as a component to properly use React hooks
  */
-export const CodeRenderer: FieldRenderer = (value, column) => {
+function CodeFieldComponent({ value, column }: { value: any; column: InferredColumn }) {
     const [copied, setCopied] = useState(false);
 
     if (!value) {
@@ -61,6 +96,13 @@ export const CodeRenderer: FieldRenderer = (value, column) => {
             </Button>
         </div>
     );
+}
+
+/**
+ * Code field renderer - Monospace text with copy button
+ */
+export const CodeRenderer: FieldRenderer = (value, column) => {
+    return <CodeFieldComponent value={value} column={column} />;
 };
 
 /**
@@ -104,16 +146,48 @@ export const DateRenderer: FieldRenderer = (value, column) => {
 };
 
 /**
- * Badge field renderer - Status/type badges
+ * Helper: Extract enum metadata from HAL templates
+ * Looks for a template property matching the field name and returns it
  */
-export const BadgeRenderer: FieldRenderer = (value, column) => {
-    if (!value) {
+function getEnumPropertyFromTemplates(item: any, fieldName: string): HalTemplateProperty | undefined {
+    if (!item?._templates) return undefined;
+
+    // Check all templates for a property matching this field
+    for (const template of Object.values(item._templates)) {
+        if (typeof template === 'object' && template !== null && 'properties' in template) {
+            const properties = (template as any).properties;
+            if (Array.isArray(properties)) {
+                const property = properties.find((p: any) => p.name === fieldName);
+                if (property?.options) {
+                    return property as HalTemplateProperty;
+                }
+            }
+        }
+    }
+
+    return undefined;
+}
+
+/**
+ * Badge field renderer - Status/type badges with enum support
+ *
+ * This renderer now checks for enum metadata in HAL templates and uses
+ * the display label when available, falling back to the raw value.
+ */
+export const BadgeRenderer: FieldRenderer = (value, column, item) => {
+    if (value === null || value === undefined || value === '') {
         return <span className="text-muted-foreground text-sm">{column.nullText || '—'}</span>;
     }
 
-    // Determine badge variant based on value
+    // Try to get enum property from HAL templates
+    const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+    const displayValue = enumProperty
+        ? getEnumLabel(value, enumProperty, String(value))
+        : String(value);
+
+    // Determine badge variant based on display value
     const getVariant = (val: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-        const lower = String(val).toLowerCase();
+        const lower = val.toLowerCase();
         if (lower.includes('active') || lower.includes('success') || lower.includes('enabled')) {
             return 'default';
         }
@@ -127,8 +201,8 @@ export const BadgeRenderer: FieldRenderer = (value, column) => {
     };
 
     return (
-        <Badge variant={getVariant(String(value))} className="text-xs">
-            {String(value)}
+        <Badge variant={getVariant(displayValue)} className="text-xs">
+            {displayValue}
         </Badge>
     );
 };
@@ -147,11 +221,62 @@ export const BooleanRenderer: FieldRenderer = (value) => {
 };
 
 /**
- * Number field renderer - Formatted numbers
+ * Bitfield array renderer - Displays comma-separated enum flags
+ *
+ * Used for fields like `enabled_features` that represent multiple
+ * selected flags from a bitfield enum. Displays labels from HAL templates
+ * when available.
  */
-export const NumberRenderer: FieldRenderer = (value, column) => {
+export const BitfieldArrayRenderer: FieldRenderer = (value, column, item) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+        return <span className="text-muted-foreground text-sm">{column.nullText || 'None'}</span>;
+    }
+
+    if (!Array.isArray(value)) {
+        return <span className="text-sm">{String(value)}</span>;
+    }
+
+    // Try to get enum property for label lookup
+    const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+
+    // Map array values to labels
+    const labels = value.map(val => {
+        if (enumProperty) {
+            return getEnumLabel(val, enumProperty, String(val));
+        }
+        return String(val);
+    });
+
+    return (
+        <div className="flex flex-wrap gap-1">
+            {labels.map((label, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                    {label}
+                </Badge>
+            ))}
+        </div>
+    );
+};
+
+/**
+ * Number field renderer - Formatted numbers with enum support
+ *
+ * Checks for enum metadata first (for numeric enums), then formats as number.
+ */
+export const NumberRenderer: FieldRenderer = (value, column, item) => {
     if (value === null || value === undefined) {
         return <span className="text-muted-foreground text-sm">{column.nullText || '—'}</span>;
+    }
+
+    // Check if this is an enum field (numeric enums like Role)
+    const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+    if (enumProperty) {
+        const displayValue = getEnumLabel(value, enumProperty, String(value));
+        return (
+            <Badge variant="secondary" className="text-xs">
+                {displayValue}
+            </Badge>
+        );
     }
 
     const num = Number(value);

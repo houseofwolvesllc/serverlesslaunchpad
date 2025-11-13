@@ -49,23 +49,23 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
         };
     });
 
-    it("should include bulkDelete template in collection _templates", () => {
+    it("should include bulk-delete template in collection _templates", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const templates = adapter._templates;
 
         expect(templates).toBeDefined();
-        expect(templates.bulkDelete).toBeDefined();
-        expect(templates.bulkDelete.title).toBe("Delete Selected Sessions");
-        expect(templates.bulkDelete.method).toBe("DELETE");
+        expect(templates['bulk-delete']).toBeDefined();
+        expect(templates['bulk-delete'].title).toBe("Delete Selected Sessions");
+        expect(templates['bulk-delete'].method).toBe("DELETE");
     });
 
-    it("should include _templates with bulkDelete in toJSON output", () => {
+    it("should include _templates with bulk-delete in toJSON output", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const json = adapter.toJSON();
 
         expect(json).toHaveProperty("_templates");
         expect(json._templates).toBeDefined();
-        expect(json._templates.bulkDelete).toBeDefined();
+        expect(json._templates['bulk-delete']).toBeDefined();
     });
 
     it("should not include individual delete templates on embedded sessions (bulk delete only)", () => {
@@ -81,15 +81,15 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
             expect(session._templates).toBeUndefined();
         });
 
-        // Collection should have bulkDelete template instead
-        expect(json._templates?.bulkDelete).toBeDefined();
+        // Collection should have bulk-delete template instead
+        expect(json._templates?.['bulk-delete']).toBeDefined();
     });
 
-    it("should include bulkDelete template target URL using mockRouter", () => {
+    it("should include bulk-delete template target URL using mockRouter", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const json = adapter.toJSON();
 
-        const bulkDeleteTemplate = json._templates?.bulkDelete;
+        const bulkDeleteTemplate = json._templates?.['bulk-delete'];
 
         expect(bulkDeleteTemplate?.target).toBeDefined();
         expect(bulkDeleteTemplate?.target).toContain(userId);
@@ -107,9 +107,9 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
         expect(json).toHaveProperty("count");
         expect(json).toHaveProperty("paging");
 
-        // Verify sessions collection has bulkDelete template
+        // Verify sessions collection has bulk-delete template
         expect(json._templates).toBeDefined();
-        expect(json._templates.bulkDelete).toBeDefined();
+        expect(json._templates['bulk-delete']).toBeDefined();
 
         // Embedded items should NOT have individual delete templates (bulk delete only)
         expect(json._embedded?.sessions?.[0]._templates).toBeUndefined();
@@ -163,6 +163,6 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
 
         expect(templates.next).toBeUndefined();
         expect(templates.prev).toBeUndefined();
-        expect(templates.bulkDelete).toBeDefined(); // Should still have bulkDelete
+        expect(templates['bulk-delete']).toBeDefined(); // Should still have bulk-delete
     });
 });

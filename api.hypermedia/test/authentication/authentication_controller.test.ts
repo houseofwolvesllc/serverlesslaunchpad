@@ -141,8 +141,8 @@ describe("AuthenticationController", () => {
             expect(responseBody.lastName).toBe("User");
 
             // HAL uses _links object, not links array
-            expect(responseBody._links).toHaveProperty("self");
-            expect(responseBody._links.self.href).toBe("/users/user-123");
+            expect(responseBody._links).toHaveProperty("user");
+            expect(responseBody._links.user.href).toBe("/users/user-123");
 
             // Sessions and API Keys are templates (POST operations)
             expect(responseBody._templates).toHaveProperty("sessions");
@@ -283,8 +283,8 @@ describe("AuthenticationController", () => {
             // Assert
             const responseBody = JSON.parse(result.body || "{}");
 
-            // User self link
-            expect(responseBody._links.self.href).toBe("/users/user-123");
+            // User link
+            expect(responseBody._links.user.href).toBe("/users/user-123");
 
             // Sessions and API Keys are templates (POST operations)
             expect(responseBody._templates).toHaveProperty("sessions");

@@ -19,28 +19,26 @@ export const DashboardHome = () => {
     const navigate = useNavigate();
     const { signOut } = useAuth();
     const { signedInUser } = useContext(AuthenticationContext);
-    const { rawItems } = useSitemap();
+    const { links, templates } = useSitemap();
 
     const username = signedInUser?.username || signedInUser?.email || 'User';
     const first_name = signedInUser?.firstName;
 
-    // Find navigation items by ID to get their hrefs
-    const findNavItemById = (id: string): any => {
-        const search = (items: any[]): any => {
-            for (const item of items) {
-                if (item.id === id) return item;
-                if (item.items) {
-                    const found = search(item.items);
-                    if (found) return found;
-                }
-            }
-            return null;
-        };
-        return search(rawItems || []);
+    // Resolve link/template href by rel
+    const getHref = (rel: string): string | null => {
+        // Check links first
+        if (links && links[rel]) {
+            return links[rel].href;
+        }
+        // Check templates
+        if (templates && templates[rel]) {
+            return templates[rel].target;
+        }
+        return null;
     };
 
-    const sessions_item = findNavItemById('sessions');
-    const api_keys_item = findNavItemById('api-keys');
+    const sessions_href = getHref('sessions');
+    const api_keys_href = getHref('api-keys');
 
     // Greeting based on time of day
     const get_greeting = (): string => {
@@ -91,8 +89,8 @@ export const DashboardHome = () => {
                             </p>
                             <Button
                                 className="w-full"
-                                onClick={() => sessions_item?.href && navigate(sessions_item.href)}
-                                disabled={!sessions_item?.href}
+                                onClick={() => sessions_href && navigate(sessions_href)}
+                                disabled={!sessions_href}
                             >
                                 Manage Sessions
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -115,8 +113,8 @@ export const DashboardHome = () => {
                             </p>
                             <Button
                                 className="w-full"
-                                onClick={() => api_keys_item?.href && navigate(api_keys_item.href)}
-                                disabled={!api_keys_item?.href}
+                                onClick={() => api_keys_href && navigate(api_keys_href)}
+                                disabled={!api_keys_href}
                             >
                                 Manage API Keys
                                 <ArrowRight className="ml-2 h-4 w-4" />
