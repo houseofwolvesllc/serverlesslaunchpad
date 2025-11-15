@@ -1,4 +1,4 @@
-import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
+import { Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller";
 import { Protected } from "../decorators/protected";
@@ -7,6 +7,7 @@ import { Route, Router } from "../router";
 import { SessionsController } from "../sessions/sessions_controller";
 import { ApiKeysController } from "../api_keys/api_keys_controller";
 import { AuthenticationController } from "../authentication/authentication_controller";
+import { UsersController } from "../users/users_controller";
 
 /**
  * Root API Response Structure
@@ -129,6 +130,25 @@ export class RootController extends BaseController {
                     }
                 ]
             };
+
+            // Admin-only templates
+            const user = event.authContext?.identity;
+            if (user && user.role >= Role.Admin) {
+                response._templates["users"] = {
+                    title: "Users",
+                    method: "POST",
+                    target: this.router.buildHref(UsersController, 'getUsers', {}),
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
+                };
+            }
         }
 
         return this.success(event, response);

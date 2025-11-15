@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Code2, ChevronRight, ChevronsLeft, ChevronsRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
@@ -20,6 +20,16 @@ import { DashboardHome } from './dashboard_home';
 import { GenericResourceView } from '../resource/generic_resource_view';
 import { BreadcrumbProvider, useBreadcrumb } from '@/context/breadcrumb_context';
 
+/**
+ * Wrapper to force GenericResourceView to remount when path changes
+ * This prevents stale state issues when navigating between different resources
+ */
+function GenericResourceViewWrapper() {
+    // GenericResourceView will remount automatically when the route changes
+    // due to how React Router handles route elements
+    return <GenericResourceView />;
+}
+
 function DashboardContent() {
     // Fetch navigation from sitemap API
     const { navigation, navStructure, links, templates, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
@@ -31,6 +41,22 @@ function DashboardContent() {
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure(false);
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
     const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
+
+    // Track if this is the initial page load
+    const isInitialLoad = useRef(true);
+
+    // Redirect to dashboard on direct URL navigation (refresh, bookmark, direct entry)
+    // This enforces pure HATEOAS navigation - users must start from dashboard and follow links
+    useEffect(() => {
+        if (isInitialLoad.current) {
+            isInitialLoad.current = false;
+
+            // If initial load and not on dashboard, redirect
+            if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+                navigate('/dashboard', { replace: true });
+            }
+        }
+    }, [location.pathname, navigate]);
 
     // Load API base URL for documentation link
     useEffect(() => {
@@ -382,7 +408,7 @@ function DashboardContent() {
                                 <Skeleton className="h-4 w-48" />
                             </div>
                         ) : (
-                            <Routes>
+                            <Routes key={location.pathname}>
                                 {/* Redirect root to dashboard */}
                                 <Route index element={<DashboardHome />} />
 
@@ -395,7 +421,7 @@ function DashboardContent() {
                                 ))}
 
                                 {/* Catch-all for HAL resources */}
-                                <Route path="*" element={<GenericResourceView />} />
+                                <Route path="*" element={<GenericResourceViewWrapper />} />
                             </Routes>
                         )}
                     </div>

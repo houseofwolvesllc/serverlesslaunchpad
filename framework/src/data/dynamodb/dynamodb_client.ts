@@ -9,9 +9,12 @@ import {
     UpdateCommand,
     DeleteCommand,
     QueryCommand,
+    ScanCommand,
     BatchWriteCommand,
     QueryCommandInput,
     QueryCommandOutput,
+    ScanCommandInput,
+    ScanCommandOutput,
 } from "@aws-sdk/lib-dynamodb";
 
 export interface DynamoDbClientConfig {
@@ -138,6 +141,27 @@ export class DynamoDbClient {
         });
 
         const response: QueryCommandOutput = await this.docClient.send(command);
+
+        return {
+            items: (response.Items || []) as T[],
+            lastEvaluatedKey: response.LastEvaluatedKey,
+        };
+    }
+
+    /**
+     * Scan table with optional pagination
+     * Note: Scan operations are expensive - use query when possible
+     */
+    async scan<T>(params: Omit<ScanCommandInput, "TableName"> & { TableName: string }): Promise<{
+        items: T[];
+        lastEvaluatedKey?: Record<string, any>;
+    }> {
+        const command = new ScanCommand({
+            ...params,
+            TableName: this.getTableName(params.TableName),
+        });
+
+        const response: ScanCommandOutput = await this.docClient.send(command);
 
         return {
             items: (response.Items || []) as T[],

@@ -32,6 +32,10 @@ export interface BreadcrumbMeta {
     parentChain: BreadcrumbMeta[];
     /** Whether this represents a group (non-clickable parent) */
     isGroup: boolean;
+    /** Resource type: 'link' (GET) or 'template' (POST) */
+    resourceType?: 'link' | 'template';
+    /** Template definition if this is a template-based route */
+    template?: HalTemplate;
 }
 
 /**
@@ -94,22 +98,34 @@ function resolveNavItem(
  *
  * Converts absolute paths from API to relative paths for nested routes.
  * React Router expects relative paths when used inside parent routes.
+ * Also converts HAL path parameters {param} to React Router syntax :param
+ * AND converts literal user IDs to :userId parameter for dynamic routing
  *
- * @param href - Absolute path from API (e.g., "/users/123/sessions/list")
- * @returns Relative path for React Router (e.g., "users/123/sessions/list")
+ * @param href - Absolute path from API (e.g., "/users/{userId}/sessions/list" or "/users/abc123/sessions/list")
+ * @returns Relative path for React Router (e.g., "users/:userId/sessions/list")
  *
  * @example
  * ```typescript
- * normalizePathForRouter('/users/123/sessions');
- * // Returns: 'users/123/sessions'
+ * normalizePathForRouter('/users/{userId}/sessions');
+ * // Returns: 'users/:userId/sessions'
  *
- * normalizePathForRouter('users/123/sessions');
- * // Returns: 'users/123/sessions'
+ * normalizePathForRouter('/users/abc123/sessions/list');
+ * // Returns: 'users/:userId/sessions/list'
  * ```
  */
 export function normalizePathForRouter(href: string): string {
     // Remove leading slash for nested routes
-    return href.startsWith('/') ? href.slice(1) : href;
+    let path = href.startsWith('/') ? href.slice(1) : href;
+
+    // Convert HAL path parameters {param} to React Router syntax :param
+    path = path.replace(/\{([^}]+)\}/g, ':$1');
+
+    // Convert literal user IDs (hex strings 32 chars) to :userId parameter
+    // This allows routes like users/abc123.../sessions/list to match users/:userId/sessions/list
+    // Note: regex works on path AFTER leading slash removed, so no leading / in pattern
+    path = path.replace(/users\/[0-9a-f]{32}(\/|$)/gi, 'users/:userId$1');
+
+    return path;
 }
 
 /**
@@ -190,6 +206,11 @@ export function generateRoutesFromNavStructure(
 
         // Skip navigation items without registered components (gracefully handle unimplemented routes)
         if (!Component) {
+            logger.warn('No component found for navigation item', {
+                context: 'Route Generation',
+                rel: navItem.rel,
+                href: resolved.href,
+            });
             continue;
         }
 
@@ -199,6 +220,8 @@ export function generateRoutesFromNavStructure(
             path: resolved.href,
             parentChain: [...parentChain],
             isGroup: false,
+            resourceType: navItem.type, // 'link' or 'template'
+            template: navItem.type === 'template' ? resolved.template : undefined,
         };
 
         // Normalize path and create route
@@ -207,7 +230,7 @@ export function generateRoutesFromNavStructure(
         routes.push({
             path,
             element: createElement(Component),
-            handle: routeMeta, // Attach breadcrumb metadata
+            handle: routeMeta, // Attach breadcrumb and resource type metadata
         });
     }
 

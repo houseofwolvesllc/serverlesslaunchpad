@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
@@ -77,6 +77,7 @@ export function useSessions(): UseSessionsResult {
     const { signedInUser } = useContext(AuthenticationContext);
     const currentSessionId = signedInUser?.authContext?.sessionId || null;
     const location = useLocation();
+    const { userId } = useParams<{ userId?: string }>();
 
     // State
     const [data, setData] = useState<SessionsResponse | null>(null);
@@ -122,7 +123,10 @@ export function useSessions(): UseSessionsResult {
     };
 
     /**
-     * Discover sessions endpoint from hypermedia API
+     * Discover sessions endpoint via HATEOAS
+     *
+     * For current user: Discover from entry point
+     * For other users: Fetch user resource, discover from _templates.sessions
      */
     const discoverEndpoint = useCallback(async () => {
         if (!signedInUser) {
@@ -131,12 +135,30 @@ export function useSessions(): UseSessionsResult {
         }
 
         try {
-            const entryPoint = getEntryPoint();
-            // Get sessions template target (now in templates for POST operations)
-            const sessionsHref = await entryPoint.getTemplateTarget('sessions');
+            let sessionsHref: string;
 
-            if (!sessionsHref) {
-                throw new Error('Sessions endpoint not found');
+            if (userId) {
+                // Fetch user resource to discover sessions endpoint (HATEOAS)
+                const userResource = await apiClient.get(`/users/${userId}`);
+
+                // Extract sessions template from user resource
+                const sessionsTemplate = userResource?._templates?.sessions;
+
+                if (!sessionsTemplate?.target) {
+                    throw new Error('Sessions not available for this user');
+                }
+
+                sessionsHref = sessionsTemplate.target;
+            } else {
+                // No userId - discover current user's sessions from entry point
+                const entryPoint = getEntryPoint();
+                const discoveredHref = await entryPoint.getTemplateTarget('sessions');
+
+                if (!discoveredHref) {
+                    throw new Error('Sessions endpoint not found');
+                }
+
+                sessionsHref = discoveredHref;
             }
 
             setSessionsEndpoint(sessionsHref);
@@ -144,7 +166,7 @@ export function useSessions(): UseSessionsResult {
             setError(err instanceof Error ? err.message : 'Failed to discover sessions endpoint');
             setLoading(false);
         }
-    }, [signedInUser]);
+    }, [signedInUser, userId]);
 
     /**
      * Fetch sessions from API using POST with paging instruction

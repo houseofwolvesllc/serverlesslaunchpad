@@ -1,5 +1,5 @@
 import { Injectable, Role, UserRepository, UpsertUserMessage, Features } from "@houseofwolves/serverlesslaunchpad.core";
-import type { BitfieldMetadata } from "@houseofwolves/serverlesslaunchpad.types";
+import type { BitfieldMetadata, PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { arrayToBitfield } from "../content_types/enum_adapter_helpers.js";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
@@ -7,8 +7,9 @@ import { Cache, Log, Protected } from "../decorators/index.js";
 import { NotFoundError } from "../errors.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Route, Router } from "../router.js";
-import { UpdateUserSchema, UserSchema } from "./schemas.js";
+import { UpdateUserSchema, UserSchema, GetUsersSchema } from "./schemas.js";
 import { UserAdapter } from "./user_adapter.js";
+import { UserCollectionAdapter } from "./user_collection_adapter.js";
 
 /**
  * Users endpoint controller for retrieving user profile information
@@ -159,6 +160,65 @@ export class UsersController extends BaseController {
 
         // Return updated HAL resource with templates
         const adapter = new UserAdapter(updatedUser, currentUser, this.router);
+        return this.success(event, adapter);
+    }
+
+    /**
+     * Get paginated list of all users
+     * Example: POST /users/list
+     * Body: { "pagingInstruction": { ... } }
+     *
+     * Security: Only Admin role can list all users (user management)
+     *
+     * Cache Strategy: 300s TTL - users change frequently enough to warrant shorter cache
+     * than individual user profiles (which cache for 600s)
+     *
+     * Note: This endpoint showcases pure HAL/HATEOAS architecture.
+     * The collection will be rendered by generic frontend components with ZERO custom code.
+     *
+     * Decorator execution order (bottom to top):
+     * 1. Cache - checks ETag first
+     * 2. Protected - authenticates user and validates Admin role
+     * 3. Log - wraps entire execution
+     */
+    @Log()
+    @Protected()
+    @Cache({ ttl: 300, vary: ["Authorization"] })
+    @Route("POST", "/users/list")
+    async getUsers(event: AuthenticatedALBEvent): Promise<ALBResult> {
+        // Parse and validate request data
+        const { body } = this.parseRequest(event, GetUsersSchema);
+        const { pagingInstruction } = body;
+
+        // Get authenticated user and check authorization
+        const currentUser = event.authContext.identity;
+        this.requireRole(currentUser, Role.Admin); // Admin only
+
+        // Parse paging instruction if provided
+        let lastEvaluatedKey: string | undefined;
+        if (pagingInstruction && pagingInstruction.cursor) {
+            lastEvaluatedKey = pagingInstruction.cursor;
+        }
+
+        // Call repository with pagination
+        const result = await this.userRepository.getAllUsers({
+            limit: 50,
+            lastEvaluatedKey,
+        });
+
+        // Build paging instructions for HAL response (similar to API Keys pattern)
+        const pagingInstructions: PagingInstructions = {
+            ...(result.lastEvaluatedKey ? { next: { limit: 50 } } : {}),
+        };
+
+        // Add cursor to next instruction if there's more data
+        if (result.lastEvaluatedKey && pagingInstructions.next) {
+            (pagingInstructions.next as any).cursor = result.lastEvaluatedKey;
+        }
+
+        // Return collection adapter with embedded user resources
+        const adapter = new UserCollectionAdapter(result.users, currentUser, pagingInstructions, this.router);
+
         return this.success(event, adapter);
     }
 }
