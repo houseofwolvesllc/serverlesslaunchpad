@@ -11,9 +11,8 @@
  * - Filtered delete operations (only in list views)
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { useBreadcrumb } from '@/context/breadcrumb_context';
 import {
     extractResourceFields,
     humanizeLabel,
@@ -76,7 +75,6 @@ export function HalResourceDetail({
     error = null,
 }: HalResourceDetailProps) {
     const [executingTemplate, setExecutingTemplate] = useState<string | null>(null);
-    const { setResourceTitle } = useBreadcrumb();
 
     // State for form dialog
     const [formState, setFormState] = useState<{
@@ -129,17 +127,6 @@ export function HalResourceDetail({
     };
 
     const pageTitle = getPageTitle();
-
-    // Update breadcrumb with resource title
-    useEffect(() => {
-        if (resource) {
-            setResourceTitle(pageTitle);
-        }
-        return () => {
-            // Clear resource title when component unmounts
-            setResourceTitle(null);
-        };
-    }, [resource, pageTitle, setResourceTitle]);
 
     // Extract templates for actions (filter out navigation and delete operations)
     const templates = resource?._templates || {};

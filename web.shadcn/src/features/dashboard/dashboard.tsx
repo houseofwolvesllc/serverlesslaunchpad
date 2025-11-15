@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Code2, ChevronRight, ChevronsLeft, ChevronsRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
+import { Home, Code2, ChevronsLeft, ChevronsRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
 import { UserButton } from '@/components/user_button/user_button';
 import { ThemeToggle } from '@/components/theme_toggle';
@@ -15,10 +15,9 @@ import { useHeadroom } from '@/hooks/use_headroom';
 import WebConfigurationStore from '@/configuration/web_config_store';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
-import type { NavItem, NavGroup } from '@/hooks/use_navigation';
 import { DashboardHome } from './dashboard_home';
 import { GenericResourceView } from '../resource/generic_resource_view';
-import { BreadcrumbProvider, useBreadcrumb } from '@/context/breadcrumb_context';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 
 /**
  * Wrapper to force GenericResourceView to remount when path changes
@@ -36,7 +35,6 @@ function DashboardContent() {
 
     const location = useLocation();
     const navigate = useNavigate();
-    const { resourceTitle } = useBreadcrumb();
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure(false);
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
@@ -65,149 +63,6 @@ function DashboardContent() {
         });
     }, []);
 
-    // Generate breadcrumbs from navigation structure
-    const breadcrumbs = useMemo(() => {
-        const pathname = location.pathname;
-        const crumbs: Array<{ label: string; path: string | null; isLast: boolean }> = [
-            // Always start with Dashboard
-            { label: 'Dashboard', path: '/dashboard', isLast: false }
-        ];
-
-        // If we're on the dashboard home, just return dashboard breadcrumb
-        if (pathname === '/' || pathname === '/dashboard') {
-            crumbs[0].isLast = !resourceTitle;
-            if (resourceTitle) {
-                crumbs.push({
-                    label: resourceTitle,
-                    path: null,
-                    isLast: true
-                });
-            }
-            return crumbs;
-        }
-
-        if (!navStructure || !links || !templates) {
-            // Fallback when sitemap not loaded yet
-            return crumbs;
-        }
-
-        // Helper to resolve NavItem to href
-        const resolveHref = (item: NavItem): string | null => {
-            if (item.type === 'link') {
-                return links[item.rel]?.href || null;
-            } else {
-                return templates[item.rel]?.target || null;
-            }
-        };
-
-        // Helper to resolve NavItem to title
-        const resolveTitle = (item: NavItem): string => {
-            if (item.type === 'link') {
-                return item.title || links[item.rel]?.title || item.rel;
-            } else {
-                return item.title || templates[item.rel]?.title || item.rel;
-            }
-        };
-
-        // Helper to match pathname against href with template parameters
-        const matchesPath = (href: string, pathname: string): boolean => {
-            // Convert template variables {userId} to regex patterns
-            // e.g., "/users/{userId}/sessions/list" -> "/users/[^/]+/sessions/list"
-            const pattern = href.replace(/\{[^}]+\}/g, '[^/]+');
-            const regex = new RegExp(`^${pattern}`);
-            return regex.test(pathname);
-        };
-
-        // Recursively find matching nav item and build parent chain
-        interface MatchResult {
-            item: NavItem;
-            href: string;
-            title: string;
-            parentChain: Array<{ label: string; path: string | null }>;
-        }
-
-        const findMatch = (
-            items: (NavItem | NavGroup)[],
-            parentChain: Array<{ label: string; path: string | null }> = []
-        ): MatchResult | null => {
-            let bestMatch: MatchResult | null = null;
-            let bestMatchLength = 0;
-
-            for (const item of items) {
-                if ('rel' in item) {
-                    // NavItem
-                    const navItem = item as NavItem;
-                    const href = resolveHref(navItem);
-
-                    if (href && matchesPath(href, pathname)) {
-                        // Keep the longest (most specific) match
-                        const matchLength = href.replace(/\{[^}]+\}/g, '').length;
-                        if (matchLength > bestMatchLength) {
-                            bestMatch = {
-                                item: navItem,
-                                href,
-                                title: resolveTitle(navItem),
-                                parentChain
-                            };
-                            bestMatchLength = matchLength;
-                        }
-                    }
-                } else {
-                    // NavGroup - add to parent chain and recurse
-                    const group = item as NavGroup;
-                    const result = findMatch(group.items, [
-                        ...parentChain,
-                        { label: group.title, path: null } // Groups are not clickable
-                    ]);
-                    if (result) {
-                        const matchLength = result.href.replace(/\{[^}]+\}/g, '').length;
-                        if (matchLength > bestMatchLength) {
-                            bestMatch = result;
-                            bestMatchLength = matchLength;
-                        }
-                    }
-                }
-            }
-            return bestMatch;
-        };
-
-        const match = findMatch(navStructure);
-
-        if (match) {
-            // Add parent chain (groups and parent pages)
-            crumbs.push(...match.parentChain.map(p => ({ ...p, isLast: false })));
-
-            // Add current page
-            crumbs.push({
-                label: match.title,
-                path: resourceTitle ? match.href : null, // Clickable if resource title will be appended
-                isLast: !resourceTitle
-            });
-        } else {
-            // Fallback: Extract last segment of path as label
-            const segments = pathname.split('/').filter(Boolean);
-            const lastSegment = segments[segments.length - 1];
-
-            if (lastSegment) {
-                crumbs.push({
-                    label: lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1),
-                    path: null,
-                    isLast: !resourceTitle
-                });
-            }
-        }
-
-        // Append resource title if available (from HalResourceDetail)
-        if (resourceTitle) {
-            crumbs.push({
-                label: resourceTitle,
-                path: null, // Resource title is never clickable (current page)
-                isLast: true
-            });
-        }
-
-        return crumbs;
-    }, [location.pathname, navStructure, links, templates, resourceTitle]);
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
@@ -340,34 +195,9 @@ function DashboardContent() {
                     </Button>
 
                     {/* Breadcrumbs */}
-                    <nav aria-label="Breadcrumb" className="hidden md:flex items-center space-x-2 text-sm flex-1">
-                        {breadcrumbs.map((crumb, index) => {
-                            return (
-                                <div key={`${crumb.path || crumb.label}-${index}`} className="flex items-center space-x-2">
-                                    {index > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                    {crumb.path ? (
-                                        // Clickable breadcrumb (has path)
-                                        <button
-                                            onClick={() => navigate(crumb.path!)}
-                                            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-                                        >
-                                            {index === 0 && <Home className="h-4 w-4" />}
-                                            {crumb.label}
-                                        </button>
-                                    ) : (
-                                        // Non-clickable breadcrumb (groups or current page)
-                                        <span className={cn(
-                                            "flex items-center gap-1.5",
-                                            crumb.isLast ? "font-medium text-foreground" : "text-muted-foreground"
-                                        )}>
-                                            {index === 0 && <Home className="h-4 w-4" />}
-                                            {crumb.label}
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </nav>
+                    <div className="hidden md:flex flex-1">
+                        <Breadcrumbs />
+                    </div>
 
                     {/* Right side actions */}
                     <div className="flex items-center gap-2 md:ml-auto">
@@ -432,12 +262,6 @@ function DashboardContent() {
 }
 
 /**
- * Dashboard component with breadcrumb context provider
+ * Dashboard component
  */
-export const Dashboard = () => {
-    return (
-        <BreadcrumbProvider>
-            <DashboardContent />
-        </BreadcrumbProvider>
-    );
-};
+export const Dashboard = DashboardContent;
