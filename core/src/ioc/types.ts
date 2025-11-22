@@ -5,6 +5,7 @@ export type BindOptions<T> = {
     factory?: () => T;
     name?: string;
     lifecycle?: Lifecycle;
+    replace?: boolean;
 };
 
 export interface ServiceDescriptor<T> {

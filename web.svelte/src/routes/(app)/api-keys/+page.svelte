@@ -73,7 +73,6 @@
 		primaryKey="apiKeyId"
 		columnConfig={{ dateLastUsed: { nullText: 'Never' } }}
 		emptyMessage="You haven't created any API keys yet."
-		{Key}
 		emptyIcon={Key}
 	/>
 

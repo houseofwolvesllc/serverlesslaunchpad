@@ -1,13 +1,13 @@
-import { Injectable, Role, UserRepository, UpsertUserMessage, Features } from "@houseofwolves/serverlesslaunchpad.core";
-import type { BitfieldMetadata, PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
-import { arrayToBitfield } from "../content_types/enum_adapter_helpers.js";
+import { Injectable, Role, UpsertUserMessage, UserRepository, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
+import type { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
+import { arrayToBitfield, enumLabelToValue } from "../content_types/enum_adapter_helpers.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
-import { NotFoundError } from "../errors.js";
+import { NotFoundError, ValidationError } from "../errors.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Route, Router } from "../router.js";
-import { UpdateUserSchema, UserSchema, GetUsersSchema } from "./schemas.js";
+import { GetUsersSchema, UpdateUserSchema, UserSchema } from "./schemas.js";
 import { UserAdapter } from "./user_adapter.js";
 import { UserCollectionAdapter } from "./user_collection_adapter.js";
 
@@ -25,23 +25,6 @@ import { UserCollectionAdapter } from "./user_collection_adapter.js";
  */
 @Injectable()
 export class UsersController extends BaseController {
-    /**
-     * Bitfield metadata for Features field (same as UserAdapter)
-     * Used to convert features array to bitfield integer for storage
-     */
-    private static readonly FEATURES_METADATA: BitfieldMetadata = {
-        name: "features",
-        isBitfield: true,
-        none: Features.None,
-        options: [
-            { value: Features.None, label: "None", description: "No features enabled" },
-            { value: Features.Contacts, label: "Contact Management" },
-            { value: Features.Campaigns, label: "Campaign Builder" },
-            { value: Features.Links, label: "Link Tracking" },
-            { value: Features.Apps, label: "App Integrations" },
-        ],
-    };
-
     constructor(private userRepository: UserRepository, private router: Router) {
         super();
     }
@@ -137,10 +120,30 @@ export class UsersController extends BaseController {
             this.requireRole(currentUser, Role.Admin);
         }
 
-        // Convert features array to bitfield if provided
+        // Convert role label to enum value if provided
+        let role = existingUser.role;
+        if (body.role !== undefined) {
+            // If it's a string, convert label to value; if it's already a number, use it
+            if (typeof body.role === 'string') {
+                const convertedRole = enumLabelToValue(body.role, ROLE_METADATA);
+                if (convertedRole === undefined) {
+                    throw new ValidationError("Invalid role value");
+                }
+                role = convertedRole;
+            } else {
+                role = body.role;
+            }
+        }
+
+        // Convert features to bitfield if provided
         let features = existingUser.features;
         if (body.features !== undefined) {
-            features = arrayToBitfield(body.features, UsersController.FEATURES_METADATA);
+            // If it's an array, convert to bitfield; if it's already a number, use it
+            if (Array.isArray(body.features)) {
+                features = arrayToBitfield(body.features, FEATURES_METADATA);
+            } else {
+                features = body.features;
+            }
         }
 
         // Build update message by merging with existing data
@@ -149,7 +152,7 @@ export class UsersController extends BaseController {
             email: existingUser.email, // Immutable (Cognito-managed)
             firstName: body.firstName ?? existingUser.firstName,
             lastName: body.lastName ?? existingUser.lastName,
-            role: body.role ?? existingUser.role,
+            role,
             features,
             dateCreated: existingUser.dateCreated, // Immutable
             dateModified: new Date(), // Auto-update

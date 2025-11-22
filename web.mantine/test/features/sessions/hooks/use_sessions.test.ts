@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { PAGE_SIZE_OPTIONS } from '../../../../src/features/sessions/types';
+import { PAGE_SIZE_OPTIONS } from '../../../../src/constants/pagination';
 
 describe('useSessions Hook - Configuration', () => {
     describe('page size options', () => {
         it('should support valid page sizes', () => {
-            const validSizes = [10, 25, 50, 100];
+            const validSizes = [25, 50, 100];
             validSizes.forEach((size) => {
                 expect(PAGE_SIZE_OPTIONS).toContain(size);
             });
         });
 
         it('should have exactly 4 page size options', () => {
-            expect(PAGE_SIZE_OPTIONS.length).toBe(4);
+            expect(PAGE_SIZE_OPTIONS.length).toBe(3);
         });
 
         it('should have page sizes in ascending order', () => {
-            expect(PAGE_SIZE_OPTIONS).toEqual([10, 25, 50, 100]);
+            expect(PAGE_SIZE_OPTIONS).toEqual([25, 50, 100]);
         });
     });
 

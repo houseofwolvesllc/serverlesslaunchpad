@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { PAGE_SIZE_OPTIONS } from '../../../../src/features/api_keys/types';
+import { PAGE_SIZE_OPTIONS } from '../../../../src/constants/pagination';
 
 describe('useApiKeys Hook Configuration', () => {
     describe('Page Size Options', () => {
         it('should support valid page sizes', () => {
-            expect(PAGE_SIZE_OPTIONS).toEqual([10, 25, 50, 100]);
+            expect(PAGE_SIZE_OPTIONS).toEqual([25, 50, 100]);
         });
 
         it('should have exactly 4 page size options', () => {
-            expect(PAGE_SIZE_OPTIONS).toHaveLength(4);
+            expect(PAGE_SIZE_OPTIONS).toHaveLength(3);
         });
 
         it('should have page sizes in ascending order', () => {

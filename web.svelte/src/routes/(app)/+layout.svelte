@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { sidebarStore } from '$lib/stores/sidebar_store';
-	import { navigationStore } from '$lib/stores/navigation_store';
 	import { authStore } from '$lib/stores/auth_store';
-	import { apiClient } from '$lib/services/api_client';
 	import { verifySession, AuthError } from '$lib/auth';
-	import { refreshCapabilities, getEntryPoint } from '$lib/services/entry_point_provider';
+	import { refreshCapabilities } from '$lib/services/entry_point_provider';
 	import { logger } from '$lib/logging';
 	import { onMount } from 'svelte';
 	import AppSidebar from '$lib/components/dashboard/app-sidebar.svelte';
@@ -34,53 +32,7 @@
 			}
 		} finally {
 			authStore.setInitialized(true);
-		}
-
-		// Fetch sitemap
-		try {
-			// Try to fetch sitemap from API using HATEOAS link discovery
-			try {
-				const entryPoint = getEntryPoint();
-				const sitemapHref = await entryPoint.getLinkHref('sitemap');
-				const sitemap = await apiClient.request(sitemapHref, { method: 'GET' });
-				if (Array.isArray(sitemap)) {
-					navigationStore.setSitemap(sitemap);
-					return;
-				} else if (sitemap._embedded?.items) {
-					navigationStore.setSitemap(sitemap._embedded.items);
-					return;
-				}
-			} catch (e) {
-				// Sitemap not available, use fallback
-				logger.warn('Sitemap not available, using fallback navigation');
-			}
-
-			// Fallback navigation
-			navigationStore.setSitemap([
-				{
-					id: 'dashboard',
-					label: 'Dashboard',
-					icon: 'home',
-					path: '/dashboard',
-					order: 1
-				},
-				{
-					id: 'api-keys',
-					label: 'API Keys',
-					icon: 'key',
-					path: '/api-keys',
-					order: 2
-				},
-				{
-					id: 'sessions',
-					label: 'Sessions',
-					icon: 'clock',
-					path: '/sessions',
-					order: 3
-				}
-			]);
-		} catch (error) {
-			logger.error('Failed to load sitemap', { error });
+			// Sitemap will auto-fetch via store subscription to auth changes
 		}
 	});
 

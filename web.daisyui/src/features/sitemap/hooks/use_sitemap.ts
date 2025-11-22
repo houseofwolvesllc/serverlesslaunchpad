@@ -23,26 +23,8 @@ import {
 } from '../utils/transform_navigation';
 import { AuthenticationContext } from '../../authentication';
 import { logger } from '../../../logging/logger';
-import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
-
-/**
- * HAL link structure
- */
-interface HalLink {
-    href: string;
-    title?: string;
-    [key: string]: any;
-}
-
-/**
- * HAL template structure
- */
-interface HalTemplate {
-    title: string;
-    method: string;
-    target: string;
-    [key: string]: any;
-}
+import type { NavGroup, NavItem, ResolvedNavItem } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
+import type { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Sitemap API response structure (HAL format with _nav)
@@ -77,6 +59,12 @@ export interface UseSitemapResult {
     navigation: LinksGroupProps[];
     /** Raw sitemap items from API (for route generation) */
     rawItems: NavigationItem[];
+    /** Raw navigation structure from API (_nav) */
+    navStructure?: (NavItem | NavGroup)[];
+    /** Raw links from API (_links) */
+    links?: Record<string, HalLink>;
+    /** Raw templates from API (_templates) */
+    templates?: Record<string, HalTemplate>;
     /** Loading state */
     isLoading: boolean;
     /** Error state (undefined if no error) */
@@ -419,6 +407,9 @@ export function useSitemap(): UseSitemapResult {
     return {
         navigation,
         rawItems,
+        navStructure: cacheRef.current?._nav,
+        links: cacheRef.current?._links,
+        templates: cacheRef.current?._templates,
         isLoading,
         error,
         refetch,

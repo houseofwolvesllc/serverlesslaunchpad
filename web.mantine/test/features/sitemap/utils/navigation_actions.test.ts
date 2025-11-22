@@ -182,7 +182,7 @@ describe('executePostAction', () => {
         vi.unstubAllGlobals();
     });
 
-    it('should use collection link when no self link', async () => {
+    it('should navigate to the called endpoint (POST-only API pattern)', async () => {
         const mockResponse = {
             message: 'Action completed',
             _links: {
@@ -191,24 +191,26 @@ describe('executePostAction', () => {
         };
         vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
 
+        // POST-only API: navigate to the endpoint we just called, not collection
         await executePostAction('/users/abc123/api-keys/create', 'Create', mockNavigate);
 
-        expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
+        expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/create', {
             state: { data: mockResponse }
         });
     });
 
-    it('should throw error when response missing self link and no alternatives', async () => {
+    it('should navigate even when response has no links (POST-only API)', async () => {
         const mockResponse = {
             data: { items: [] },
             _links: {},
         };
         vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
 
-        await expect(
-            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
-        ).rejects.toThrow('Response missing _links.self.href or alternative navigation link');
+        // POST-only API: navigate to the endpoint we called, not response links
+        await executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate);
 
-        expect(mockNavigate).not.toHaveBeenCalled();
+        expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
+            state: { data: mockResponse }
+        });
     });
 });

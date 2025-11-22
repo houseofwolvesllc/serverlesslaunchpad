@@ -1,51 +1,13 @@
 import { useHalResource } from './use_hal_resource';
+import type { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { NavItem, NavGroup, ResolvedNavItem } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 
-/**
- * Navigation item referencing a link or template
- */
-export interface NavItem {
-    rel: string;
-    type: 'link' | 'template';
-    title?: string;
-}
-
-/**
- * Navigation group with title and items (can be recursive)
- */
-export interface NavGroup {
-    title: string;
-    items: (NavItem | NavGroup)[];
-}
-
-/**
- * HAL link structure
- */
-interface HalLink {
-    href: string;
-    title?: string;
-    [key: string]: any;
-}
-
-/**
- * HAL template structure
- */
-interface HalTemplate {
-    title: string;
-    method: string;
-    target: string;
-    [key: string]: any;
-}
-
-/**
- * Resolved navigation item with actual link or template data
- */
-export interface ResolvedNavItem {
-    href: string;
-    title: string;
-    type: 'link' | 'template';
-    method?: string;
-    template?: HalTemplate;
-}
+// Re-export types from web.commons.react
+export type {
+    NavItem,
+    NavGroup,
+    ResolvedNavItem
+} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 
 /**
  * Custom hook for managing navigation from HAL sitemap

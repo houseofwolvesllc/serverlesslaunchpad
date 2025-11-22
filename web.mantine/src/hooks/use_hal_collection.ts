@@ -8,7 +8,6 @@
 import { useMemo } from 'react';
 import {
     inferColumns,
-    inferVisibleColumns,
     extractEmbeddedItems,
     getUniqueKeys,
     type InferredColumn,

@@ -2,9 +2,11 @@
 	import { Drawer as SheetPrimitive } from "vaul-svelte";
 	import { cn } from "$lib/utils";
 
-	type $$Props = SheetPrimitive.OverlayProps;
+	type $$Props = SheetPrimitive.OverlayProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

@@ -1,3 +1,10 @@
+import { Role } from "./user_roles.js";
+import { Features } from "./user_features.js";
+
+// Re-export enums and metadata for external use
+export { Role, ROLE_METADATA } from "./user_roles.js";
+export { Features, FEATURES_METADATA } from "./user_features.js";
+
 export abstract class UserProvider {
     abstract getUserByEmail(message: GetUserByEmailMessage): Promise<User | undefined>;
     abstract getUserById(message: GetUserByIdMessage): Promise<User | undefined>;
@@ -6,21 +13,6 @@ export abstract class UserProvider {
 
 export abstract class UserRepository extends UserProvider {
     abstract upsertUser(message: UpsertUserMessage): Promise<User>;
-}
-
-export enum Role {
-    Base,
-    Support,
-    AccountManager,
-    Admin,
-}
-
-export enum Features {
-    None = 0,
-    Contacts = 1 << 0,
-    Campaigns = 1 << 1,
-    Links = 1 << 2,
-    Apps = 1 << 3,
 }
 
 export type User = {

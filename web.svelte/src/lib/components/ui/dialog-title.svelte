@@ -2,9 +2,11 @@
 	import { Dialog as DialogPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils";
 
-	type $$Props = DialogPrimitive.TitleProps;
+	type $$Props = DialogPrimitive.TitleProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

@@ -3,6 +3,7 @@ import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { halClient } from '$lib/hal_forms_client';
 import { apiClient } from '$lib/services/api_client';
 import { entryPoint } from '$lib/services/entry_point';
+import { trackHalResource } from '$lib/utils/hal_resource_tracking';
 import { logger } from '$lib/logging';
 
 export interface HalResourceState<T extends HalObject = HalObject> {
@@ -69,6 +70,9 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 				loading: false,
 				error: null,
 			}));
+
+			// Track resource in navigation history
+			trackHalResource(data as T);
 
 			logger.info('HAL resource fetched successfully', { urlOrTemplate });
 		} catch (error: any) {

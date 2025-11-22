@@ -1,6 +1,5 @@
-import { Role, User, Features } from "@houseofwolves/serverlesslaunchpad.core";
+import { Role, User, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
 import { HalObject, HalResourceAdapter, HalTemplateProperty } from "../content_types/hal_adapter.js";
-import type { EnumMetadata, BitfieldMetadata } from "@houseofwolves/serverlesslaunchpad.types";
 import {
     createEnumProperty,
     createBitfieldProperty,
@@ -21,40 +20,6 @@ import { UsersController } from "./users_controller.js";
  * - edit: template to update user profile (conditional on permissions)
  */
 export class UserAdapter extends HalResourceAdapter {
-    /**
-     * Enum metadata for Role field
-     *
-     * Defines human-readable labels for each role value.
-     * Used to generate HAL template properties with proper display labels.
-     */
-    private static readonly ROLE_METADATA: EnumMetadata = {
-        name: "role",
-        options: [
-            { value: Role.Base, label: "Base" },
-            { value: Role.Support, label: "Support" },
-            { value: Role.AccountManager, label: "Account Manager" },
-            { value: Role.Admin, label: "Admin" },
-        ],
-    };
-
-    /**
-     * Bitfield metadata for Features field
-     *
-     * Defines human-readable labels for each feature flag.
-     * Used to convert bitfield integers to/from human-readable arrays.
-     */
-    private static readonly FEATURES_METADATA: BitfieldMetadata = {
-        name: "features",
-        isBitfield: true,
-        none: Features.None,
-        options: [
-            { value: Features.None, label: "None", description: "No features enabled" },
-            { value: Features.Contacts, label: "Contact Management", description: "Manage customer contacts and profiles" },
-            { value: Features.Campaigns, label: "Campaign Builder", description: "Create and manage marketing campaigns" },
-            { value: Features.Links, label: "Link Tracking", description: "Track and analyze link performance" },
-            { value: Features.Apps, label: "App Integrations", description: "Connect with third-party applications" },
-        ],
-    };
 
     constructor(
         private user: User,
@@ -203,14 +168,14 @@ export class UserAdapter extends HalResourceAdapter {
         // Always include role and features for display purposes (with enum metadata)
         // Mark as read-only based on permissions
         properties.push(
-            createEnumProperty("role", UserAdapter.ROLE_METADATA, {
+            createEnumProperty("role", ROLE_METADATA, {
                 prompt: "User Role",
                 required: true,
                 value: this.user.role,
                 // Read-only unless admin editing another user (can't edit own role)
                 readOnly: !isAdmin || isSelfEdit,
             }),
-            createBitfieldProperty("features", UserAdapter.FEATURES_METADATA, {
+            createBitfieldProperty("features", FEATURES_METADATA, {
                 prompt: "Features",
                 required: false,
                 value: this.user.features,
@@ -240,7 +205,7 @@ export class UserAdapter extends HalResourceAdapter {
             firstName: this.firstName,
             lastName: this.lastName,
             role: this.role,
-            features: bitfieldToArray(this.features, UserAdapter.FEATURES_METADATA), // Human-readable array
+            features: bitfieldToArray(this.features, FEATURES_METADATA), // Human-readable array
             dateCreated: this.dateCreated.toISOString(),
             dateModified: this.dateModified.toISOString(),
             _links: { ...this.getBaseLinks(), ...this._links },

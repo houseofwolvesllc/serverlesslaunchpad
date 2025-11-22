@@ -14,7 +14,7 @@ import { HalCollectionList } from '@/components/hal_collection';
 import { HalResourceDetail } from '@/components/hal_resource';
 import { NoMatch } from '@/components/no_match';
 import { useHalResource } from '@/hooks/use_hal_resource';
-import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking_adapter';
 import { halClient } from '@/lib/hal_forms_client';
 import { isCollection } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { useLocation, useNavigate } from 'react-router-dom';

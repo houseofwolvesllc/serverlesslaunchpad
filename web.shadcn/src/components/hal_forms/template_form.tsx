@@ -280,7 +280,7 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
                     {required && <span className="text-destructive ml-1">*</span>}
                 </Label>
                 <Select
-                    value={value ? String(value) : undefined}
+                    value={value != null ? String(value) : undefined}
                     onValueChange={(val) => onChange(val)}
                     disabled={disabled}
                 >

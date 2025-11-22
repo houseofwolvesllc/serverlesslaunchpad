@@ -3,9 +3,11 @@
 	import { cn } from "$lib/utils";
 	import { flyAndScale } from "$lib/utils";
 
-	type $$Props = DropdownMenuPrimitive.ContentProps;
+	type $$Props = DropdownMenuPrimitive.ContentProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 	export let sideOffset = 4;
 </script>

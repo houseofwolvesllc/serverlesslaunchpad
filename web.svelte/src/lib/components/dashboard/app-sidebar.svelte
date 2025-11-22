@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { sidebarStore } from '$lib/stores/sidebar_store';
+	import { sitemapStore } from '$lib/stores/sitemap_store';
+	import { navigationHistoryStore } from '$lib/stores/navigation_history_store';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth_store';
@@ -33,7 +35,11 @@
 	});
 
 	function navigate(path: string) {
-		goto(path);
+		// Mark next navigation as menu
+		navigationHistoryStore.markNextNavigationAsMenu();
+
+		// Navigate with state
+		goto(path, { state: { navigationSource: 'menu' } });
 		sidebarStore.setMobileOpen(false);
 	}
 
@@ -49,6 +55,8 @@
 
 	$: collapsed = $sidebarStore.collapsed;
 	$: currentPath = $page.url.pathname;
+	$: navigation = $sitemapStore.navigation;
+	$: isLoadingSitemap = $sitemapStore.isLoading;
 
 	// Create reactive active states
 	$: dashboardActive = currentPath === '/dashboard';
