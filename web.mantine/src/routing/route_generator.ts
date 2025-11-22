@@ -7,74 +7,72 @@
  * - API sitemap defines available routes
  * - Navigation items are mapped to React components via component registry
  * - Routes are generated dynamically at runtime
+ * - Parent chain is preserved for breadcrumb generation
  *
  * Key functions:
- * - extractNavigableItems(): Recursively finds items that should have routes
- * - generateRoutesFromSitemap(): Creates RouteObject array for React Router
+ * - generateRoutesFromNavStructure(): Creates RouteObject array from hierarchical nav
  * - normalizePathForRouter(): Converts API paths to React Router format
  */
 
 import { RouteObject } from 'react-router-dom';
 import { createElement } from 'react';
-import { NavigationItem } from '../features/sitemap/utils/transform_navigation';
+import type { NavItem, NavGroup, ResolvedNavItem } from '../hooks/use_navigation';
 import { getComponentForId } from './component_registry';
 import { logger } from '../logging/logger';
+import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
- * Extract all navigable items from sitemap (recursive)
- *
- * Navigable items are those that:
- * - Have an href (target URL)
- * - Are not POST actions (except for collection list endpoints)
- *
- * Special case: POST endpoints ending in "/list" are treated as navigable
- * because they're collection views that use POST for paging (not true actions).
- *
- * This function recursively traverses the navigation tree to find all
- * items that should have corresponding routes.
- *
- * @param items - Sitemap navigation items
- * @returns Flat array of navigable items
- *
- * @example
- * ```typescript
- * const items: NavigationItem[] = [
- *   {
- *     id: 'account',
- *     title: 'Account',
- *     items: [
- *       { id: 'sessions', title: 'Sessions', href: '/users/123/sessions/list', method: 'POST' },
- *       { id: 'logout', title: 'Logout', href: '/logout', method: 'POST' }
- *     ]
- *   }
- * ];
- *
- * const navigable = extractNavigableItems(items);
- * // Returns: [{ id: 'sessions', title: 'Sessions', href: '/users/123/sessions/list', method: 'POST' }]
- * // Note: sessions is included (ends with /list), logout is excluded (true action)
- * ```
+ * Breadcrumb metadata for a route
  */
-export function extractNavigableItems(items: NavigationItem[]): NavigationItem[] {
-    const navigable: NavigationItem[] = [];
+export interface BreadcrumbMeta {
+    /** Display label for breadcrumb */
+    label: string;
+    /** Path for clickable breadcrumb (null if not clickable - e.g., groups or current page) */
+    path: string | null;
+    /** Parent chain of breadcrumb items */
+    parentChain: BreadcrumbMeta[];
+    /** Whether this represents a group (non-clickable parent) */
+    isGroup: boolean;
+    /** Resource type: 'link' (GET) or 'template' (POST) */
+    resourceType?: 'link' | 'template';
+    /** Template definition if this is a template-based route */
+    template?: HalTemplate;
+}
 
-    function traverse(items: NavigationItem[]) {
-        for (const item of items) {
-            // Include item if it has href and either:
-            // 1. Not a POST method, OR
-            // 2. Is a POST method but ends with /list (collection view)
-            if (item.href && (item.method !== 'POST' || item.href.endsWith('/list'))) {
-                navigable.push(item);
-            }
+/**
+ * Resolve a navigation item to its actual link or template
+ *
+ * @param item - Navigation item to resolve
+ * @param links - HAL links from sitemap
+ * @param templates - HAL templates from sitemap
+ * @returns Resolved item with actual data, or null if not found
+ */
+function resolveNavItem(
+    item: NavItem,
+    links: Record<string, HalLink>,
+    templates: Record<string, HalTemplate>
+): ResolvedNavItem | null {
+    if (item.type === 'link') {
+        const link = links[item.rel];
+        if (!link) return null;
 
-            // Recursively traverse nested items
-            if (item.items) {
-                traverse(item.items);
-            }
-        }
+        return {
+            href: link.href,
+            title: item.title || link.title || item.rel,
+            type: 'link',
+        };
+    } else {
+        const template = templates[item.rel];
+        if (!template) return null;
+
+        return {
+            href: template.target,
+            title: item.title || template.title || item.rel,
+            type: 'template',
+            method: template.method,
+            template,
+        };
     }
-
-    traverse(items);
-    return navigable;
 }
 
 /**
@@ -82,85 +80,139 @@ export function extractNavigableItems(items: NavigationItem[]): NavigationItem[]
  *
  * Converts absolute paths from API to relative paths for nested routes.
  * React Router expects relative paths when used inside parent routes.
+ * Also converts HAL path parameters {param} to React Router syntax :param
+ * AND converts literal user IDs to :userId parameter for dynamic routing
  *
- * @param href - Absolute path from API (e.g., "/users/123/sessions/list")
- * @returns Relative path for React Router (e.g., "users/123/sessions/list")
+ * @param href - Absolute path from API (e.g., "/users/{userId}/sessions/list" or "/users/abc123/sessions/list")
+ * @returns Relative path for React Router (e.g., "users/:userId/sessions/list")
  *
  * @example
  * ```typescript
- * normalizePathForRouter('/users/123/sessions');
- * // Returns: 'users/123/sessions'
+ * normalizePathForRouter('/users/{userId}/sessions');
+ * // Returns: 'users/:userId/sessions'
  *
- * normalizePathForRouter('users/123/sessions');
- * // Returns: 'users/123/sessions'
+ * normalizePathForRouter('/users/abc123/sessions/list');
+ * // Returns: 'users/:userId/sessions/list'
  * ```
  */
 export function normalizePathForRouter(href: string): string {
     // Remove leading slash for nested routes
-    return href.startsWith('/') ? href.slice(1) : href;
+    let path = href.startsWith('/') ? href.slice(1) : href;
+
+    // Convert HAL path parameters {param} to React Router syntax :param
+    path = path.replace(/\{([^}]+)\}/g, ':$1');
+
+    // Convert literal user IDs (hex strings 32 chars) to :userId parameter
+    // This allows routes like users/abc123.../sessions/list to match users/:userId/sessions/list
+    // Note: regex works on path AFTER leading slash removed, so no leading / in pattern
+    path = path.replace(/users\/[0-9a-f]{32}(\/|$)/gi, 'users/:userId$1');
+
+    return path;
 }
 
 /**
- * Generate route objects from sitemap navigation items
+ * Generate route objects from hierarchical navigation structure
  *
- * Maps navigation items to React Router route objects using component registry.
- * Items without registered components are logged but skipped (graceful degradation).
+ * Recursively traverses NavGroups and NavItems to generate React Router routes.
+ * Tracks parent chain for breadcrumb generation.
  *
- * This is the core function that enables dynamic routing:
- * 1. Extracts navigable items from sitemap
- * 2. Looks up corresponding component for each item
- * 3. Creates RouteObject with normalized path and component element
- * 4. Handles missing components gracefully with console warnings
- *
- * @param items - Sitemap navigation items
+ * @param navStructure - Hierarchical navigation from API (_nav)
+ * @param links - HAL links from sitemap
+ * @param templates - HAL templates from sitemap
  * @returns Array of RouteObject for React Router
  *
  * @example
  * ```typescript
- * const sitemapItems: NavigationItem[] = [
- *   {
- *     id: 'account',
- *     title: 'Account',
- *     items: [
- *       { id: 'sessions', title: 'Sessions', href: '/users/123/sessions/list' },
- *       { id: 'api-keys', title: 'API Keys', href: '/users/123/api-keys/list' }
- *     ]
- *   }
- * ];
- *
- * const routes = generateRoutesFromSitemap(sitemapItems);
- * // Returns: [
- * //   { path: 'users/123/sessions/list', element: <SessionsList /> },
- * //   { path: 'users/123/api-keys/list', element: <ApiKeysList /> }
- * // ]
+ * const routes = generateRoutesFromNavStructure(
+ *   navStructure,
+ *   { users: { href: '/users' } },
+ *   { create: { title: 'Create', method: 'POST', target: '/users' } }
+ * );
  * ```
  */
-export function generateRoutesFromSitemap(items: NavigationItem[]): RouteObject[] {
-    // Extract navigable items (has href, not POST)
-    const navigable = extractNavigableItems(items);
-
-    // Map to route objects
+export function generateRoutesFromNavStructure(
+    navStructure: (NavItem | NavGroup)[],
+    links: Record<string, HalLink>,
+    templates: Record<string, HalTemplate>,
+    parentChain: BreadcrumbMeta[] = []
+): RouteObject[] {
     const routes: RouteObject[] = [];
 
-    for (const item of navigable) {
-        const Component = getComponentForId(item.id);
+    for (const item of navStructure) {
+        // Handle NavGroup - recursive traversal
+        if ('title' in item && 'items' in item) {
+            const group = item as NavGroup;
 
-        if (!Component) {
-            // Log warning but don't fail - graceful degradation
-            logger.warn('No component registered for navigation id', {
-                context: 'Dynamic Routing',
-                navigationId: item.id,
-                href: item.href,
+            // Groups don't have routes themselves, but contribute to breadcrumb chain
+            const groupMeta: BreadcrumbMeta = {
+                label: group.title,
+                path: null, // Groups are not clickable
+                parentChain: [...parentChain],
+                isGroup: true,
+            };
+
+            // Recursively process children with updated parent chain
+            const childRoutes = generateRoutesFromNavStructure(
+                group.items,
+                links,
+                templates,
+                [...parentChain, groupMeta]
+            );
+
+            routes.push(...childRoutes);
+            continue;
+        }
+
+        // Handle NavItem - resolve and create route
+        const navItem = item as NavItem;
+        const resolved = resolveNavItem(navItem, links, templates);
+
+        if (!resolved) {
+            logger.warn('Could not resolve navigation item', {
+                context: 'Route Generation',
+                rel: navItem.rel,
+                type: navItem.type,
             });
             continue;
         }
 
-        // Normalize path (remove leading slash for nested routes)
-        const path = normalizePathForRouter(item.href!);
+        // Skip POST actions unless they end with /list (collection views)
+        if (resolved.method === 'POST' && !resolved.href.endsWith('/list')) {
+            continue;
+        }
+
+        // Use rel as component ID (semantic identifier like 'my-profile', 'sessions', 'api-keys')
+        // This works for template URLs with path parameters like /users/{userId}
+        const componentId = navItem.rel;
+        const Component = getComponentForId(componentId);
+
+        // Skip navigation items without registered components (gracefully handle unimplemented routes)
+        if (!Component) {
+            logger.warn('No component found for navigation item', {
+                context: 'Route Generation',
+                rel: navItem.rel,
+                href: resolved.href,
+            });
+            continue;
+        }
+
+        // Create breadcrumb metadata for this route
+        const routeMeta: BreadcrumbMeta = {
+            label: resolved.title,
+            path: resolved.href,
+            parentChain: [...parentChain],
+            isGroup: false,
+            resourceType: navItem.type, // 'link' or 'template'
+            template: navItem.type === 'template' ? resolved.template : undefined,
+        };
+
+        // Normalize path and create route
+        const path = normalizePathForRouter(resolved.href);
 
         routes.push({
             path,
             element: createElement(Component),
+            handle: routeMeta, // Attach breadcrumb and resource type metadata
         });
     }
 

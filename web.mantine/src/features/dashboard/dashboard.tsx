@@ -7,14 +7,14 @@ import { LinksGroup } from '../../components/navbar_links_group/navbar_links_gro
 import { NoMatch } from '../../components/no_match';
 import { UserButton } from '../../components/user_button/user_button';
 import WebConfigurationStore from '../../configuration/web_config_store';
-import { generateRoutesFromSitemap } from '../../routing/route_generator';
+import { generateRoutesFromNavStructure } from '../../routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import classes from './dashboard.module.css';
 import { DashboardHome } from './dashboard_home';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
-    const { navigation, rawItems, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
+    const { navigation, navStructure, links, templates, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
 
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
@@ -30,11 +30,11 @@ export const Dashboard = () => {
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
-        if (!rawItems || rawItems.length === 0) {
+        if (!navStructure || navStructure.length === 0 || !links || !templates) {
             return [];
         }
-        return generateRoutesFromSitemap(rawItems);
-    }, [rawItems]);
+        return generateRoutesFromNavStructure(navStructure, links, templates);
+    }, [navStructure, links, templates]);
 
     // Split navigation into main nav (root items + groups except "My Account") and account nav
     const accountNav = navigation.find((item) => item.label === 'My Account');

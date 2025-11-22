@@ -1,16 +1,25 @@
 import { Center, Box, Paper, Group, Anchor, Button, TextInput, PasswordInput, Stack, Image, rem } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, SignInStep, useAuth } from '../../authentication';
+import { AuthenticationContext, AuthError, SignInStep, useAuth } from '../../authentication';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { LoadingContext } from '../../../context/loading_context';
 import { notifications } from '@mantine/notifications';
 
 export const SignInForm = () => {
     const { signIn } = useAuth();
+    const { signedInUser, initialized } = useContext(AuthenticationContext);
     const { setIsLoading } = useContext(LoadingContext);
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Redirect to dashboard if already authenticated
+    useEffect(() => {
+        if (initialized && signedInUser) {
+            const origin = location.state?.from?.pathname || '/';
+            navigate(origin, { replace: true });
+        }
+    }, [initialized, signedInUser, navigate, location.state]);
 
     const form = useForm({
         initialValues: {

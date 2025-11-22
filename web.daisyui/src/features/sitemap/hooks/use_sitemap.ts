@@ -44,9 +44,8 @@ interface SitemapResponse extends ApiResponse {
  * Cached sitemap data
  */
 interface CachedSitemap {
-    data: NavigationItem[];
     timestamp: number;
-    _nav?: NavGroup[];
+    _nav: NavGroup[];
     _links?: Record<string, HalLink>;
     _templates?: Record<string, HalTemplate>;
 }
@@ -57,13 +56,11 @@ interface CachedSitemap {
 export interface UseSitemapResult {
     /** Transformed navigation items ready for rendering */
     navigation: LinksGroupProps[];
-    /** Raw sitemap items from API (for route generation) */
-    rawItems: NavigationItem[];
-    /** Raw navigation structure from API (_nav) */
+    /** Hierarchical navigation structure from API (for breadcrumbs and route generation) */
     navStructure?: (NavItem | NavGroup)[];
-    /** Raw links from API (_links) */
+    /** HAL links from sitemap (for resolving nav items) */
     links?: Record<string, HalLink>;
-    /** Raw templates from API (_templates) */
+    /** HAL templates from sitemap (for resolving nav items) */
     templates?: Record<string, HalTemplate>;
     /** Loading state */
     isLoading: boolean;
@@ -87,83 +84,6 @@ const MAX_RETRIES = 3;
  * Delay between retries in milliseconds
  */
 const RETRY_DELAY = 1000;
-
-/**
- * Convert NavGroup structure to old NavigationItem structure
- * for backward compatibility with route generation
- */
-function convertNavToNavigationItems(
-    nav: (NavItem | NavGroup)[],
-    links: Record<string, HalLink>,
-    templates: Record<string, HalTemplate>
-): NavigationItem[] {
-    const items: NavigationItem[] = [];
-
-    function processItem(item: NavItem | NavGroup) {
-        if ('rel' in item) {
-            // Root-level NavItem
-            const navItem = item as NavItem;
-
-            if (navItem.type === 'link') {
-                const link = links[navItem.rel];
-                if (link) {
-                    items.push({
-                        id: navItem.rel,
-                        title: navItem.title || link.title || navItem.rel,
-                        href: link.href,
-                        method: 'GET',
-                    });
-                }
-            } else if (navItem.type === 'template') {
-                const template = templates[navItem.rel];
-                if (template) {
-                    items.push({
-                        id: navItem.rel,
-                        title: navItem.title || template.title || navItem.rel,
-                        href: template.target,
-                        method: template.method,
-                    });
-                }
-            }
-        } else {
-            // NavGroup - process all items in the group
-            const group = item as NavGroup;
-            for (const groupItem of group.items) {
-                if ('rel' in groupItem) {
-                    const navItem = groupItem as NavItem;
-
-                    if (navItem.type === 'link') {
-                        const link = links[navItem.rel];
-                        if (link) {
-                            items.push({
-                                id: navItem.rel,
-                                title: navItem.title || link.title || navItem.rel,
-                                href: link.href,
-                                method: 'GET',
-                            });
-                        }
-                    } else if (navItem.type === 'template') {
-                        const template = templates[navItem.rel];
-                        if (template) {
-                            items.push({
-                                id: navItem.rel,
-                                title: navItem.title || template.title || navItem.rel,
-                                href: template.target,
-                                method: template.method,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (const item of nav) {
-        processItem(item);
-    }
-
-    return items;
-}
 
 /**
  * Resolve a navigation item to its actual link or template
@@ -215,7 +135,6 @@ function resolveNavItem(
  */
 export function useSitemap(): UseSitemapResult {
     const [navigation, setNavigation] = useState<LinksGroupProps[]>([]);
-    const [rawItems, setRawItems] = useState<NavigationItem[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | undefined>(undefined);
 
@@ -253,7 +172,7 @@ export function useSitemap(): UseSitemapResult {
      * Fetch sitemap from API with retry logic
      */
     const fetchSitemap = useCallback(
-        async (retryCount = 0): Promise<NavigationItem[]> => {
+        async (retryCount = 0): Promise<void> => {
             try {
                 const entryPoint = getEntryPoint();
 
@@ -273,29 +192,18 @@ export function useSitemap(): UseSitemapResult {
 
                 const response = await apiClient.get<SitemapResponse>(sitemapHref);
 
-                // Support both new and old API structure for backward compatibility
-                let items: NavigationItem[] = [];
-
-                if (response._nav) {
-                    // New structure: Convert _nav to old NavigationItem[] for route generation
-                    items = convertNavToNavigationItems(response._nav, response._links || {}, response._templates || {});
-                } else if (response.navigation?.items) {
-                    // Old structure: Use directly
-                    items = response.navigation.items;
-                } else {
-                    throw new Error('Invalid sitemap response structure');
+                // Validate response structure
+                if (!response._nav) {
+                    throw new Error('Invalid sitemap response structure: missing _nav');
                 }
 
-                // Update cache with the full response for new structure support
+                // Update cache with the hierarchical structure
                 cacheRef.current = {
-                    data: items,
                     timestamp: Date.now(),
                     _nav: response._nav,
                     _links: response._links,
                     _templates: response._templates,
                 };
-
-                return items;
             } catch (err) {
                 // Don't retry if request was aborted
                 if (err instanceof Error && err.name === 'AbortError') {
@@ -331,17 +239,10 @@ export function useSitemap(): UseSitemapResult {
                 setIsLoading(true);
                 setError(undefined);
 
-                let items: NavigationItem[];
-
-                // Use cached data if valid and not forcing refresh
-                if (!forceRefresh && isCacheValid()) {
-                    items = cacheRef.current!.data;
-                } else {
-                    items = await fetchSitemap();
+                // Fetch sitemap if needed
+                if (forceRefresh || !isCacheValid()) {
+                    await fetchSitemap();
                 }
-
-                // Store raw items for route generation
-                setRawItems(items);
 
                 // Transform navigation items
                 let transformed: LinksGroupProps[];
@@ -368,9 +269,6 @@ export function useSitemap(): UseSitemapResult {
 
                 const error = err instanceof Error ? err : new Error('Failed to load sitemap');
                 setError(error);
-
-                // Clear raw items on error
-                setRawItems([]);
 
                 // Use fallback navigation on error
                 const fallback = createFallbackNavigation(userContext);
@@ -406,7 +304,6 @@ export function useSitemap(): UseSitemapResult {
 
     return {
         navigation,
-        rawItems,
         navStructure: cacheRef.current?._nav,
         links: cacheRef.current?._links,
         templates: cacheRef.current?._templates,
