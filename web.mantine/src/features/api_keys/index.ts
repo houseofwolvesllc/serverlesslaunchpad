@@ -1,3 +1,6 @@
+// Pages
+export { ApiKeysPage } from './api_keys_page';
+
 // Components
 export { ApiKeysList } from './components/api_keys_list';
 export { ApiKeyRow } from './components/api_key_row';

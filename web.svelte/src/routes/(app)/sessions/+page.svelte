@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Clock, Monitor } from 'lucide-svelte';
+	import { Clock, Monitor, AlertCircle } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import { HalCollectionList } from '$lib/components/hal_collection';
 	import type { FieldRenderer } from '$lib/components/hal_collection';
@@ -16,20 +16,31 @@
 	import AlertDialogFooter from '$lib/components/ui/alert-dialog-footer.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 
+	import { page } from '$app/stores';
+
 	let resource = createHalResource('sessions');
 	let deleteModalOpen = false;
 	let selectedIds: string[] = [];
 
-	$: data = $resource.data;
+	$: rawData = $resource.data;
 	$: currentSessionId = $authStore.user?.authContext?.sessionId || null;
 
-	// Mark current session in embedded items
-	$: if (data?._embedded?.sessions && currentSessionId) {
-		data._embedded.sessions = data._embedded.sessions.map((s: any) => ({
-			...s,
-			isCurrent: s.sessionId === currentSessionId
-		}));
-	}
+	// Extract userId from URL if present (e.g., /users/123/sessions)
+	$: userId = $page.url.pathname.match(/^\/users\/([^\/]+)\/sessions/)?.[1];
+
+	// Create enhanced data with isCurrent field properly set
+	// This creates a NEW object (not mutating) to ensure proper reactivity
+	$: data = rawData ? {
+		...rawData,
+		_embedded: {
+			...rawData._embedded,
+			sessions: (rawData._embedded?.sessions || []).map((s: any) => ({
+				...s,
+				// Only mark as current if viewing own sessions (no userId parameter)
+				isCurrent: !userId && currentSessionId && s.sessionId === currentSessionId
+			}))
+		}
+	} : null;
 
 	function handleBulkDelete(ids: string[]) {
 		selectedIds = ids;
@@ -37,7 +48,7 @@
 	}
 
 	async function confirmBulkDelete() {
-		const bulkDeleteTemplate = data?._templates?.bulkDelete;
+		const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 		if (!bulkDeleteTemplate) return;
 
 		try {
@@ -87,8 +98,14 @@
 	};
 </script>
 
-<div class="container mx-auto p-6">
-	<h1 class="text-3xl font-bold mb-6">Active Sessions</h1>
+<div class="space-y-6">
+	<!-- Page Header -->
+	<div class="space-y-1">
+		<h1 class="text-3xl font-bold tracking-tight">Sessions</h1>
+		<p class="text-base-content/70">
+			View and manage your active login sessions across all devices
+		</p>
+	</div>
 
 	<HalCollectionList
 		resource={data}
@@ -96,6 +113,9 @@
 		onBulkDelete={handleBulkDelete}
 		primaryKey="sessionId"
 		columnConfig={{
+			sessionId: { hidden: true },
+			userId: { hidden: true },
+			isCurrent: { hidden: true },
 			userAgent: { label: 'Device & Browser' },
 			ipAddress: { label: 'IP Address' },
 			dateLastAccessed: { label: 'Last Accessed' }
@@ -104,10 +124,29 @@
 			userAgent: userAgentRenderer,
 			dateLastAccessed: dateLastAccessedRenderer
 		}}
+		selectableFilter={(item) => !item.isCurrent}
 		emptyMessage="No active sessions found."
 		emptyIcon={Clock}
 		showCreateButton={false}
 	/>
+
+	<!-- Security Information Card -->
+	<div class="card bg-primary/5 border border-primary/20">
+		<div class="card-body">
+			<div class="flex items-center gap-2">
+				<AlertCircle class="h-5 w-5 text-primary" />
+				<h3 class="font-semibold">Security Information</h3>
+			</div>
+			<p class="text-sm text-base-content/70">
+				Each session represents a device where you're currently signed in. If you notice any
+				unfamiliar sessions, you should delete them immediately and change your password.
+			</p>
+			<p class="text-sm text-base-content/70">
+				<strong>Note:</strong> You cannot delete your current session. To end your current session,
+				please sign out using the user menu.
+			</p>
+		</div>
+	</div>
 
 	<!-- Delete Confirmation -->
 	<AlertDialogRoot bind:open={deleteModalOpen}>

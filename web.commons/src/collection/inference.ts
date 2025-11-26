@@ -220,7 +220,7 @@ export function inferColumns(
     });
 
     // Infer column definition for each key
-    const columns: InferredColumn[] = keys.map((key, index) => {
+    const columns: InferredColumn[] = keys.map((key) => {
         // Extract sample values for this key
         const sampleValues = sampledItems
             .map(item => item[key])
@@ -239,9 +239,9 @@ export function inferColumns(
         // Determine other properties
         const sortable = isSortable(fieldType);
 
-        // Priority is simply the position in the API response (no inference)
-        // Can be overridden via columnConfig
-        const priority = index;
+        // Calculate semantic priority based on field name and type
+        // Lower numbers = higher priority (displayed first)
+        const priority = getFieldPriority(key, fieldType);
 
         return {
             key,
@@ -253,8 +253,10 @@ export function inferColumns(
         };
     });
 
-    // Sort by priority only if explicitly requested, otherwise preserve API order
-    return options.sortByPriority
+    // Sort by priority (semantic importance) by default
+    // Can be disabled via sortByPriority: false to preserve API order
+    const shouldSort = options.sortByPriority !== false;
+    return shouldSort
         ? columns.sort((a, b) => a.priority - b.priority)
         : columns;
 }

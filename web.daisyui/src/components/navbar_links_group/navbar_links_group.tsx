@@ -33,7 +33,8 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, l
                         }
                         // Otherwise, use React Router to navigate (for GET links)
                         else if (link.link) {
-                            navigate(link.link);
+                            // Pass navigation source via location state (triggers breadcrumb reset)
+                            navigate(link.link, { state: { navigationSource: 'menu' } });
                         }
                     } catch (error) {
                         // Error already handled by action handler with notifications
@@ -57,7 +58,8 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, l
             if (newTab) {
                 window.open(link, '_blank', 'noopener,noreferrer');
             } else {
-                navigate(link);
+                // Pass navigation source via location state (triggers breadcrumb reset)
+                navigate(link, { state: { navigationSource: 'menu' } });
             }
         }
     };

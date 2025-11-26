@@ -205,7 +205,58 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
         return <input type="hidden" name={property.name} value={value} />;
     }
 
-    // Select/dropdown for options
+    // Checkbox/Toggle switches for bitfield (multi-select)
+    if (property.type === 'checkbox' && property.options && property.options.length > 0) {
+        const selectedValues = Array.isArray(value) ? value : [];
+
+        const toggleOption = (optionValue: string) => {
+            const newValues = selectedValues.includes(optionValue)
+                ? selectedValues.filter((v) => v !== optionValue)
+                : [...selectedValues, optionValue];
+            onChange(newValues);
+        };
+
+        return (
+            <div className="form-control space-y-2">
+                <label className="label">
+                    <span className="label-text font-medium">
+                        {label}
+                        {required && <span className="text-error ml-1">*</span>}
+                    </span>
+                </label>
+                <div className="border border-base-300 rounded-lg p-4 space-y-3">
+                    {property.options.map((opt) => {
+                        const optionValue = String(opt.value);
+                        const isChecked = selectedValues.includes(optionValue);
+
+                        return (
+                            <div key={optionValue} className="form-control">
+                                <label className="label cursor-pointer justify-start gap-3">
+                                    <span className="label-text flex-1">
+                                        {opt.prompt || optionValue}
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary"
+                                        checked={isChecked}
+                                        onChange={() => toggleOption(optionValue)}
+                                        disabled={disabled}
+                                    />
+                                </label>
+                            </div>
+                        );
+                    })}
+                </div>
+                {error && (
+                    <label className="label">
+                        <span className="label-text-alt text-error">{error}</span>
+                    </label>
+                )}
+            </div>
+        );
+    }
+
+    // Select/dropdown for single-select options (enums)
     if (property.options && property.options.length > 0) {
         return (
             <div className="form-control">

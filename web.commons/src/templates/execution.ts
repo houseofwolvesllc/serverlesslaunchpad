@@ -71,8 +71,9 @@ export type PropertySource = 'value' | 'selection' | 'form';
  * ```
  */
 export function getPropertySource(property: HalTemplateProperty): PropertySource {
-    // Explicit value for hidden fields ONLY (not pre-filled form fields)
-    if (property.value !== undefined && property.type === 'hidden') {
+    // Explicit value takes precedence (for any field type)
+    // This includes hidden fields AND pre-filled form fields
+    if (property.value !== undefined) {
         return 'value';
     }
 
@@ -82,7 +83,7 @@ export function getPropertySource(property: HalTemplateProperty): PropertySource
         return 'selection';
     }
 
-    // Default: from form or resource (includes pre-filled form fields)
+    // Default: from form or resource
     return 'form';
 }
 

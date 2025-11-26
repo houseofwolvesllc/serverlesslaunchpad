@@ -6,8 +6,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { getComponentForId, hasComponent, componentRegistry } from '../../src/routing/component_registry';
-import { SessionsList } from '../../src/features/sessions';
-import { ApiKeysList } from '../../src/features/api_keys';
+import { SessionsPage } from '../../src/features/sessions';
+import { ApiKeysPage } from '../../src/features/api_keys';
 import { Admin } from '../../src/features/admin';
 
 describe('componentRegistry', () => {
@@ -17,12 +17,12 @@ describe('componentRegistry', () => {
             expect(Object.keys(componentRegistry).length).toBeGreaterThan(0);
         });
 
-        it('should map sessions to SessionsList', () => {
-            expect(componentRegistry['sessions']).toBe(SessionsList);
+        it('should map sessions to SessionsPage', () => {
+            expect(componentRegistry['sessions']).toBe(SessionsPage);
         });
 
-        it('should map api-keys to ApiKeysList', () => {
-            expect(componentRegistry['api-keys']).toBe(ApiKeysList);
+        it('should map api-keys to ApiKeysPage', () => {
+            expect(componentRegistry['api-keys']).toBe(ApiKeysPage);
         });
 
         it('should map admin to Admin', () => {
@@ -33,17 +33,17 @@ describe('componentRegistry', () => {
     describe('getComponentForId', () => {
         it('should return component for known ID', () => {
             const Component = getComponentForId('sessions');
-            expect(Component).toBe(SessionsList);
+            expect(Component).toBe(SessionsPage);
         });
 
-        it('should return SessionsList for sessions ID', () => {
+        it('should return SessionsPage for sessions ID', () => {
             const Component = getComponentForId('sessions');
-            expect(Component).toBe(SessionsList);
+            expect(Component).toBe(SessionsPage);
         });
 
-        it('should return ApiKeysList for api-keys ID', () => {
+        it('should return ApiKeysPage for api-keys ID', () => {
             const Component = getComponentForId('api-keys');
-            expect(Component).toBe(ApiKeysList);
+            expect(Component).toBe(ApiKeysPage);
         });
 
         it('should return Admin for admin ID', () => {

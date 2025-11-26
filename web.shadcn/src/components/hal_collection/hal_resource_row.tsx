@@ -73,12 +73,13 @@ export function HalResourceRow({
             className={`${onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''} ${className} ${dynamicClassName}`}
             onClick={handleRowClick}
         >
-            {/* Selection checkbox */}
-            {selectable && (
+            {/* Selection checkbox - shown if onToggleSelect is provided, disabled if not selectable */}
+            {onToggleSelect && (
                 <TableCell className="w-12" onClick={handleCheckboxClick}>
                     <Checkbox
                         checked={selected}
                         onCheckedChange={handleCheckboxChange}
+                        disabled={!selectable}
                         aria-label="Select row"
                     />
                 </TableCell>

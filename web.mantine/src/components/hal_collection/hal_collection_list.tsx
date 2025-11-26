@@ -33,6 +33,9 @@ export interface HalCollectionListProps {
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
     showBulkDelete?: boolean;
+    selectableFilter?: (item: HalObject) => boolean;
+    /** Page title to display in the header row */
+    title?: string;
 }
 
 /**
@@ -75,6 +78,8 @@ export function HalCollectionList({
     showCreateButton = true,
     showRefreshButton = true,
     showBulkDelete = true,
+    selectableFilter,
+    title,
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
 
@@ -124,30 +129,55 @@ export function HalCollectionList({
         }
     };
 
-    // Handle select all checkbox
+    // Handle select all checkbox - only select selectable items
     const handleSelectAll = () => {
-        toggleAll();
+        if (selectableFilter) {
+            // Filter items to only include selectable ones
+            const selectableItems = items.filter(selectableFilter);
+            const selectableIds = selectableItems.map(item => item[detectedPrimaryKey]);
+
+            // Check if all selectable items are selected
+            const allSelectableSelected = selectableIds.every(id => isSelected(id));
+
+            if (allSelectableSelected) {
+                // Deselect all
+                clearSelection();
+            } else {
+                // Select all selectable items
+                selectableIds.forEach(id => {
+                    if (!isSelected(id)) {
+                        toggleSelection(id);
+                    }
+                });
+            }
+        } else {
+            toggleAll();
+        }
     };
 
     // Empty state
     if (isEmpty) {
         return (
             <Stack gap="md">
-                {/* Toolbar for empty state */}
-                <Group justify="space-between">
-                    <div></div>
-                    <Group gap="xs">
-                        {showCreateButton && createTemplate && (
-                            <Button variant="light" size="sm" onClick={handleCreate} leftSection={<IconPlus size={16} />}>
-                                {createTemplate.title || 'Create'}
-                            </Button>
-                        )}
-                        {showRefreshButton && (
-                            <Button variant="light" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
-                                Refresh
-                            </Button>
-                        )}
-                    </Group>
+                {/* Page title */}
+                {title && (
+                    <Stack gap={4}>
+                        <Text size="xl" fw={700}>{title}</Text>
+                    </Stack>
+                )}
+
+                {/* Action toolbar */}
+                <Group justify="flex-end" gap="xs">
+                    {showCreateButton && createTemplate && (
+                        <Button variant="default" size="sm" onClick={handleCreate} leftSection={<IconPlus size={16} />}>
+                            {createTemplate.title || 'Create'}
+                        </Button>
+                    )}
+                    {showRefreshButton && (
+                        <Button variant="default" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
+                            Refresh
+                        </Button>
+                    )}
                 </Group>
 
                 {/* Empty state card */}
@@ -171,11 +201,18 @@ export function HalCollectionList({
 
     return (
         <Stack gap="md">
-            {/* Action Toolbar */}
+            {/* Page title */}
+            {title && (
+                <Stack gap={4}>
+                    <Text size="xl" fw={700}>{title}</Text>
+                </Stack>
+            )}
+
+            {/* Action toolbar */}
             <Group justify="space-between">
                 {hasSelection ? (
                     <Group gap="md">
-                        <Text size="sm" fw={500}>
+                        <Text size="sm" c="dimmed">
                             {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
                         </Text>
                         <Button variant="subtle" size="xs" onClick={clearSelection}>
@@ -183,22 +220,22 @@ export function HalCollectionList({
                         </Button>
                     </Group>
                 ) : (
-                    <div></div>
+                    <div />
                 )}
 
                 <Group gap="xs">
                     {hasSelection && canBulkDelete && (
-                        <Button variant="light" size="sm" color="red" onClick={handleBulkDelete} leftSection={<IconTrash size={16} />}>
+                        <Button variant="default" size="sm" onClick={handleBulkDelete} leftSection={<IconTrash size={16} />}>
                             Delete Selected
                         </Button>
                     )}
                     {showCreateButton && createTemplate && (
-                        <Button variant="light" size="sm" onClick={handleCreate} leftSection={<IconPlus size={16} />}>
+                        <Button variant="default" size="sm" onClick={handleCreate} leftSection={<IconPlus size={16} />}>
                             {createTemplate.title || 'Create'}
                         </Button>
                     )}
                     {showRefreshButton && (
-                        <Button variant="light" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
+                        <Button variant="default" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
                             Refresh
                         </Button>
                     )}
@@ -232,13 +269,15 @@ export function HalCollectionList({
                     <Table.Tbody>
                         {items.map((item) => {
                             const itemId = item[detectedPrimaryKey];
+                            const isItemSelectable = canBulkDelete && (!selectableFilter || selectableFilter(item));
 
                             return (
                                 <HalResourceRow
                                     key={itemId || Math.random()}
                                     item={item}
                                     columns={columns}
-                                    selectable={canBulkDelete}
+                                    showCheckboxColumn={canBulkDelete}
+                                    selectable={isItemSelectable}
                                     selected={isSelected(itemId)}
                                     onToggleSelect={() => toggleSelection(itemId)}
                                     onRowClick={onRowClick}

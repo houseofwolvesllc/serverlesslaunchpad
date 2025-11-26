@@ -3,6 +3,13 @@
  *
  * These renderers provide sensible defaults for displaying different types of data
  * in HAL collections using Mantine components. Custom renderers can override these on a per-field basis.
+ *
+ * Uses framework-agnostic utility functions from web.commons.react for:
+ * - Badge variant determination
+ * - Date formatting
+ * - Boolean evaluation
+ * - URL shortening
+ * - Null value placeholders
  */
 
 import { useState } from 'react';
@@ -10,6 +17,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { IconCopy, IconCheck } from '@tabler/icons-react';
 import { ActionIcon, Badge, Code, Text, Anchor } from '@mantine/core';
 import { FieldType, type InferredColumn } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import {
+    determineBadgeVariant,
+    formatDateValue,
+    evaluateBooleanValue,
+    shortenUrl,
+    getNullValuePlaceholder,
+} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 
@@ -18,19 +32,22 @@ export type FieldRenderer = (value: any, column: InferredColumn, item: any) => R
  */
 export const TextRenderer: FieldRenderer = (value, column) => {
     if (value === null || value === undefined || value === '') {
-        return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
+        const nullPlaceholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <Text size="sm" c="dimmed">{nullPlaceholder}</Text>;
     }
     return <Text size="sm">{String(value)}</Text>;
 };
 
 /**
- * Code field renderer - Monospace text with copy button
+ * Code field renderer component - Monospace text with copy button
+ * Extracted as a component to properly use React hooks
  */
-export const CodeRenderer: FieldRenderer = (value, column) => {
+function CodeFieldComponent({ value, column }: { value: any; column: InferredColumn }) {
     const [copied, setCopied] = useState(false);
 
     if (!value) {
-        return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
+        const nullPlaceholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <Text size="sm" c="dimmed">{nullPlaceholder}</Text>;
     }
 
     const handleCopy = async (e: React.MouseEvent) => {
@@ -59,6 +76,13 @@ export const CodeRenderer: FieldRenderer = (value, column) => {
             </ActionIcon>
         </div>
     );
+}
+
+/**
+ * Code field renderer - Monospace text with copy button
+ */
+export const CodeRenderer: FieldRenderer = (value, column) => {
+    return <CodeFieldComponent value={value} column={column} />;
 };
 
 /**
@@ -69,36 +93,27 @@ export const DateRenderer: FieldRenderer = (value, column) => {
         return <Text size="xs" c="dimmed">{column.nullText || 'Never'}</Text>;
     }
 
-    try {
+    const { formatted, tooltip, isValid } = formatDateValue(value, column.key);
+
+    // Handle relative time placeholder - convert to actual relative time
+    if (isValid && formatted === '[RELATIVE]') {
         const date = new Date(value);
-
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-            return <Text size="sm">{String(value)}</Text>;
-        }
-
-        // Relative time format (e.g., "2 hours ago")
-        if (column.key.toLowerCase().includes('last')) {
-            return (
-                <Text size="sm" title={date.toLocaleString()}>
-                    {formatDistanceToNow(date, { addSuffix: true })}
-                </Text>
-            );
-        }
-
-        // Short format (e.g., "Jan 1, 2024")
         return (
-            <Text size="sm" title={date.toLocaleString()}>
-                {date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                })}
+            <Text size="sm" title={tooltip}>
+                {formatDistanceToNow(date, { addSuffix: true })}
             </Text>
         );
-    } catch (error) {
+    }
+
+    if (!isValid) {
         return <Text size="sm">{String(value)}</Text>;
     }
+
+    return (
+        <Text size="sm" title={tooltip}>
+            {formatted}
+        </Text>
+    );
 };
 
 /**
@@ -109,23 +124,26 @@ export const BadgeRenderer: FieldRenderer = (value, column) => {
         return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
     }
 
-    // Determine badge color based on value
-    const getColor = (val: string): string => {
-        const lower = String(val).toLowerCase();
-        if (lower.includes('active') || lower.includes('success') || lower.includes('enabled')) {
-            return 'green';
+    // Determine badge variant based on value
+    const variant = determineBadgeVariant(String(value));
+
+    // Map variant to Mantine color
+    const getColor = (variant: string): string => {
+        switch (variant) {
+            case 'default':
+                return 'green';
+            case 'destructive':
+                return 'red';
+            case 'warning':
+                return 'yellow';
+            case 'secondary':
+            default:
+                return 'gray';
         }
-        if (lower.includes('error') || lower.includes('failed') || lower.includes('disabled')) {
-            return 'red';
-        }
-        if (lower.includes('pending') || lower.includes('warning')) {
-            return 'yellow';
-        }
-        return 'gray';
     };
 
     return (
-        <Badge color={getColor(String(value))} size="sm">
+        <Badge color={getColor(variant)} size="sm">
             {String(value)}
         </Badge>
     );
@@ -135,7 +153,7 @@ export const BadgeRenderer: FieldRenderer = (value, column) => {
  * Boolean field renderer - Yes/No badges
  */
 export const BooleanRenderer: FieldRenderer = (value) => {
-    const isTrue = value === true || value === 'true' || value === 1;
+    const isTrue = evaluateBooleanValue(value);
 
     return (
         <Badge color={isTrue ? 'green' : 'gray'} size="sm">
@@ -149,7 +167,8 @@ export const BooleanRenderer: FieldRenderer = (value) => {
  */
 export const NumberRenderer: FieldRenderer = (value, column) => {
     if (value === null || value === undefined) {
-        return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
+        const nullPlaceholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <Text size="sm" c="dimmed">{nullPlaceholder}</Text>;
     }
 
     const num = Number(value);
@@ -165,7 +184,8 @@ export const NumberRenderer: FieldRenderer = (value, column) => {
  */
 export const EmailRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
+        const nullPlaceholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <Text size="sm" c="dimmed">{nullPlaceholder}</Text>;
     }
 
     return (
@@ -184,13 +204,12 @@ export const EmailRenderer: FieldRenderer = (value, column) => {
  */
 export const UrlRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <Text size="sm" c="dimmed">{column.nullText || '—'}</Text>;
+        const nullPlaceholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <Text size="sm" c="dimmed">{nullPlaceholder}</Text>;
     }
 
     // Shorten long URLs for display
-    const displayUrl = String(value).length > 50
-        ? String(value).substring(0, 47) + '...'
-        : String(value);
+    const displayUrl = shortenUrl(String(value));
 
     return (
         <Anchor

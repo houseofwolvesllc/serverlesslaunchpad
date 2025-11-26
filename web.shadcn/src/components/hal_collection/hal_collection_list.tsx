@@ -61,6 +61,8 @@ export interface HalCollectionListProps {
     className?: string;
     selectableFilter?: (item: HalObject) => boolean;
     getRowClassName?: (item: HalObject) => string;
+    /** Page title to display in the header row */
+    title?: string;
 }
 
 /**
@@ -107,6 +109,7 @@ export function HalCollectionList({
     className = '',
     selectableFilter,
     getRowClassName,
+    title,
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
 
@@ -275,23 +278,27 @@ export function HalCollectionList({
     if (isEmpty) {
         return (
             <div className={`space-y-4 ${className}`}>
-                {/* Toolbar for empty state */}
-                <div className="flex items-center justify-between">
-                    <div></div>
-                    <div className="flex items-center gap-2">
-                        {showCreateButton && createTemplate && (
-                            <Button variant="outline" size="sm" onClick={handleCreate}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                {createTemplate.title || 'Create'}
-                            </Button>
-                        )}
-                        {showRefreshButton && (
-                            <Button variant="outline" size="sm" onClick={handleRefresh}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Refresh
-                            </Button>
-                        )}
+                {/* Page title */}
+                {title && (
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
                     </div>
+                )}
+
+                {/* Action toolbar */}
+                <div className="flex items-center justify-end gap-2">
+                    {showCreateButton && createTemplate && (
+                        <Button variant="outline" size="sm" onClick={handleCreate}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            {createTemplate.title || 'Create'}
+                        </Button>
+                    )}
+                    {showRefreshButton && (
+                        <Button variant="outline" size="sm" onClick={handleRefresh}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Refresh
+                        </Button>
+                    )}
                 </div>
 
                 {/* Empty state card */}
@@ -314,11 +321,18 @@ export function HalCollectionList({
 
     return (
         <div className={`space-y-4 ${className}`}>
-            {/* Action Toolbar */}
+            {/* Page title */}
+            {title && (
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                </div>
+            )}
+
+            {/* Action toolbar */}
             <div className="flex items-center justify-between">
                 {hasSelection ? (
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">
+                        <span className="text-sm text-muted-foreground">
                             {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
                         </span>
                         <Button variant="ghost" size="sm" onClick={clearSelection}>
@@ -326,7 +340,7 @@ export function HalCollectionList({
                         </Button>
                     </div>
                 ) : (
-                    <div></div>
+                    <div />
                 )}
 
                 <div className="flex items-center gap-2">

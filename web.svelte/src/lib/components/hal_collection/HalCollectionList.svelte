@@ -16,6 +16,7 @@
 	import type { HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
 	import type { FieldRenderer } from './field_renderers';
 	import { cn } from '$lib/utils';
+	import Button from '$lib/components/ui/button.svelte';
 
 	// Props
 	export let resource: HalObject | null | undefined;
@@ -31,6 +32,9 @@
 	export let showCreateButton = true;
 	export let showRefreshButton = true;
 	export let showBulkDelete = true;
+	export let selectableFilter: ((item: HalObject) => boolean) | undefined = undefined;
+	/** Page title to display in the header row */
+	export let title: string | undefined = undefined;
 
 	// Process collection
 	$: result = processCollection(resource, { columnConfig });
@@ -42,13 +46,46 @@
 			? Object.keys(items[0]).find((key) => key.toLowerCase().endsWith('id')) || primaryKey
 			: primaryKey;
 
-	// Selection management
-	let selectionManager: SelectionManager;
-	$: selectionManager = new SelectionManager(items, detectedPrimaryKey);
-	$: selected = selectionManager.selectedIds;
-	$: allSelected = selectionManager.allSelected;
-	$: hasSelection = selectionManager.hasSelection;
-	$: selectedCount = selectionManager.count;
+	// Selection management - persistent state
+	let selectedSet = new Set<string>();
+
+	// Reactive selection state
+	$: selectableItems = selectableFilter ? items.filter(selectableFilter) : items;
+	$: selected = Array.from(selectedSet);
+	$: allSelected = selectableItems.length > 0 && selectedSet.size === selectableItems.length;
+	$: hasSelection = selectedSet.size > 0;
+	$: selectedCount = selectedSet.size;
+
+	function isSelected(id: string): boolean {
+		return selectedSet.has(id);
+	}
+
+	function toggleSelection(id: string) {
+		if (selectedSet.has(id)) {
+			selectedSet.delete(id);
+		} else {
+			selectedSet.add(id);
+		}
+		// Force reactivity
+		selectedSet = selectedSet;
+	}
+
+	function clearSelection() {
+		selectedSet.clear();
+		selectedSet = selectedSet;
+	}
+
+	function toggleAllSelection() {
+		if (allSelected) {
+			selectedSet.clear();
+		} else {
+			selectableItems.forEach(item => {
+				const id = item[detectedPrimaryKey];
+				if (id) selectedSet.add(id);
+			});
+		}
+		selectedSet = selectedSet;
+	}
 
 	// Templates
 	$: createTemplate = templates?.default || templates?.create;
@@ -71,15 +108,11 @@
 	}
 
 	function handleSelectAll() {
-		selectionManager.toggleAll();
-		// Force reactivity update
-		selected = selectionManager.selectedIds;
+		toggleAllSelection();
 	}
 
 	function handleToggleSelection(itemId: string) {
-		selectionManager.toggleSelection(itemId);
-		// Force reactivity update
-		selected = selectionManager.selectedIds;
+		toggleSelection(itemId);
 	}
 
 	function handleRowClick(item: HalObject) {
@@ -89,29 +122,27 @@
 
 {#if isEmpty}
 	<div class="space-y-4">
-		<!-- Toolbar for empty state -->
-		<div class="flex items-center justify-between">
-			<div></div>
-			<div class="flex items-center gap-2">
-				{#if showCreateButton && createTemplate}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-						on:click={handleCreate}
-					>
-						<Plus class="w-4 h-4" />
-						{createTemplate.title || 'Create'}
-					</button>
-				{/if}
-				{#if showRefreshButton}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-						on:click={handleRefresh}
-					>
-						<RefreshCw class="w-4 h-4" />
-						Refresh
-					</button>
-				{/if}
+		<!-- Page title -->
+		{#if title}
+			<div class="space-y-1">
+				<h1 class="text-3xl font-bold tracking-tight">{title}</h1>
 			</div>
+		{/if}
+
+		<!-- Action toolbar -->
+		<div class="flex items-center justify-end gap-2">
+			{#if showCreateButton && createTemplate}
+				<Button variant="outline" size="sm" on:click={handleCreate}>
+					<Plus class="w-4 h-4 mr-2" />
+					{createTemplate.title || 'Create'}
+				</Button>
+			{/if}
+			{#if showRefreshButton}
+				<Button variant="outline" size="sm" on:click={handleRefresh}>
+					<RefreshCw class="w-4 h-4 mr-2" />
+					Refresh
+				</Button>
+			{/if}
 		</div>
 
 		<!-- Empty state card -->
@@ -125,35 +156,39 @@
 				<h3 class="text-2xl font-semibold leading-none tracking-tight">No Items</h3>
 				<p class="text-sm text-muted-foreground mt-2 mb-6">{emptyMessage}</p>
 				{#if showCreateButton && createTemplate}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2"
-						on:click={handleCreate}
-					>
-						<Plus class="w-4 h-4" />
+					<Button variant="outline" on:click={handleCreate}>
+						<Plus class="w-4 h-4 mr-2" />
 						{createTemplate.title || 'Create First Item'}
-					</button>
+					</Button>
 				{/if}
 			</div>
 		</div>
 	</div>
 {:else}
 	<div class="space-y-4">
-		<!-- Action Toolbar -->
+		<!-- Page title -->
+		{#if title}
+			<div class="space-y-1">
+				<h1 class="text-3xl font-bold tracking-tight">{title}</h1>
+			</div>
+		{/if}
+
+		<!-- Action toolbar -->
 		<div class="flex items-center justify-between">
 			{#if hasSelection}
 				<div class="flex items-center gap-4">
-					<span class="text-sm font-medium">
+					<span class="text-sm text-muted-foreground">
 						{selectedCount} item{selectedCount > 1 ? 's' : ''} selected
 					</span>
-					<button
-						class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 px-3"
+					<Button
+						variant="ghost"
+						size="sm"
 						on:click={() => {
-							selectionManager.clearSelection();
-							selected = [];
+							clearSelection();
 						}}
 					>
 						Clear
-					</button>
+					</Button>
 				</div>
 			{:else}
 				<div></div>
@@ -161,31 +196,22 @@
 
 			<div class="flex items-center gap-2">
 				{#if hasSelection && canBulkDelete}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-4 py-2"
-						on:click={handleBulkDelete}
-					>
-						<Trash2 class="w-4 h-4" />
+					<Button variant="outline" size="sm" on:click={handleBulkDelete}>
+						<Trash2 class="w-4 h-4 mr-2" />
 						Delete Selected
-					</button>
+					</Button>
 				{/if}
 				{#if showCreateButton && createTemplate}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-						on:click={handleCreate}
-					>
-						<Plus class="w-4 h-4" />
+					<Button variant="outline" size="sm" on:click={handleCreate}>
+						<Plus class="w-4 h-4 mr-2" />
 						{createTemplate.title || 'Create'}
-					</button>
+					</Button>
 				{/if}
 				{#if showRefreshButton}
-					<button
-						class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-						on:click={handleRefresh}
-					>
-						<RefreshCw class="w-4 h-4" />
+					<Button variant="outline" size="sm" on:click={handleRefresh}>
+						<RefreshCw class="w-4 h-4 mr-2" />
 						Refresh
-					</button>
+					</Button>
 				{/if}
 			</div>
 		</div>
@@ -216,11 +242,13 @@
 					</thead>
 					<tbody class="[&_tr:last-child]:border-0">
 						{#each items as item (item[detectedPrimaryKey] || Math.random())}
+							{@const isItemSelectable = !selectableFilter || selectableFilter(item)}
 							<HalResourceRow
 								{item}
 								{columns}
-								selectable={canBulkDelete}
-								selected={selectionManager.isSelected(item[detectedPrimaryKey])}
+								showCheckbox={canBulkDelete}
+								selectable={isItemSelectable}
+								selected={isSelected(item[detectedPrimaryKey])}
 								onToggleSelect={() => handleToggleSelection(item[detectedPrimaryKey])}
 								onRowClick={() => handleRowClick(item)}
 								{customRenderers}

@@ -111,11 +111,19 @@ export function resolveNavItem(
 			return null;
 		}
 
-		return {
+		const resolved = {
 			href: link.href,
 			title: item.title || link.title || item.rel,
-			type: 'link'
+			type: 'link' as const
 		};
+
+		logger.debug('[resolveNavItem] Resolved link', {
+			rel: item.rel,
+			title: resolved.title,
+			href: resolved.href
+		});
+
+		return resolved;
 	} else {
 		const template = templates[item.rel];
 		if (!template) {
@@ -123,13 +131,22 @@ export function resolveNavItem(
 			return null;
 		}
 
-		return {
+		const resolved = {
 			href: template.target,
 			title: item.title || template.title || item.rel,
-			type: 'template',
+			type: 'template' as const,
 			method: template.method,
 			template
 		};
+
+		logger.debug('[resolveNavItem] Resolved template', {
+			rel: item.rel,
+			title: resolved.title,
+			href: resolved.href,
+			method: resolved.method
+		});
+
+		return resolved;
 	}
 }
 
@@ -139,6 +156,9 @@ export function resolveNavItem(
  * Converts the hierarchical navigation structure from the API into
  * a flat array of LinksGroupProps suitable for rendering in the sidebar.
  *
+ * Always preserves group hierarchy (never flattens single-item groups)
+ * to maintain structure like "Admin" > "Users".
+ *
  * @param navStructure - Navigation structure from API
  * @param resolveItem - Function to resolve nav items to hrefs
  * @returns Array of LinksGroupProps
@@ -147,63 +167,128 @@ export function transformNavStructure(
 	navStructure: (NavItem | NavGroup)[],
 	resolveItem: (item: NavItem) => ResolvedNavItem | null
 ): LinksGroupProps[] {
-	const groups: LinksGroupProps[] = [];
+	const result: LinksGroupProps[] = [];
 
 	for (const item of navStructure) {
-		if ('items' in item) {
-			// It's a NavGroup
-			const group = item as NavGroup;
-			const links: NavLink[] = [];
+		// Handle root-level NavItems
+		if ('rel' in item) {
+			const navItem = item as NavItem;
+			const resolved = resolveItem(navItem);
 
-			// Process child items
-			for (const child of group.items) {
-				if ('items' in child) {
-					// Nested group - flatten it
-					const nestedGroup = child as NavGroup;
-					for (const nestedItem of nestedGroup.items) {
-						if (!('items' in nestedItem)) {
-							const resolved = resolveItem(nestedItem as NavItem);
-							if (resolved) {
-								links.push({
-									label: resolved.title,
-									link: resolved.href,
-									icon: (nestedItem as NavItem).icon
-								});
-							}
-						}
-					}
-				} else {
-					// Regular nav item
-					const resolved = resolveItem(child as NavItem);
-					if (resolved) {
-						links.push({
+			if (!resolved) continue;
+
+			// Include in navigation:
+			// 1. All links (GET)
+			// 2. GET templates
+			// 3. POST templates ending in /list (collection list endpoints with search/filter)
+			const isNavigable =
+				resolved.type === 'link' ||
+				(resolved.type === 'template' && resolved.method === 'GET') ||
+				(resolved.type === 'template' && resolved.method === 'POST' && resolved.href.endsWith('/list'));
+
+			if (isNavigable) {
+				result.push({
+					icon: navItem.icon,
+					label: resolved.title,
+					link: resolved.href
+				});
+			} else {
+				logger.debug('[transformNavStructure] Skipping root-level non-GET template from navigation', {
+					title: resolved.title,
+					type: resolved.type,
+					method: resolved.method
+				});
+			}
+			continue;
+		}
+
+		// Handle NavGroups
+		const group = item as NavGroup;
+
+		// Always render groups as collapsible (don't flatten single-item groups)
+		// This preserves the group hierarchy (e.g., "Admin" > "Users")
+		{
+			// Transform child items
+			const childLinks: NavLink[] = [];
+
+			for (const item of group.items) {
+				if ('rel' in item) {
+					// NavItem - resolve to link or template
+					const navItem = item as NavItem;
+					const resolved = resolveItem(navItem);
+
+					if (!resolved) continue;
+
+					// Include in navigation:
+					// 1. All links (GET)
+					// 2. GET templates
+					// 3. POST templates ending in /list (collection list endpoints with search/filter)
+					const isNavigable =
+						resolved.type === 'link' ||
+						(resolved.type === 'template' && resolved.method === 'GET') ||
+						(resolved.type === 'template' && resolved.method === 'POST' && resolved.href.endsWith('/list'));
+
+					if (isNavigable) {
+						childLinks.push({
 							label: resolved.title,
 							link: resolved.href,
-							icon: (child as NavItem).icon
+							icon: navItem.icon
 						});
+						logger.info('[transformNavStructure] Including in navigation', {
+							title: resolved.title,
+							type: resolved.type,
+							method: resolved.method,
+							href: resolved.href
+						});
+					} else {
+						logger.info('[transformNavStructure] SKIPPING non-GET template', {
+							title: resolved.title,
+							type: resolved.type,
+							method: resolved.method,
+							href: resolved.href
+						});
+					}
+				} else {
+					// Nested NavGroup - recursively transform
+					const nestedGroup = item as NavGroup;
+					const nestedTransformed = transformNavStructure([nestedGroup], resolveItem);
+
+					// Flatten nested group items into child links
+					for (const nested of nestedTransformed) {
+						if (nested.link) {
+							childLinks.push({
+								label: nested.label,
+								link: nested.link,
+								icon: nested.icon
+							});
+						} else if (nested.links) {
+							childLinks.push(...nested.links);
+						}
 					}
 				}
 			}
 
-			groups.push({
-				label: group.title,
-				icon: group.icon,
-				links: links.length > 0 ? links : undefined
-			});
-		} else {
-			// It's a top-level NavItem
-			const resolved = resolveItem(item as NavItem);
-			if (resolved) {
-				groups.push({
-					label: resolved.title,
-					icon: (item as NavItem).icon,
-					link: resolved.href
+			if (childLinks.length > 0) {
+				logger.info('[transformNavStructure] Adding group to navigation', {
+					groupTitle: group.title,
+					childCount: childLinks.length,
+					children: childLinks.map(c => c.label)
+				});
+				result.push({
+					icon: group.icon,
+					label: group.title,
+					links: childLinks
+				});
+			} else {
+				logger.info('[transformNavStructure] SKIPPING group with no children', {
+					groupTitle: group.title,
+					originalItemCount: group.items.length
 				});
 			}
 		}
 	}
 
-	return groups;
+	return result;
 }
 
 /**

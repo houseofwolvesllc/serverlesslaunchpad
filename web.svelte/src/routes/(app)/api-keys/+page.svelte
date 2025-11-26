@@ -24,7 +24,7 @@
 	let selectedIds: string[] = [];
 
 	$: data = $resource.data;
-	$: createTemplate = data?._templates?.default;
+	$: createTemplate = data?._templates?.create || data?._templates?.default;
 
 	function handleCreate() {
 		createModalOpen = true;
@@ -48,7 +48,7 @@
 	}
 
 	async function confirmBulkDelete() {
-		const bulkDeleteTemplate = data?._templates?.bulkDelete;
+		const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 		if (!bulkDeleteTemplate) return;
 
 		try {
@@ -62,8 +62,14 @@
 	}
 </script>
 
-<div class="container mx-auto p-6">
-	<h1 class="text-3xl font-bold mb-6">API Keys</h1>
+<div class="space-y-6">
+	<!-- Page Header -->
+	<div class="space-y-1">
+		<h1 class="text-3xl font-bold tracking-tight">API Keys</h1>
+		<p class="text-base-content/70">
+			Manage your API keys for programmatic access to your resources
+		</p>
+	</div>
 
 	<HalCollectionList
 		resource={data}

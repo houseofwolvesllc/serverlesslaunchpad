@@ -167,6 +167,30 @@ function createSitemapStore() {
 			// Transform navigation structure
 			const transformed = transformNavStructure(response._nav, resolver);
 
+			// Debug log the raw navigation structure
+			logger.info('[Sitemap] Raw navigation structure', {
+				navGroups: response._nav.length,
+				nav: response._nav,
+				linkCount: Object.keys(response._links || {}).length,
+				links: Object.entries(response._links || {}).map(([key, link]) => ({
+					key,
+					href: link.href,
+					title: link.title
+				})),
+				templateCount: Object.keys(response._templates || {}).length,
+				templates: Object.entries(response._templates || {}).map(([key, tmpl]) => ({
+					key,
+					target: tmpl.target,
+					method: tmpl.method,
+					title: tmpl.title
+				}))
+			});
+
+			logger.info('[Sitemap] Transformed navigation', {
+				groupCount: transformed.length,
+				groups: transformed.map(g => ({ label: g.label, linkCount: g.links?.length || 0 }))
+			});
+
 			update((s) => ({
 				...s,
 				navStructure: response._nav,

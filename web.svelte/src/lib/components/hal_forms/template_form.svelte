@@ -6,6 +6,7 @@
 	import Input from '$lib/components/ui/input.svelte';
 	import Textarea from '$lib/components/ui/textarea.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import Switch from '$lib/components/ui/switch.svelte';
 
 	export let template: HalTemplate;
 	export let loading = false;
@@ -24,10 +25,24 @@
 		if (template.properties) {
 			template.properties.forEach(prop => {
 				if (formData[prop.name] === undefined) {
-					formData[prop.name] = prop.value ?? '';
+					// For checkbox with options, initialize as array
+					if (prop.type === 'checkbox' && prop.options && prop.options.length > 0) {
+						formData[prop.name] = prop.value ?? [];
+					} else {
+						formData[prop.name] = prop.value ?? '';
+					}
 				}
 			});
 		}
+	}
+
+	// Helper function to toggle checkbox option
+	function toggleCheckboxOption(propName: string, optionValue: string) {
+		const selectedValues = Array.isArray(formData[propName]) ? formData[propName] : [];
+		const newValues = selectedValues.includes(optionValue)
+			? selectedValues.filter((v: string) => v !== optionValue)
+			: [...selectedValues, optionValue];
+		formData[propName] = newValues;
 	}
 
 	function handleSubmit(event: Event) {
@@ -83,7 +98,16 @@
 			// Options validation
 			if (prop.options && value) {
 				const validOptions = prop.options.map(opt => opt.value);
-				if (!validOptions.includes(value)) {
+
+				// For checkbox (multi-select), validate each selected value
+				if (prop.type === 'checkbox' && Array.isArray(value)) {
+					const invalidValues = value.filter((v: any) => !validOptions.includes(v));
+					if (invalidValues.length > 0) {
+						validationErrors[prop.name] = `Invalid selection`;
+					}
+				}
+				// For select (single-select), validate the single value
+				else if (!Array.isArray(value) && !validOptions.includes(value)) {
 					validationErrors[prop.name] = `Invalid selection`;
 				}
 			}
@@ -133,6 +157,40 @@
 					name={prop.name}
 					bind:value={formData[prop.name]}
 				/>
+			{:else if prop.type === 'checkbox' && prop.options && prop.options.length > 0}
+				<!-- Checkbox with toggle switches for multi-select (e.g., feature flags) -->
+				<div class="flex flex-col space-y-3">
+					<Label>
+						{prop.prompt || prop.name}
+						{#if prop.required}<span class="text-destructive ml-1">*</span>{/if}
+					</Label>
+					<div class="space-y-3 rounded-lg border p-4">
+						{#each prop.options as option}
+							{@const optionValue = String(option.value)}
+							{@const isChecked = Array.isArray(formData[prop.name]) && formData[prop.name].includes(optionValue)}
+							<div class="flex items-center justify-between space-x-2">
+								<Label
+									for={`${prop.name}-${optionValue}`}
+									class="text-sm font-normal cursor-pointer flex-1"
+								>
+									{option.prompt || optionValue}
+								</Label>
+								<Switch
+									id={`${prop.name}-${optionValue}`}
+									checked={isChecked}
+									onCheckedChange={() => toggleCheckboxOption(prop.name, optionValue)}
+									disabled={loading || prop.readOnly}
+								/>
+							</div>
+						{/each}
+					</div>
+					{#if errors[prop.name]}
+						<p class="text-sm text-destructive flex items-center gap-1">
+							<AlertCircle class="h-4 w-4" />
+							{errors[prop.name]}
+						</p>
+					{/if}
+				</div>
 			{:else if prop.type === 'textarea'}
 				<div class="space-y-2">
 					<Label for={fieldId}>

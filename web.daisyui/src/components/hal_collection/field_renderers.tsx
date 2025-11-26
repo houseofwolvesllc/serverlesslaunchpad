@@ -3,12 +3,21 @@
  *
  * These renderers provide sensible defaults for displaying different types of data
  * in HAL collections using DaisyUI classes. Custom renderers can override these on a per-field basis.
+ *
+ * Uses framework-agnostic utilities from web.commons.react for field value processing.
  */
 
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Copy, Check } from 'lucide-react';
 import { FieldType, type InferredColumn } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import {
+    determineBadgeVariant,
+    formatDateValue,
+    evaluateBooleanValue,
+    shortenUrl,
+    getNullValuePlaceholder,
+} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { cn } from '@/lib/utils';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
@@ -18,19 +27,22 @@ export type FieldRenderer = (value: any, column: InferredColumn, item: any) => R
  */
 export const TextRenderer: FieldRenderer = (value, column) => {
     if (value === null || value === undefined || value === '') {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
     return <span className="text-sm">{String(value)}</span>;
 };
 
 /**
- * Code field renderer - Monospace text with copy button
+ * Code field renderer component - Monospace text with copy button
+ * Extracted as a component to properly use React hooks
  */
-export const CodeRenderer: FieldRenderer = (value, column) => {
+function CodeFieldComponent({ value, column }: { value: any; column: InferredColumn }) {
     const [copied, setCopied] = useState(false);
 
     if (!value) {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
     const handleCopy = async (e: React.MouseEvent) => {
@@ -59,6 +71,13 @@ export const CodeRenderer: FieldRenderer = (value, column) => {
             </button>
         </div>
     );
+}
+
+/**
+ * Code field renderer - Monospace text with copy button
+ */
+export const CodeRenderer: FieldRenderer = (value, column) => {
+    return <CodeFieldComponent value={value} column={column} />;
 };
 
 /**
@@ -66,39 +85,28 @@ export const CodeRenderer: FieldRenderer = (value, column) => {
  */
 export const DateRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <span className="text-base-content/50 text-xs">{column.nullText || 'Never'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || 'Never');
+        return <span className="text-base-content/50 text-xs">{placeholder}</span>;
     }
 
-    try {
+    const { formatted, tooltip, isValid } = formatDateValue(value, column.key);
+
+    if (!isValid) {
+        return <span className="text-sm">{formatted}</span>;
+    }
+
+    // Replace placeholder with actual relative time if needed
+    let displayValue = formatted;
+    if (displayValue === '[RELATIVE]') {
         const date = new Date(value);
-
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-            return <span className="text-sm">{String(value)}</span>;
-        }
-
-        // Relative time format (e.g., "2 hours ago")
-        if (column.key.toLowerCase().includes('last')) {
-            return (
-                <span className="text-sm" title={date.toLocaleString()}>
-                    {formatDistanceToNow(date, { addSuffix: true })}
-                </span>
-            );
-        }
-
-        // Short format (e.g., "Jan 1, 2024")
-        return (
-            <span className="text-sm" title={date.toLocaleString()}>
-                {date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                })}
-            </span>
-        );
-    } catch (error) {
-        return <span className="text-sm">{String(value)}</span>;
+        displayValue = formatDistanceToNow(date, { addSuffix: true });
     }
+
+    return (
+        <span className="text-sm" title={tooltip}>
+            {displayValue}
+        </span>
+    );
 };
 
 /**
@@ -106,26 +114,26 @@ export const DateRenderer: FieldRenderer = (value, column) => {
  */
 export const BadgeRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
-    // Determine badge color based on value
-    const getBadgeClass = (val: string): string => {
-        const lower = String(val).toLowerCase();
-        if (lower.includes('active') || lower.includes('success') || lower.includes('enabled')) {
-            return 'badge-success';
-        }
-        if (lower.includes('error') || lower.includes('failed') || lower.includes('disabled')) {
-            return 'badge-error';
-        }
-        if (lower.includes('pending') || lower.includes('warning')) {
-            return 'badge-warning';
-        }
-        return 'badge-ghost';
+    // Determine badge variant from value and map to DaisyUI classes
+    const variant = determineBadgeVariant(String(value));
+    const badgeClassMap: Record<string, string> = {
+        'default': 'badge-success',
+        'destructive': 'badge-error',
+        'warning': 'badge-warning',
+        'secondary': 'badge-ghost',
+        'outline': 'badge-outline',
+        'success': 'badge-success',
+        'info': 'badge-info',
     };
 
+    const badgeClass = badgeClassMap[variant] || 'badge-ghost';
+
     return (
-        <span className={cn('badge badge-sm', getBadgeClass(String(value)))}>
+        <span className={cn('badge badge-sm', badgeClass)}>
             {String(value)}
         </span>
     );
@@ -135,7 +143,7 @@ export const BadgeRenderer: FieldRenderer = (value, column) => {
  * Boolean field renderer - Yes/No badges
  */
 export const BooleanRenderer: FieldRenderer = (value) => {
-    const isTrue = value === true || value === 'true' || value === 1;
+    const isTrue = evaluateBooleanValue(value);
 
     return (
         <span className={cn('badge badge-sm', isTrue ? 'badge-success' : 'badge-ghost')}>
@@ -149,7 +157,8 @@ export const BooleanRenderer: FieldRenderer = (value) => {
  */
 export const NumberRenderer: FieldRenderer = (value, column) => {
     if (value === null || value === undefined) {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
     const num = Number(value);
@@ -165,7 +174,8 @@ export const NumberRenderer: FieldRenderer = (value, column) => {
  */
 export const EmailRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
     return (
@@ -184,13 +194,12 @@ export const EmailRenderer: FieldRenderer = (value, column) => {
  */
 export const UrlRenderer: FieldRenderer = (value, column) => {
     if (!value) {
-        return <span className="text-base-content/50 text-sm">{column.nullText || '—'}</span>;
+        const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
+        return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
     // Shorten long URLs for display
-    const displayUrl = String(value).length > 50
-        ? String(value).substring(0, 47) + '...'
-        : String(value);
+    const displayUrl = shortenUrl(String(value), 50);
 
     return (
         <a

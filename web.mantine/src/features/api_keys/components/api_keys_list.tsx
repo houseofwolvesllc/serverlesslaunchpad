@@ -38,8 +38,8 @@ export function ApiKeysList() {
         refresh();
     };
 
-    const createTemplate = data?._templates?.default;
-    const bulkDeleteTemplate = data?._templates?.bulkDelete;
+    const createTemplate = data?._templates?.create || data?._templates?.default;
+    const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 
     // Handle bulk delete with confirmation
     const handleBulkDelete = async (selectedIds: string[]) => {
