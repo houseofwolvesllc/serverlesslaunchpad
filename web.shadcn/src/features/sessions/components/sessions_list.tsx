@@ -17,7 +17,7 @@
  * - Columns ordered by priority: Device & Browser, IP Address, Last Accessed, Date Created, Date Expires
  */
 
-import { AlertCircle, Clock, Lock } from 'lucide-react';
+import { AlertCircle, Clock, Lock, Monitor } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -73,9 +73,10 @@ export function SessionsList() {
 
             return (
                 <div className="flex items-center gap-2">
+                    <Monitor className="h-4 w-4 text-muted-foreground" />
                     <div className="flex flex-col">
                         <span className="text-sm font-medium">{device_info.browser}</span>
-                        <span className="text-xs text-muted-foreground">{device_info.os}</span>
+                        <span className="text-xs text-muted-foreground">{device_info.os} • {device_info.device}</span>
                     </div>
                     {is_current && <Lock className="h-4 w-4 text-blue-600" />}
                     {is_current && (

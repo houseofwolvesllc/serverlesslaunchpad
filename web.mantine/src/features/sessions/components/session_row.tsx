@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Badge, Checkbox, Group, Stack, Table, Text } from '@mantine/core';
-import { IconLock } from '@tabler/icons-react';
+import { IconDeviceDesktop, IconLock } from '@tabler/icons-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Session } from '../types';
 import { parseUserAgent } from '../utils/parse_user_agent';
@@ -64,20 +64,23 @@ export function SessionRow({ session, showCheckbox, selected, onToggleSelect }: 
                 </Table.Td>
             )}
             <Table.Td>
-                <Group gap="xs">
+                <Group gap="xs" wrap="nowrap">
+                    <IconDeviceDesktop size={16} color="var(--mantine-color-dimmed)" />
                     <Stack gap={0}>
                         <Text size="sm" fw={500}>
                             {deviceInfo.browser}
                         </Text>
                         <Text size="xs" c="dimmed">
-                            {deviceInfo.os}
+                            {deviceInfo.os} • {deviceInfo.device}
                         </Text>
                     </Stack>
-                    {isCurrent && <IconLock size={16} color="var(--mantine-color-blue-6)" />}
                     {isCurrent && (
-                        <Badge size="xs" color="blue" variant="light">
-                            Current
-                        </Badge>
+                        <>
+                            <IconLock size={16} color="var(--mantine-color-blue-6)" />
+                            <Badge size="xs" color="blue" variant="light">
+                                Current
+                            </Badge>
+                        </>
                     )}
                 </Group>
             </Table.Td>

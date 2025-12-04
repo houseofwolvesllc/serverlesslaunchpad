@@ -16,7 +16,7 @@
  * - Current session cannot be selected for deletion
  */
 
-import { IconDeviceDesktop, IconClock } from '@tabler/icons-react';
+import { IconDeviceDesktop, IconClock, IconLock } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -87,20 +87,21 @@ export function SessionsList() {
             const is_current = item.isCurrent || false;
 
             return (
-                <Group justify="space-between" wrap="nowrap">
+                <Group gap="xs" wrap="nowrap">
+                    <IconDeviceDesktop size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
                     <Stack gap={4}>
-                        <Group gap="xs">
-                            <IconDeviceDesktop size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
-                            <Text size="sm" fw={500}>{device_info.browser}</Text>
-                        </Group>
+                        <Text size="sm" fw={500}>{device_info.browser}</Text>
                         <Text size="xs" c="dimmed">
                             {device_info.os} • {device_info.device}
                         </Text>
                     </Stack>
                     {is_current && (
-                        <Badge color="green" size="sm" style={{ flexShrink: 0 }}>
-                            Current Session
-                        </Badge>
+                        <>
+                            <IconLock size={16} color="var(--mantine-color-blue-6)" />
+                            <Badge color="blue" size="sm">
+                                Current
+                            </Badge>
+                        </>
                     )}
                 </Group>
             );
