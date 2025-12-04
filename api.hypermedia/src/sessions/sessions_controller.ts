@@ -1,8 +1,8 @@
-import { Injectable, Role, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
+import { Injectable, Role, Session, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
-import { Cache, Log, Protected } from "../decorators/index.js";
+import { Log, Protected } from "../decorators/index.js";
 import { Route, Router } from "../router.js";
 import { MessageAdapter } from "../content_types/message_adapter.js";
 import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
@@ -25,17 +25,15 @@ export class SessionsController extends BaseController {
      * Example: POST /users/123/sessions/list
      * Body: { "pagingInstruction": { ... } }
      *
-     * Cache Strategy: 300s TTL is appropriate for active authentication state that changes
-     * frequently with logins/logouts. Shorter than API keys (600s) which are more static.
+     * ETag Strategy: Uses query hash + limit + first/last session identifiers.
+     * Returns 304 Not Modified if client has current version of this page.
      *
      * Decorator execution order (bottom to top):
-     * 1. Cache - checks ETag first
-     * 2. Protected - authenticates user and validates role/owner access
-     * 3. Log - wraps entire execution
+     * 1. Protected - authenticates user and validates role/owner access
+     * 2. Log - wraps entire execution
      */
     @Log()
     @Protected()
-    @Cache({ ttl: 300, vary: ['Authorization'] })
     @Route('POST', '/users/{userId}/sessions/list')
     async getSessions(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
@@ -49,11 +47,22 @@ export class SessionsController extends BaseController {
             allowOwner: true,
             resourceUserId: userId
         });
-        
+
         const sessions = await this.sessionRepository.getSessions({
             userId,
             pagingInstruction
         });
+
+        // Generate ETag from collection
+        const etag = this.generateSessionsListETag(
+            sessions.items,
+            { userId, cursor: pagingInstruction?.cursor },
+            { limit: pagingInstruction?.limit ?? 50 }
+        );
+
+        // Check if client has current version
+        const notModified = this.checkNotModified(event, etag);
+        if (notModified) return notModified;
 
         // Pass paging instructions as-is (no serialization needed)
         const adapter = new SessionCollectionAdapter(
@@ -63,7 +72,9 @@ export class SessionsController extends BaseController {
             this.router
         );
 
-        return this.success(event, adapter);
+        return this.success(event, adapter, {
+            headers: { 'ETag': etag }
+        });
     }
 
 
@@ -121,5 +132,28 @@ export class SessionsController extends BaseController {
         });
 
         return this.success(event, adapter);
+    }
+
+    /**
+     * Generate ETag for a sessions list/collection.
+     * Based on query params, pagination, and first/last record identifiers.
+     */
+    private generateSessionsListETag(
+        sessions: Session[],
+        query: Record<string, any>,
+        pagination: { limit: number }
+    ): string {
+        if (sessions.length === 0) {
+            const queryHash = this.simpleHash(JSON.stringify(query));
+            return `"list-${queryHash}-${pagination.limit}-empty"`;
+        }
+
+        const first = sessions[0];
+        const last = sessions[sessions.length - 1];
+        const queryHash = this.simpleHash(JSON.stringify(query));
+        const firstTs = new Date(first.dateLastAccessed).getTime();
+        const lastTs = new Date(last.dateLastAccessed).getTime();
+
+        return `"list-${queryHash}-${pagination.limit}-${first.sessionId}-${firstTs}-${last.sessionId}-${lastTs}"`;
     }
 }
