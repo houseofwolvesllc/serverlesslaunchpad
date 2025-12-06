@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { Clock, Monitor, AlertCircle, Trash2 } from 'lucide-svelte';
+	import { Clock, AlertCircle, Trash2 } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import { HalCollectionList } from '$lib/components/hal_collection';
-	import type { FieldRenderer, BulkOperation } from '$lib/components/hal_collection';
-	import { createHalResource } from '$lib/hooks/use_hal_resource';
+	import type { FieldRenderer } from '$lib/components/hal_collection';
 	import { executeTemplate } from '$lib/hooks/use_template';
 	import { toastStore } from '$lib/stores/toast_store';
 	import { authStore } from '$lib/stores/auth_store';
@@ -15,32 +14,51 @@
 	import AlertDialogDescription from '$lib/components/ui/alert-dialog-description.svelte';
 	import AlertDialogFooter from '$lib/components/ui/alert-dialog-footer.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 	import { page } from '$app/stores';
 
-	let resource = createHalResource('sessions');
+	// Required prop - the HAL resource fetched by the generic route
+	// This resource contains the correct _templates with proper target URLs
+	export let resource: HalObject;
+
+	// Optional refresh callback - called after bulk operations
+	export let onRefresh: (() => void) | undefined = undefined;
+
+	// Extract userId from URL if present (e.g., /users/123/sessions or /users/123/sessions/list)
+	$: userIdFromUrl = $page.url.pathname.match(/^\/users\/([^\/]+)\/sessions/)?.[1];
+
 	let deleteModalOpen = false;
 	let selectedIds: string[] = [];
 
-	$: rawData = $resource.data;
 	$: currentSessionId = $authStore.user?.authContext?.sessionId || null;
+	$: currentUserId = $authStore.user?.username || null;
 
-	// Extract userId from URL if present (e.g., /users/123/sessions)
-	$: userId = $page.url.pathname.match(/^\/users\/([^\/]+)\/sessions/)?.[1];
+	// Determine if viewing own sessions (no userId in URL, or userId matches current user)
+	$: isViewingOwnSessions = !userIdFromUrl || userIdFromUrl === currentUserId;
 
 	// Create enhanced data with isCurrent field properly set
-	// This creates a NEW object (not mutating) to ensure proper reactivity
-	$: data = rawData ? {
-		...rawData,
-		_embedded: {
-			...rawData._embedded,
-			sessions: (rawData._embedded?.sessions || []).map((s: any) => ({
-				...s,
-				// Only mark as current if viewing own sessions (no userId parameter)
-				isCurrent: !userId && currentSessionId && s.sessionId === currentSessionId
-			}))
-		}
-	} : null;
+	// Use a function to ensure Svelte detects all dependencies
+	function enhanceSessionsData(raw: HalObject | null, sessionId: string | null, viewingOwnSessions: boolean) {
+		if (!raw) return null;
+
+		const sessions = (raw._embedded?.sessions || []).map((s: any) => ({
+			...s,
+			// Mark as current only if viewing own sessions AND sessionId matches
+			isCurrent: viewingOwnSessions && !!sessionId && s.sessionId === sessionId
+		}));
+
+		return {
+			...raw,
+			_embedded: {
+				...raw._embedded,
+				sessions
+			}
+		};
+	}
+
+	// Reactive data that depends on resource, currentSessionId, and isViewingOwnSessions
+	$: data = enhanceSessionsData(resource, currentSessionId, isViewingOwnSessions);
 
 	function handleBulkDelete(ids: string[]) {
 		selectedIds = ids;
@@ -48,6 +66,7 @@
 	}
 
 	async function confirmBulkDelete() {
+		// Use templates from the passed resource - these have the correct target URLs
 		const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 		if (!bulkDeleteTemplate) return;
 
@@ -55,7 +74,7 @@
 			await executeTemplate(bulkDeleteTemplate, { sessionIds: selectedIds });
 			toastStore.success(`Deleted ${selectedIds.length} session(s)`);
 			deleteModalOpen = false;
-			resource.refresh();
+			onRefresh?.();
 		} catch (error) {
 			toastStore.error('Failed to delete sessions');
 		}
@@ -66,19 +85,20 @@
 		const deviceInfo = parseUserAgent(value);
 		const isCurrent = item.isCurrent || false;
 
+		// Lock icon SVG for current session
+		const lockIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary flex-shrink-0"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+
 		return {
 			html: `
-				<div class="flex items-center justify-between gap-4">
-					<div class="flex flex-col gap-1">
-						<div class="flex items-center gap-2">
-							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-base-content/50"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-							<span class="text-sm font-medium">${deviceInfo.browser}</span>
-						</div>
-						<span class="text-xs text-base-content/70">
+				<div class="flex items-center gap-3">
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground flex-shrink-0"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+					<div class="flex flex-col gap-0.5">
+						<span class="text-sm font-medium">${deviceInfo.browser}</span>
+						<span class="text-xs text-muted-foreground">
 							${deviceInfo.os} • ${deviceInfo.device}
 						</span>
 					</div>
-					${isCurrent ? '<span class="badge badge-success badge-sm flex-shrink-0">Current Session</span>' : ''}
+					${isCurrent ? `${lockIcon}<span class="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20 flex-shrink-0">Current</span>` : ''}
 				</div>
 			`
 		};
@@ -109,7 +129,7 @@
 
 	<HalCollectionList
 		resource={data}
-		onRefresh={() => resource.refresh()}
+		onRefresh={onRefresh}
 		bulkOperations={[
 			{
 				id: 'delete',
@@ -139,21 +159,19 @@
 	/>
 
 	<!-- Security Information Card -->
-	<div class="card bg-primary/5 border border-primary/20">
-		<div class="card-body">
-			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-primary" />
-				<h3 class="font-semibold">Security Information</h3>
-			</div>
-			<p class="text-sm text-base-content/70">
-				Each session represents a device where you're currently signed in. If you notice any
-				unfamiliar sessions, you should delete them immediately and change your password.
-			</p>
-			<p class="text-sm text-base-content/70">
-				<strong>Note:</strong> You cannot delete your current session. To end your current session,
-				please sign out using the user menu.
-			</p>
+	<div class="rounded-xl border bg-primary/5 border-primary/20 p-6">
+		<div class="flex items-center gap-2 mb-3">
+			<AlertCircle class="h-5 w-5 text-primary" />
+			<h3 class="font-semibold">Security Information</h3>
 		</div>
+		<p class="text-sm text-muted-foreground mb-2">
+			Each session represents a device where you're currently signed in. If you notice any
+			unfamiliar sessions, you should delete them immediately and change your password.
+		</p>
+		<p class="text-sm text-muted-foreground">
+			<strong class="text-foreground">Note:</strong> You cannot delete your current session. To end your current session,
+			please sign out using the user menu.
+		</p>
 	</div>
 
 	<!-- Delete Confirmation -->

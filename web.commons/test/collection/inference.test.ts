@@ -9,7 +9,6 @@ import {
     inferColumns,
     inferVisibleColumns,
     isSortable,
-    getFieldPriority,
 } from '../../src/collection/inference';
 import {
     humanizeLabel,
@@ -160,15 +159,17 @@ describe('Collection Inference', () => {
             expect(columnMap['isActive'].label).toBe('Is Active');
         });
 
-        it('should sort columns by priority', () => {
+        it('should preserve API order (index-based priority)', () => {
             const columns = inferColumns(sampleData);
 
-            // Name field should be first (priority 0)
-            expect(columns[0].key).toBe('name');
+            // Columns should be in API order with index-based priority
+            // First column has priority 0, subsequent columns have increasing priority
+            expect(columns[0].priority).toBe(0);
+            expect(columns[1].priority).toBe(1);
 
-            // Hidden/code fields should be last
+            // Last column should have highest priority (last index)
             const lastColumn = columns[columns.length - 1];
-            expect(lastColumn.priority).toBeGreaterThan(columns[0].priority);
+            expect(lastColumn.priority).toBe(columns.length - 1);
         });
 
         it('should respect custom options', () => {
@@ -326,20 +327,6 @@ describe('Collection Inference', () => {
         });
     });
 
-    describe('getFieldPriority', () => {
-        it('should give high priority to name fields', () => {
-            expect(getFieldPriority('name', FieldType.TEXT)).toBe(0);
-            expect(getFieldPriority('title', FieldType.TEXT)).toBe(0);
-        });
-
-        it('should give low priority to hidden fields', () => {
-            expect(getFieldPriority('_metadata', FieldType.HIDDEN)).toBe(100);
-        });
-
-        it('should give medium priority to regular fields', () => {
-            const priority = getFieldPriority('description', FieldType.TEXT);
-            expect(priority).toBeGreaterThan(0);
-            expect(priority).toBeLessThan(100);
-        });
-    });
+    // Note: getFieldPriority was removed - columns now use index-based priority
+    // preserving API order instead of sorting by field type
 });

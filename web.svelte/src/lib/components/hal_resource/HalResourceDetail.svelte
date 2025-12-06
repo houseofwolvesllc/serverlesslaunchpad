@@ -363,9 +363,9 @@
 							{@const value = resource[field.key]}
 							{@const customRender = renderFieldValue(field, value)}
 							<div class="space-y-1">
-								<label class="text-sm font-medium text-muted-foreground">
+								<span class="text-sm font-medium text-muted-foreground block">
 									{field.label}
-								</label>
+								</span>
 								<div class="text-sm">
 									{#if customRender}
 										{#if customRender.component}
@@ -522,9 +522,9 @@
 							{@const value = resource[field.key]}
 							{@const customRender = renderFieldValue(field, value)}
 							<div class="space-y-1">
-								<label class="text-sm font-medium text-muted-foreground">
+								<span class="text-sm font-medium text-muted-foreground block">
 									{field.label}
-								</label>
+								</span>
 								<div class="text-sm">
 									{#if customRender}
 										{#if customRender.component}

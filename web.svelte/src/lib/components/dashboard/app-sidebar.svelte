@@ -41,12 +41,12 @@
 		apiBaseUrl = config.api.base_url;
 	});
 
-	function navigate(path: string) {
+	function navigate(path: string, rel?: string) {
 		if (currentPath === path) {
 			return;
 		}
 		navigationHistoryStore.markNextNavigationAsMenu();
-		goto(path, { state: { navigationSource: 'menu' } });
+		goto(path, { state: { navigationSource: 'menu', navigationRel: rel } });
 		sidebarStore.setMobileOpen(false);
 	}
 
@@ -213,7 +213,7 @@
 										{@const isLinkActive = currentPath === link.link}
 										<li>
 											<button
-												on:click={() => navigate(link.link)}
+												on:click={() => navigate(link.link, link.rel)}
 												disabled={isLinkActive}
 												class={cn(
 													'w-full flex items-center justify-start px-3 py-2 text-sm border-l-2 transition-colors',
@@ -282,7 +282,7 @@
 								{@const isLinkActive = currentPath === link.link}
 								<li>
 									<button
-										on:click={() => navigate(link.link)}
+										on:click={() => navigate(link.link, link.rel)}
 										disabled={isLinkActive}
 										class={cn(
 											'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
@@ -306,7 +306,7 @@
 							<!-- Fallback when API hasn't loaded My Account yet -->
 							<li>
 								<button
-									on:click={() => navigate('/my-profile')}
+									on:click={() => navigate('/my-profile', 'my-profile')}
 									disabled={myProfileActive}
 									class={cn(
 										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
@@ -321,7 +321,7 @@
 							</li>
 							<li>
 								<button
-									on:click={() => navigate('/sessions')}
+									on:click={() => navigate('/sessions', 'sessions')}
 									disabled={sessionsActive}
 									class={cn(
 										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
@@ -336,7 +336,7 @@
 							</li>
 							<li>
 								<button
-									on:click={() => navigate('/api-keys')}
+									on:click={() => navigate('/api-keys', 'api-keys')}
 									disabled={apiKeysActive}
 									class={cn(
 										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',

@@ -48,9 +48,9 @@ export type PropertySource = 'value' | 'selection' | 'form';
  * Determine the data source for a template property
  *
  * Uses conventions to detect where property value should come from:
- * 1. If property has explicit value → use it (hidden fields)
+ * 1. If property is hidden with explicit value → use it (hidden fields only)
  * 2. If property is array or ends with "Ids" → use selections (bulk operations)
- * 3. Otherwise → use form data or resource data
+ * 3. Otherwise → use form data or resource data (including pre-filled editable fields)
  *
  * @param property - The template property
  * @returns The property source type
@@ -65,15 +65,15 @@ export type PropertySource = 'value' | 'selection' | 'form';
  * getPropertySource({ name: 'sessionIds', type: 'array', required: true });
  * // Returns: 'selection'
  *
- * // Regular form field
- * getPropertySource({ name: 'label', type: 'text', required: true });
- * // Returns: 'form'
+ * // Regular form field (even with pre-filled value)
+ * getPropertySource({ name: 'label', type: 'text', required: true, value: 'Original' });
+ * // Returns: 'form' - so user edits take precedence
  * ```
  */
 export function getPropertySource(property: HalTemplateProperty): PropertySource {
-    // Explicit value takes precedence (for any field type)
-    // This includes hidden fields AND pre-filled form fields
-    if (property.value !== undefined) {
+    // Hidden fields with explicit value: use the value directly
+    // Only hidden fields bypass form data - editable fields should use form submissions
+    if (property.type === 'hidden' && property.value !== undefined) {
         return 'value';
     }
 
@@ -84,6 +84,7 @@ export function getPropertySource(property: HalTemplateProperty): PropertySource
     }
 
     // Default: from form or resource
+    // This includes pre-filled editable fields - user edits should take precedence
     return 'form';
 }
 
