@@ -97,12 +97,23 @@ export function useHalCollection(
         });
     }, [items, columnConfig, conventions]);
 
-    // Get visible columns only and sort by priority
+    // Get visible columns only
+    // Only sort by priority if explicit priorities are set via columnConfig
     const columns = useMemo(() => {
         const filtered = visibleOnly ? allColumns.filter(col => !col.hidden) : allColumns;
-        // Sort by priority (lower priority = earlier in order)
-        return filtered.sort((a, b) => a.priority - b.priority);
-    }, [allColumns, visibleOnly]);
+
+        // Check if any column has an explicit priority override
+        const hasExplicitPriorities = filtered.some(col =>
+            columnConfig[col.key]?.priority !== undefined
+        );
+
+        // Only sort if explicit priorities exist, otherwise preserve API order
+        if (hasExplicitPriorities) {
+            return [...filtered].sort((a, b) => a.priority - b.priority);
+        }
+
+        return filtered;
+    }, [allColumns, visibleOnly, columnConfig]);
 
     return {
         items,

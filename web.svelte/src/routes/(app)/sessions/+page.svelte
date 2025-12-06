@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Clock, Monitor, AlertCircle } from 'lucide-svelte';
+	import { Clock, Monitor, AlertCircle, Trash2 } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import { HalCollectionList } from '$lib/components/hal_collection';
-	import type { FieldRenderer } from '$lib/components/hal_collection';
+	import type { FieldRenderer, BulkOperation } from '$lib/components/hal_collection';
 	import { createHalResource } from '$lib/hooks/use_hal_resource';
 	import { executeTemplate } from '$lib/hooks/use_template';
 	import { toastStore } from '$lib/stores/toast_store';
@@ -110,7 +110,15 @@
 	<HalCollectionList
 		resource={data}
 		onRefresh={() => resource.refresh()}
-		onBulkDelete={handleBulkDelete}
+		bulkOperations={[
+			{
+				id: 'delete',
+				label: 'Delete Selected',
+				icon: Trash2,
+				variant: 'destructive',
+				handler: handleBulkDelete,
+			},
+		]}
 		primaryKey="sessionId"
 		columnConfig={{
 			sessionId: { hidden: true },

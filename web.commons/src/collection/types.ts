@@ -126,7 +126,51 @@ export interface InferenceOptions {
 
     /** Custom label overrides */
     labelOverrides?: Record<string, string>;
+}
 
-    /** If true, sort columns by priority instead of preserving API order (default: false) */
-    sortByPriority?: boolean;
+/**
+ * Visual variant for bulk operation buttons
+ */
+export type BulkOperationVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
+
+/**
+ * Bulk operation definition for collection lists
+ *
+ * Defines an operation that can be performed on multiple selected items.
+ * When bulk operations are provided to HalCollectionList, checkboxes are shown
+ * for item selection and operation buttons appear when items are selected.
+ *
+ * @example
+ * ```typescript
+ * const deleteOperation: BulkOperation = {
+ *     id: 'delete',
+ *     label: 'Delete Selected',
+ *     variant: 'destructive',
+ *     handler: async (selectedIds) => {
+ *         await bulkDelete(selectedIds);
+ *     },
+ * };
+ * ```
+ */
+export interface BulkOperation {
+    /** Unique identifier for this operation */
+    id: string;
+
+    /** Display label for the operation button */
+    label: string;
+
+    /** Optional icon component (framework-specific, passed as ReactNode/SvelteComponent) */
+    icon?: unknown;
+
+    /** Visual variant for styling (default: 'default') */
+    variant?: BulkOperationVariant;
+
+    /** Handler called with selected item IDs */
+    handler: (selectedIds: string[]) => void | Promise<void>;
+
+    /** Optional: disable this operation based on selection */
+    disabled?: (selectedIds: string[]) => boolean;
+
+    /** Optional: confirmation required before executing */
+    requiresConfirmation?: boolean;
 }

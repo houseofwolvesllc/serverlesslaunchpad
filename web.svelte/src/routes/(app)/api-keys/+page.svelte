@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Key } from 'lucide-svelte';
+	import { Key, Trash2 } from 'lucide-svelte';
 	import { HalCollectionList } from '$lib/components/hal_collection';
+	import type { BulkOperation } from '$lib/components/hal_collection';
 	import { createHalResource } from '$lib/hooks/use_hal_resource';
 	import { executeTemplate } from '$lib/hooks/use_template';
 	import { toastStore } from '$lib/stores/toast_store';
@@ -75,7 +76,15 @@
 		resource={data}
 		onRefresh={() => resource.refresh()}
 		onCreate={handleCreate}
-		onBulkDelete={handleBulkDelete}
+		bulkOperations={[
+			{
+				id: 'delete',
+				label: 'Delete Selected',
+				icon: Trash2,
+				variant: 'destructive',
+				handler: handleBulkDelete,
+			},
+		]}
 		primaryKey="apiKeyId"
 		columnConfig={{ dateLastUsed: { nullText: 'Never' } }}
 		emptyMessage="You haven't created any API keys yet."

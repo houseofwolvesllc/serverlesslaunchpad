@@ -1,5 +1,5 @@
 import { useDisclosure } from '@mantine/hooks';
-import { IconKey } from '@tabler/icons-react';
+import { IconKey, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useApiKeys } from '../hooks/use_api_keys';
 import { HalCollectionList } from '../../../components/hal_collection';
@@ -78,7 +78,15 @@ export function ApiKeysList() {
                 resource={data}
                 onRefresh={refresh}
                 onCreate={openCreateModal}
-                onBulkDelete={handleBulkDelete}
+                bulkOperations={[
+                    {
+                        id: 'delete',
+                        label: 'Delete Selected',
+                        icon: <IconTrash size={16} />,
+                        variant: 'destructive',
+                        handler: handleBulkDelete,
+                    },
+                ]}
                 primaryKey="apiKeyId"
                 columnConfig={{
                     dateLastUsed: { nullText: 'Never' }

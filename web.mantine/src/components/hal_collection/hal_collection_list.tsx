@@ -4,26 +4,27 @@
  * This component automatically renders a table with:
  * - Inferred columns from embedded items
  * - Selection and bulk operations
- * - Action toolbar with create/refresh/delete
+ * - Action toolbar with create/refresh/bulk operations
  * - Field renderers based on data type
  * - Empty and loading states
+ *
+ * Checkboxes are only shown when bulkOperations is provided and has items.
  *
  * This is the main component that drastically reduces feature code.
  */
 
 import { Paper, Button, Table, Checkbox, Group, Text, Stack, Center } from '@mantine/core';
-import { IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconRefresh } from '@tabler/icons-react';
 import { useHalCollection, type ColumnConfig } from '../../hooks/use_hal_collection';
 import { useSelection } from '../../hooks/use_selection';
 import { HalResourceRow } from './hal_resource_row';
 import { type FieldRenderer } from './field_renderers';
-import { type HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { type HalObject, type BulkOperation } from '@houseofwolves/serverlesslaunchpad.web.commons';
 
 export interface HalCollectionListProps {
     resource: HalObject | null | undefined;
     onRefresh?: () => void;
     onCreate?: () => void;
-    onBulkDelete?: (selectedIds: string[]) => void;
     onRowClick?: (item: HalObject) => void;
     columnConfig?: ColumnConfig;
     customRenderers?: Record<string, FieldRenderer>;
@@ -32,10 +33,11 @@ export interface HalCollectionListProps {
     emptyIcon?: React.ReactNode;
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
-    showBulkDelete?: boolean;
     selectableFilter?: (item: HalObject) => boolean;
     /** Page title to display in the header row */
     title?: string;
+    /** Bulk operations to show when items are selected. Checkboxes only appear when this has items. */
+    bulkOperations?: BulkOperation[];
 }
 
 /**
@@ -54,7 +56,9 @@ export interface HalCollectionListProps {
  *   resource={data}
  *   onRefresh={refresh}
  *   onCreate={() => setCreateModalOpen(true)}
- *   onBulkDelete={handleBulkDelete}
+ *   bulkOperations={[
+ *     { id: 'delete', label: 'Delete Selected', variant: 'destructive', handler: handleBulkDelete }
+ *   ]}
  *   columnConfig={{
  *     dateLastUsed: { nullText: "Never" }
  *   }}
@@ -68,7 +72,6 @@ export function HalCollectionList({
     resource,
     onRefresh,
     onCreate,
-    onBulkDelete,
     onRowClick,
     columnConfig = {},
     customRenderers,
@@ -77,9 +80,9 @@ export function HalCollectionList({
     emptyIcon,
     showCreateButton = true,
     showRefreshButton = true,
-    showBulkDelete = true,
     selectableFilter,
     title,
+    bulkOperations = [],
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
 
@@ -102,23 +105,14 @@ export function HalCollectionList({
 
     // Get templates from resource
     const createTemplate = templates?.default || templates?.create;
-    const bulkDeleteTemplate = templates?.bulkDelete || templates?.['bulk-delete'];
 
-    // Determine if bulk delete is available
-    const canBulkDelete = showBulkDelete && (!!bulkDeleteTemplate || !!onBulkDelete);
+    // Checkboxes are shown only when bulk operations are defined
+    const showCheckboxes = bulkOperations.length > 0;
 
     // Handle create action
     const handleCreate = () => {
         if (onCreate) {
             onCreate();
-        }
-    };
-
-    // Handle bulk delete action
-    const handleBulkDelete = () => {
-        if (onBulkDelete) {
-            const selectedIds = Array.from(selected);
-            onBulkDelete(selectedIds);
         }
     };
 
@@ -224,11 +218,18 @@ export function HalCollectionList({
                 )}
 
                 <Group gap="xs">
-                    {hasSelection && canBulkDelete && (
-                        <Button variant="default" size="sm" onClick={handleBulkDelete} leftSection={<IconTrash size={16} />}>
-                            Delete Selected
+                    {hasSelection && bulkOperations.map((op) => (
+                        <Button
+                            key={op.id}
+                            variant={op.variant === 'destructive' ? 'default' : (op.variant || 'default')}
+                            size="sm"
+                            onClick={() => op.handler(Array.from(selected))}
+                            disabled={op.disabled?.(Array.from(selected))}
+                            leftSection={op.icon as React.ReactNode}
+                        >
+                            {op.label}
                         </Button>
-                    )}
+                    ))}
                     {showCreateButton && createTemplate && (
                         <Button variant="default" size="sm" onClick={handleCreate} leftSection={<IconPlus size={16} />}>
                             {createTemplate.title || 'Create'}
@@ -248,7 +249,7 @@ export function HalCollectionList({
                     <Table.Thead>
                         <Table.Tr>
                             {/* Select all checkbox */}
-                            {canBulkDelete && (
+                            {showCheckboxes && (
                                 <Table.Th w={60}>
                                     <Checkbox
                                         checked={allSelected}
@@ -260,7 +261,7 @@ export function HalCollectionList({
 
                             {/* Column headers */}
                             {columns.map((col) => (
-                                <Table.Th key={col.key} style={{ width: col.width }}>
+                                <Table.Th key={col.key} style={{ width: col.width, whiteSpace: 'nowrap' }}>
                                     {col.label}
                                 </Table.Th>
                             ))}
@@ -269,14 +270,14 @@ export function HalCollectionList({
                     <Table.Tbody>
                         {items.map((item) => {
                             const itemId = item[detectedPrimaryKey];
-                            const isItemSelectable = canBulkDelete && (!selectableFilter || selectableFilter(item));
+                            const isItemSelectable = showCheckboxes && (!selectableFilter || selectableFilter(item));
 
                             return (
                                 <HalResourceRow
                                     key={itemId || Math.random()}
                                     item={item}
                                     columns={columns}
-                                    showCheckboxColumn={canBulkDelete}
+                                    showCheckboxColumn={showCheckboxes}
                                     selectable={isItemSelectable}
                                     selected={isSelected(itemId)}
                                     onToggleSelect={() => toggleSelection(itemId)}

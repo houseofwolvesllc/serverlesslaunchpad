@@ -1,4 +1,4 @@
-import { Clock, Monitor } from 'lucide-react';
+import { Clock, Lock, Monitor, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -78,20 +78,21 @@ export function SessionsList() {
             const is_current = item.isCurrent || false;
 
             return (
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-base-content/50" />
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <Monitor className="w-4 h-4 text-base-content/50" />
-                            <span className="text-sm font-medium">{device_info.browser}</span>
-                        </div>
+                        <span className="text-sm font-medium">{device_info.browser}</span>
                         <span className="text-xs text-base-content/70">
                             {device_info.os} • {device_info.device}
                         </span>
                     </div>
                     {is_current && (
-                        <span className="badge badge-success badge-sm flex-shrink-0">
-                            Current Session
-                        </span>
+                        <>
+                            <Lock className="w-4 h-4 text-primary" />
+                            <span className="badge badge-primary badge-sm">
+                                Current
+                            </span>
+                        </>
                     )}
                 </div>
             );
@@ -118,7 +119,15 @@ export function SessionsList() {
         <HalCollectionList
             resource={enrichedResource}
             onRefresh={refresh}
-            onBulkDelete={handle_bulk_delete}
+            bulkOperations={[
+                {
+                    id: 'delete',
+                    label: 'Delete Selected',
+                    icon: <Trash2 className="w-4 h-4" />,
+                    variant: 'destructive',
+                    handler: handle_bulk_delete,
+                },
+            ]}
             primaryKey="sessionId"
             columnConfig={{
                 sessionId: { hidden: true },

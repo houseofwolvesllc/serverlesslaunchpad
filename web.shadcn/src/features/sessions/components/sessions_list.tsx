@@ -17,7 +17,7 @@
  * - Columns ordered by priority: Device & Browser, IP Address, Last Accessed, Date Created, Date Expires
  */
 
-import { AlertCircle, Clock, Lock, Monitor } from 'lucide-react';
+import { AlertCircle, Clock, Lock, Monitor, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -153,7 +153,15 @@ export function SessionsList() {
         <HalCollectionList
             resource={enhancedData}
             onRefresh={refresh}
-            onBulkDelete={handle_bulk_delete}
+            bulkOperations={[
+                {
+                    id: 'delete',
+                    label: 'Delete Selected',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    variant: 'destructive',
+                    handler: handle_bulk_delete,
+                },
+            ]}
             primaryKey="sessionId"
             columnConfig={{
                 userId: { hidden: true },
