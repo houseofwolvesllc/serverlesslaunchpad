@@ -13,7 +13,7 @@
         "clean": "rimraf coverage build tmp dist",
         "prebuild": "echo 'Building with SWC...'",
         "build": "tsc && tsc-alias",
-        "build:watch": "tsc --watch & tsc-alias --watch & wait",
+        "build:watch": "tsc --watch --preserveWatchOutput & tsc-alias --watch & wait",
         "build:tsc": "tsc -p tsconfig.json",
         "build:release": "npm run clean && tsc && tsc-alias",
         "lint": "eslint . --ext .ts --ext .mts",

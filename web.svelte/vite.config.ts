@@ -12,4 +12,5 @@ export default defineConfig({
 			allow: ['..']
 		}
 	},
+	clearScreen: false, // Preserve terminal scrollback history
 });

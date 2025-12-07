@@ -14,5 +14,6 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true  // Fail if port is already in use
-  }
+  },
+  clearScreen: false  // Preserve terminal scrollback history
 })

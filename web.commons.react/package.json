@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build:watch": "tsc --watch --preserveWatchOutput",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts,.tsx"

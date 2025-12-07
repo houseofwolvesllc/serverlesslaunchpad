@@ -25,17 +25,17 @@ services:
         container_name: serverlesslaunchpad-cognito-local
         image: jagregory/cognito-local:latest
         ports:
-            - "9229:9229" # Cognito Local port (external:internal)
+            - "9230:9230" # Cognito Local port (external:internal) - using 9230 to avoid conflict with Node.js debug port
         volumes:
             - ./.cognito:/app/.cognito # Persist user pools and users
         environment:
-            - PORT=9229
+            - PORT=9230
             - DEBUG=true
             - HOST=0.0.0.0
         networks:
             - serverlesslaunchpad
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:9229/"]
+            test: ["CMD", "curl", "-f", "http://localhost:9230/"]
             interval: 10s
             timeout: 5s
             retries: 3

@@ -19,7 +19,8 @@ help:
 	@echo "  make dev-stop               - Stop all services"
 	@echo "  make dev-restart            - Restart all services"
 	@echo "  make dev-reset              - Reset Moto data and restart"
-	@echo "  make moto-logs              - View Moto logs"
+	@echo "  make moto-logs              - View Moto init script logs"
+	@echo "  make cognito-logs           - View Cognito-Local container logs"
 	@echo "  make dev-status             - Check status of all services"
 	@echo ""
 	@echo "Cloud Environments:"
@@ -66,7 +67,7 @@ dev-start:
 	done
 	@echo ""
 	@echo "🔧 Running initialization scripts..."
-	@./moto/init/01-cognito-local.sh >> logs/moto.log 2>&1
+	@./moto/init/01-cognito-local.sh 2>&1 | tee -a logs/moto.log
 	@./moto/init/02-s3.sh >> logs/moto.log 2>&1
 	@./moto/init/03-secrets.sh >> logs/moto.log 2>&1
 	@./moto/init/04-generate-config.sh >> logs/moto.log 2>&1
@@ -88,15 +89,15 @@ dev-start:
 	@if [ "$(web)" = "all" ]; then \
 		npm run dev:watch; \
 	elif [ "$(web)" = "mantine" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue --names "MANTINE,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "MANTINE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "shadcn" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue --names "SHADCN,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue,red --names "SHADCN,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "daisyui" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue --names "DAISYUI,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue,red --names "DAISYUI,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "svelte" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange --names "SVELTE,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange,red --names "SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "none" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue --names "API,TYPES,CORE,FRAMEWORK" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue,red --names "API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	fi
 	@echo ""
 	@echo "✨ Development environment is ready!"
@@ -163,6 +164,11 @@ dev-reset:
 moto-logs:
 	@echo "📋 Moto logs (Ctrl+C to exit):"
 	@tail -f logs/moto.log
+
+# View Cognito-Local container logs
+cognito-logs:
+	@echo "📋 Cognito-Local container logs (Ctrl+C to exit):"
+	@docker logs -f serverlesslaunchpad-cognito-local
 
 # Check status of all services
 dev-status:

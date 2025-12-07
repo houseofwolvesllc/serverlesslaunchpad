@@ -34,7 +34,8 @@ function createAuthStore() {
 			update(state => ({ ...state, initialized }));
 		},
 		signOut: () => {
-			set(initialState);
+			// Keep initialized=true so auth guards know we're logged out (not loading)
+			set({ user: null, isAuthenticated: false, initialized: true });
 		},
 		reset: () => {
 			set(initialState);

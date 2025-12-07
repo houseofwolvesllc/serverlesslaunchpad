@@ -12,7 +12,7 @@
         "prebuild": "echo 'Starting build...'",
         "build": "tsc && tsc-alias && cp -r config dist/",
         "build:prod": "tsc && tsc-alias && cp -r config dist/",
-        "build:watch": "tsc --watch & tsc-alias --watch",
+        "build:watch": "tsc --watch --preserveWatchOutput & tsc-alias --watch",
         "build:release": "npm run clean && tsc && tsc-alias && cp -r config dist/",
         "local": "npm run build && node dist/dev_server.js moto 2>&1 | tee ../logs/api.log",
         "local:watch": "nodemon --watch src --watch ../core/dist --watch ../framework/dist --watch ../types/dist --exec \"npm run build && node dist/dev_server.js moto\" --ext ts --delay 1 2>&1 | tee ../logs/api.log",

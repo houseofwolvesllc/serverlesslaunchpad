@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { signIn, SignInStep, verifySession } from '$lib/auth';
+	import { signIn, SignInStep, verifySession, AuthError } from '$lib/auth';
 	import { authStore } from '$lib/stores/auth_store';
 	import { logger } from '$lib/logging/logger';
 	import { getEntryPoint, refreshCapabilities } from '$lib/services/entry_point_provider';
@@ -12,13 +12,16 @@
 	import Card from '$lib/components/ui/card.svelte';
 	import CardHeader from '$lib/components/ui/card-header.svelte';
 	import CardContent from '$lib/components/ui/card-content.svelte';
-	import { AlertCircle } from 'lucide-svelte';
+	import { AlertCircle, Eye, EyeOff } from 'lucide-svelte';
 
 	let email = '';
 	let password = '';
 	let loading = false;
 	let errorMessage = '';
+	let passwordError = '';
+	let emailError = '';
 	let checkingAuth = true;
+	let showPassword = false;
 
 	// Check for existing session on mount
 	onMount(async () => {
@@ -61,6 +64,8 @@
 		event.preventDefault();
 		loading = true;
 		errorMessage = '';
+		passwordError = '';
+		emailError = '';
 
 		try {
 			const result = await signIn({ email, password });
@@ -74,7 +79,28 @@
 			}
 		} catch (error) {
 			logger.error('Sign in failed', { error });
-			errorMessage = error instanceof Error ? error.message : 'Sign in failed';
+
+			if (error instanceof AuthError) {
+				switch (error.name) {
+					case 'UserNotConfirmedException':
+						goto(`/auth/confirm-signup?email=${encodeURIComponent(email)}`);
+						break;
+					case 'PasswordResetRequiredException':
+						goto(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+						break;
+					case 'NotAuthorizedException':
+					case 'InvalidPasswordException': // cognito-local uses this instead of NotAuthorizedException
+						passwordError = 'Incorrect username or password.';
+						break;
+					case 'UserNotFoundException':
+						emailError = 'User not found';
+						break;
+					default:
+						errorMessage = error.message || 'Sign in failed';
+				}
+			} else {
+				errorMessage = error instanceof Error ? error.message : 'Sign in failed';
+			}
 		} finally {
 			loading = false;
 		}
@@ -116,24 +142,44 @@
 						required
 						disabled={loading}
 						placeholder="your@email.com"
+						on:input={() => emailError = ''}
 					/>
+					{#if emailError}
+						<p class="text-sm text-destructive">{emailError}</p>
+					{/if}
 				</div>
 
 				<div class="space-y-2">
 					<Label for="password">Password *</Label>
-					<Input
-						id="password"
-						type="password"
-						bind:value={password}
-						required
-						disabled={loading}
-					/>
-				</div>
-
-				<div class="flex justify-between items-center">
-					<a href="/auth/reset-password" class="text-sm text-primary hover:underline">
-						Forgot Password?
-					</a>
+					<div class="relative">
+						<Input
+							id="password"
+							type={showPassword ? 'text' : 'password'}
+							bind:value={password}
+							required
+							disabled={loading}
+							class="pr-10"
+							on:input={() => passwordError = ''}
+						/>
+						<button
+							type="button"
+							on:click={() => showPassword = !showPassword}
+							class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+							aria-label={showPassword ? 'Hide password' : 'Show password'}
+						>
+							{#if showPassword}
+								<EyeOff class="h-4 w-4" />
+							{:else}
+								<Eye class="h-4 w-4" />
+							{/if}
+						</button>
+					</div>
+					{#if passwordError}
+						<p class="text-sm text-destructive">
+							{passwordError}
+							<a href="/auth/reset-password" class="underline hover:text-destructive/80">Forgot password?</a>
+						</p>
+					{/if}
 				</div>
 
 				<Button type="submit" class="w-full" disabled={loading}>

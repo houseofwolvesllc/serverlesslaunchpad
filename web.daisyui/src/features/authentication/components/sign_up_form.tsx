@@ -2,10 +2,13 @@ import { useForm } from '@/hooks/use_form';
 import { AuthError, useAuth, passwordPolicyValidator, SignInStep } from '../../authentication';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const SignUpForm = () => {
     const auth = useAuth();
     const navigate = useNavigate();
+    const [showPassword, setShowPassword] = useState(false);
     const form = useForm({
         initialValues: {
             firstName: '',
@@ -132,14 +135,28 @@ export const SignUpForm = () => {
                                     <label className="label">
                                         <span className="label-text">Password *</span>
                                     </label>
-                                    <input
-                                        id="password"
-                                        type="password"
-                                        placeholder="Your password"
-                                        className="input input-bordered w-full"
-                                        value={form.values.password}
-                                        onChange={(event) => form.setFieldValue('password', event.currentTarget.value)}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Your password"
+                                            className="input input-bordered w-full pr-10"
+                                            value={form.values.password}
+                                            onChange={(event) => form.setFieldValue('password', event.currentTarget.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
+                                            aria-label={showPassword ? "Hide password" : "Show password"}
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
                                     {form.errors.password && (
                                         <label className="label">
                                             <span className="label-text-alt text-error">{form.errors.password}</span>
