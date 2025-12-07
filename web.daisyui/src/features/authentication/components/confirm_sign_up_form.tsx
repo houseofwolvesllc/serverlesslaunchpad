@@ -50,15 +50,20 @@ export const ConfirmSignUpForm = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-base-200">
             <div className="w-full max-w-md">
-                <div className="flex justify-center mb-8">
-                    <img
-                        src="/svg/serverless_launchpad_logo.svg"
-                        alt="Serverless Launchpad Logo"
-                        className="h-24"
-                    />
-                </div>
                 <div className="card bg-base-100 shadow-xl">
-                    <div className="card-body">
+                    <div className="flex justify-center pt-8 pb-4 px-8">
+                        <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <span className="text-primary font-bold text-2xl">SL</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-lg">Serverless Launchpad</span>
+                                <span className="text-sm text-base-content/60">DaisyUI Edition</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="divider my-0 mx-8"></div>
+                    <div className="card-body pt-4">
                         <h2 className="card-title mb-4">Confirm Your Sign Up</h2>
                         <form id="confirm-signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                             <div className="flex flex-col space-y-4">

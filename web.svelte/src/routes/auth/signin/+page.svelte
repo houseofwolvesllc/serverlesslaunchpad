@@ -109,13 +109,18 @@
 
 <div class="container h-full mx-auto flex justify-center items-center">
 	<Card class="p-8 w-full max-w-md">
-		<div class="flex justify-center mb-8">
-			<img src="/svg/serverless_launchpad_logo.svg" alt="Serverless Launchpad" class="h-24" />
+		<div class="flex justify-center mb-6">
+			<div class="flex items-center gap-3">
+				<div class="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+					<span class="text-primary font-bold text-2xl">SL</span>
+				</div>
+				<div class="flex flex-col">
+					<span class="font-semibold text-lg">Serverless Launchpad</span>
+					<span class="text-sm text-muted-foreground">Svelte Edition</span>
+				</div>
+			</div>
 		</div>
-
-		<CardHeader class="mb-6">
-			<h2 class="text-2xl font-semibold">Sign In</h2>
-		</CardHeader>
+		<hr class="mb-6 border-border" />
 
 		<CardContent>
 			{#if checkingAuth}

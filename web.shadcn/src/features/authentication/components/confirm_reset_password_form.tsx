@@ -91,15 +91,20 @@ export const ConfirmResetPasswordForm = () => {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <div className="w-full max-w-md">
-                <div className="flex justify-center mb-8">
-                    <img
-                        src="/svg/serverless_launchpad_logo.svg"
-                        alt="Serverless Launchpad Logo"
-                        className="h-24"
-                    />
-                </div>
                 <Card>
                     <CardHeader>
+                        <div className="flex justify-center mb-2">
+                            <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <span className="text-primary font-bold text-2xl">SL</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-semibold text-lg">Serverless Launchpad</span>
+                                    <span className="text-sm text-muted-foreground">shadcn Edition</span>
+                                </div>
+                            </div>
+                        </div>
+                        <hr className="my-4 border-border" />
                         <CardTitle>Reset Your Password</CardTitle>
                     </CardHeader>
                     <CardContent>
