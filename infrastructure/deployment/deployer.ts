@@ -529,17 +529,21 @@ export class Deployer extends StackManager {
     }
 
     /**
-     * Write Web configuration file
+     * Write Web configuration file to all web packages
      */
     private writeWebConfig(config: any, filename: string): void {
-        const configDir = path.join(__dirname, '../../web/config');
-        const configPath = path.join(configDir, filename);
+        const webPackages = ['web.mantine', 'web.shadcn', 'web.daisyui', 'web.svelte'];
 
-        if (!fs.existsSync(configDir)) {
-            fs.mkdirSync(configDir, { recursive: true });
+        for (const pkg of webPackages) {
+            const configDir = path.join(__dirname, `../../${pkg}/config`);
+            const configPath = path.join(configDir, filename);
+
+            if (!fs.existsSync(configDir)) {
+                fs.mkdirSync(configDir, { recursive: true });
+            }
+
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+            console.log(chalk.green(`✅ Generated ${pkg} config: ${filename}`));
         }
-
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        console.log(chalk.green(`✅ Generated Web config: ${filename}`));
     }
 }

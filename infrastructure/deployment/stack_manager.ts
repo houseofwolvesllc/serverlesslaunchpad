@@ -153,9 +153,14 @@ export abstract class StackManager {
     getAvailableStacks(): StackInfo[] {
         return [
             { name: "secrets", displayName: "Secrets Manager" },
-            { name: "auth", displayName: "Cognito Authentication" },
-            { name: "alb", displayName: "Application Load Balancer", dependencies: ["auth"] },
-            { name: "lambda", displayName: "Lambda Functions", dependencies: ["alb", "secrets"] },
+            { name: "cognito", displayName: "Cognito Authentication" },
+            { name: "network", displayName: "Network/VPC" },
+            { name: "alb", displayName: "Application Load Balancer", dependencies: ["cognito", "network"] },
+            { name: "lambda", displayName: "Lambda Functions", dependencies: ["alb", "secrets", "network"] },
+            { name: "web-mantine", displayName: "Web Hosting (Mantine)", dependencies: ["secrets"] },
+            { name: "web-shadcn", displayName: "Web Hosting (shadcn)", dependencies: ["secrets"] },
+            { name: "web-daisyui", displayName: "Web Hosting (DaisyUI)", dependencies: ["secrets"] },
+            { name: "web-svelte", displayName: "Web Hosting (Svelte)", dependencies: ["secrets"] },
         ];
     }
 

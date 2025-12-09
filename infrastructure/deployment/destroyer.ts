@@ -180,8 +180,16 @@ export class Destroyer extends StackManager {
         console.log(chalk.blue("\n🧹 Cleaning up local files..."));
 
         const filesToClean = [
+            // Infrastructure files
             path.join(__dirname, "..", "environments", `.vpc.${environment}.json`),
             path.join(__dirname, "..", "config", `${environment}.config.json`),
+            // API config
+            path.join(__dirname, "../../api.hypermedia/config", `${environment}.infrastructure.json`),
+            // Web configs
+            path.join(__dirname, "../../web.mantine/config", `${environment}.infrastructure.json`),
+            path.join(__dirname, "../../web.shadcn/config", `${environment}.infrastructure.json`),
+            path.join(__dirname, "../../web.daisyui/config", `${environment}.infrastructure.json`),
+            path.join(__dirname, "../../web.svelte/config", `${environment}.infrastructure.json`),
         ];
 
         for (const file of filesToClean) {
