@@ -1,4 +1,12 @@
-import { Injectable, Role, UpsertUserMessage, User, UserRepository, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
+import {
+    FEATURES_METADATA,
+    Injectable,
+    Role,
+    ROLE_METADATA,
+    UpsertUserMessage,
+    User,
+    UserRepository,
+} from "@houseofwolves/serverlesslaunchpad.core";
 import type { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
@@ -76,7 +84,7 @@ export class UsersController extends BaseController {
         const adapter = new UserAdapter(user, currentUser, this.router);
 
         return this.success(event, adapter, {
-            headers: { 'ETag': etag }
+            headers: { ETag: etag },
         });
     }
 
@@ -108,8 +116,8 @@ export class UsersController extends BaseController {
         // Get authenticated user from JWT
         const currentUser = event.authContext.identity;
 
-        // Base authorization: User can edit own profile OR Admin can edit any
-        this.requireRole(currentUser, Role.Admin, {
+        // Base authorization: User can edit own profile OR AccountManagers can edit any
+        this.requireRole(currentUser, Role.AccountManager, {
             allowOwner: true,
             resourceUserId: userId,
         });
@@ -130,7 +138,7 @@ export class UsersController extends BaseController {
         let role = existingUser.role;
         if (body.role !== undefined) {
             // If it's a string, convert label to value; if it's already a number, use it
-            if (typeof body.role === 'string') {
+            if (typeof body.role === "string") {
                 const convertedRole = enumLabelToValue(body.role, ROLE_METADATA);
                 if (convertedRole === undefined) {
                     throw new ValidationError("Invalid role value");
@@ -199,7 +207,7 @@ export class UsersController extends BaseController {
 
         // Get authenticated user and check authorization
         const currentUser = event.authContext.identity;
-        this.requireRole(currentUser, Role.Admin); // Admin only
+        this.requireRole(currentUser, Role.AccountManager);
 
         // Parse paging instruction if provided
         let lastEvaluatedKey: string | undefined;
@@ -224,11 +232,7 @@ export class UsersController extends BaseController {
         }
 
         // Generate ETag from collection
-        const etag = this.generateUsersListETag(
-            result.users,
-            { cursor: pagingInstruction?.cursor },
-            { limit: 50 }
-        );
+        const etag = this.generateUsersListETag(result.users, { cursor: pagingInstruction?.cursor }, { limit: 50 });
 
         // Check if client has current version
         const notModified = this.checkNotModified(event, etag);
@@ -238,7 +242,7 @@ export class UsersController extends BaseController {
         const adapter = new UserCollectionAdapter(result.users, currentUser, pagingInstructions, this.router);
 
         return this.success(event, adapter, {
-            headers: { 'ETag': etag }
+            headers: { ETag: etag },
         });
     }
 
@@ -255,11 +259,7 @@ export class UsersController extends BaseController {
      * Generate ETag for a users list/collection.
      * Based on query params, pagination, and first/last record identifiers.
      */
-    private generateUsersListETag(
-        users: User[],
-        query: Record<string, any>,
-        pagination: { limit: number }
-    ): string {
+    private generateUsersListETag(users: User[], query: Record<string, any>, pagination: { limit: number }): string {
         if (users.length === 0) {
             const queryHash = this.simpleHash(JSON.stringify(query));
             return `"list-${queryHash}-${pagination.limit}-empty"`;
