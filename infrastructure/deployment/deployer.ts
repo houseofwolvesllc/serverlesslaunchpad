@@ -418,7 +418,25 @@ export class Deployer extends StackManager {
             session_timeout_hours: environment === Environment.Production ? 8 : 24,
             max_query_timeout_seconds: environment === Environment.Production ? 120 : 300,
         };
-        
+
+        // Determine API URL: prefer API_BASE_URL from environment, fallback to ALB DNS
+        const albDnsName = config.alb?.dns_name;
+        const apiBaseUrl = process.env.API_BASE_URL?.trim() ||
+            (albDnsName ? `http://${albDnsName}` : undefined);
+
+        if (apiBaseUrl) {
+            // Normalize URL: remove trailing slash if present
+            config.api = {
+                url: apiBaseUrl.replace(/\/$/, ''),
+            };
+            console.log(chalk.gray(`   API URL: ${config.api.url}`));
+        }
+
+        // Warn if using HTTP in production without API_BASE_URL
+        if (environment === Environment.Production && !process.env.API_BASE_URL && albDnsName) {
+            console.log(chalk.yellow(`⚠️  Production using ALB DNS directly (HTTP). Consider setting API_BASE_URL for HTTPS.`));
+        }
+
         // Write environment-specific infrastructure config for API
         this.writeApiConfig(config, `${environment}.infrastructure.json`);
 
