@@ -8,10 +8,10 @@ import type { BitfieldMetadata } from "@houseofwolves/serverlesslaunchpad.types"
  */
 export enum Features {
     None = 0,
-    Contacts = 1 << 0,  // 1 - Contact Management
-    Campaigns = 1 << 1, // 2 - Campaign Builder
-    Links = 1 << 2,     // 4 - Link Tracking
-    Apps = 1 << 3,      // 8 - App Integrations
+    FeatureA = 1 << 0, // 1 - Feature A
+    FeatureB = 1 << 1, // 2 - Feature B
+    FeatureC = 1 << 2, // 4 - Feature C
+    FeatureD = 1 << 3, // 8 - Feature D
 }
 
 /**
@@ -27,9 +27,21 @@ export const FEATURES_METADATA: BitfieldMetadata = {
     none: Features.None,
     options: [
         { value: Features.None, label: "None", description: "No features enabled" },
-        { value: Features.Contacts, label: "Contact Management", description: "Manage customer contacts and profiles" },
-        { value: Features.Campaigns, label: "Campaign Builder", description: "Create and manage marketing campaigns" },
-        { value: Features.Links, label: "Link Tracking", description: "Track and analyze link performance" },
-        { value: Features.Apps, label: "App Integrations", description: "Connect with third-party applications" },
+        {
+            value: Features.FeatureA,
+            label: "Feature A",
+            description: "Enables the user to interact with Feature A",
+        },
+        { value: Features.FeatureB, label: "Feature B", description: "Enables the user to interact with Feature B" },
+        {
+            value: Features.FeatureC,
+            label: "Feature C",
+            description: "Enables the user to interact with Feature C",
+        },
+        {
+            value: Features.FeatureD,
+            label: "Feature D",
+            description: "Enables the user to interact with Feature D",
+        },
     ],
 };

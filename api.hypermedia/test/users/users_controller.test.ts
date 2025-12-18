@@ -13,13 +13,13 @@ mockSecretsManagerClient.on(GetSecretValueCommand).resolves({
 });
 
 // Now import everything else
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { User, Role, Features, UserRepository, Authenticator } from "@houseofwolves/serverlesslaunchpad.core";
-import { UsersController } from "../../src/users/users_controller";
+import { Authenticator, Features, Role, User, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getContainer } from "../../src/container";
 import { NotFoundError } from "../../src/errors";
 import { AuthenticatedALBEvent } from "../../src/extended_alb_event";
-import { getContainer } from "../../src/container";
 import "../../src/index.js"; // Register Router in container
+import { UsersController } from "../../src/users/users_controller";
 
 describe("UsersController", () => {
     let controller: UsersController;
@@ -32,20 +32,22 @@ describe("UsersController", () => {
         firstName: "Test",
         lastName: "User",
         role: Role.Base,
-        features: Features.Contacts | Features.Campaigns,
+        features: Features.FeatureA | Features.FeatureB,
         dateCreated: new Date("2024-01-01T00:00:00Z"),
         dateModified: new Date("2024-01-01T00:00:00Z"),
-        ...overrides
+        ...overrides,
     });
 
     // Store current event's authContext to be returned by mock authenticator
     let currentEventAuthContext: any = null;
 
     const createAuthenticatedEvent = (overrides?: Partial<AuthenticatedALBEvent>): AuthenticatedALBEvent => {
-        const user = overrides?.authContext?.identity || createMockUser({
-            userId: "current-user",
-            role: Role.AccountManager
-        });
+        const user =
+            overrides?.authContext?.identity ||
+            createMockUser({
+                userId: "current-user",
+                role: Role.AccountManager,
+            });
 
         const authContext = overrides?.authContext || {
             identity: user,
@@ -55,7 +57,7 @@ describe("UsersController", () => {
                 dateExpires: new Date("2024-12-31T23:59:59Z"),
                 ipAddress: "127.0.0.1",
                 userAgent: "test-agent/1.0",
-            }
+            },
         };
 
         // Set the authContext for the mock authenticator to return
@@ -72,7 +74,7 @@ describe("UsersController", () => {
             },
             pathParameters: {
                 userId: "user-123",
-                ...overrides?.pathParameters
+                ...overrides?.pathParameters,
             },
             requestContext: {} as any,
             body: null,
@@ -141,23 +143,22 @@ describe("UsersController", () => {
                 authContext: {
                     identity: createMockUser({
                         userId: "admin-user",
-                        role: Role.AccountManager
+                        role: Role.AccountManager,
                     }),
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             const result = await controller.getUser(event);
 
             expect(result.statusCode).toBe(200);
             expect(mockUserRepository.getUserById).toHaveBeenCalledWith({
-                userId: user.userId
+                userId: user.userId,
             });
 
             const body = JSON.parse(result.body || "{}");
@@ -176,12 +177,11 @@ describe("UsersController", () => {
                     identity: user, // Same user
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             const result = await controller.getUser(event);
@@ -199,16 +199,15 @@ describe("UsersController", () => {
                 authContext: {
                     identity: createMockUser({
                         userId: "admin-user",
-                        role: Role.AccountManager
+                        role: Role.AccountManager,
                     }),
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             await expect(controller.getUser(event)).rejects.toThrow(NotFoundError);
@@ -231,8 +230,8 @@ describe("UsersController", () => {
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             await expect(controller.getUser(event)).rejects.toThrow();
@@ -250,12 +249,11 @@ describe("UsersController", () => {
                     identity: currentUser,
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             await expect(controller.getUser(event)).rejects.toThrow();
@@ -273,12 +271,11 @@ describe("UsersController", () => {
                     identity: adminUser,
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             const result = await controller.getUser(event);
@@ -295,16 +292,15 @@ describe("UsersController", () => {
                 authContext: {
                     identity: createMockUser({
                         userId: "admin-user",
-                        role: Role.AccountManager
+                        role: Role.AccountManager,
                     }),
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             const result = await controller.getUser(event);
@@ -325,22 +321,21 @@ describe("UsersController", () => {
                 authContext: {
                     identity: createMockUser({
                         userId: "admin-user",
-                        role: Role.AccountManager
+                        role: Role.AccountManager,
                     }),
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             await controller.getUser(event);
 
             expect(mockUserRepository.getUserById).toHaveBeenCalledWith({
-                userId: "specific-user-id"
+                userId: "specific-user-id",
             });
         });
 
@@ -353,16 +348,15 @@ describe("UsersController", () => {
                 authContext: {
                     identity: createMockUser({
                         userId: "admin-user",
-                        role: Role.AccountManager
+                        role: Role.AccountManager,
                     }),
                     access: {
                         type: "session",
-                        sessionToken: "test-token",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
                         ipAddress: "127.0.0.1",
                         userAgent: "test-agent/1.0",
-                    }
-                }
+                    },
+                },
             });
 
             const result = await controller.getUser(event);
