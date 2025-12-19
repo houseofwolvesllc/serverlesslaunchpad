@@ -62,6 +62,13 @@ export const ApiConfigSchema = z.object({
         })
         .optional(),
 
+    // CORS configuration
+    cors: z
+        .object({
+            allowed_origin_suffix: z.string().optional(), // e.g., ".serverlesslaunchpad.com"
+        })
+        .optional(),
+
     // Metadata
     _generated: z.string().optional(),
     _source: z.string().optional(),

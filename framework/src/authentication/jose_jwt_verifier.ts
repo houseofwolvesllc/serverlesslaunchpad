@@ -39,8 +39,8 @@ export class JoseJwtVerifier extends JwtVerifier {
             return `${config.cognito.endpoint_url}/${poolId}/.well-known/jwks.json`;
         }
 
-        // Production: AWS Cognito
-        const region = config.cognito.region;
+        // Production: AWS Cognito - use aws.region from config
+        const region = config.aws.region;
         return `https://cognito-idp.${region}.amazonaws.com/${poolId}/.well-known/jwks.json`;
     }
 
@@ -57,8 +57,8 @@ export class JoseJwtVerifier extends JwtVerifier {
             ];
         }
 
-        // Production: AWS Cognito issuer
-        const region = config.cognito.region;
+        // Production: AWS Cognito issuer - use aws.region from config
+        const region = config.aws.region;
         return [`https://cognito-idp.${region}.amazonaws.com/${poolId}`];
     }
 }
