@@ -27,7 +27,6 @@ export const StackConfigurationSchema = z.object({
     // Secrets configuration
     secrets: z.object({
         secretName: z.string(),
-        rotationDays: z.number().optional(),
         kmsKeyAlias: z.string().optional(),
     }),
 
@@ -77,7 +76,6 @@ export const configurations: Record<
             reservedConcurrentExecutions: 100,
         },
         secrets: {
-            rotationDays: 90,
             kmsKeyAlias: "alias/slp-production",
         },
     },
@@ -88,6 +86,18 @@ export const configurations: Record<
  */
 export function getConfiguration(environment: Environment): StackConfiguration {
     const envConfig = configurations[environment];
+
+    // Read ALB configuration from environment variables
+    const albDomainName = process.env.ALB_DOMAIN_NAME?.trim() || undefined;
+    const albCertificateArn = process.env.ALB_CERTIFICATE_ARN?.trim() || undefined;
+
+    // Validate: if domain is set, certificate must also be set
+    if (albDomainName && !albCertificateArn) {
+        throw new Error(
+            `ALB_DOMAIN_NAME is set to "${albDomainName}" but ALB_CERTIFICATE_ARN is not provided. ` +
+            `A certificate is required for HTTPS on custom domains.`
+        );
+    }
 
     const config: StackConfiguration = {
         environment,
@@ -102,6 +112,9 @@ export function getConfiguration(environment: Environment): StackConfiguration {
             healthCheckInterval: 30,
             idleTimeout: 60,
             ...envConfig.alb,
+            // Environment variables override static config
+            ...(albDomainName && { domainName: albDomainName }),
+            ...(albCertificateArn && { certificateArn: albCertificateArn }),
         },
         secrets: {
             secretName: `serverlesslaunchpad/${environment}`,

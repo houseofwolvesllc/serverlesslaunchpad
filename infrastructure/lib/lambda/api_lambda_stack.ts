@@ -148,27 +148,39 @@ export class ApiLambdaStack extends BaseStack {
             functionName: this.resourceName(`api-hypermedia`),
             runtime: Runtime.NODEJS_20_X,
             architecture: Architecture.ARM_64,
-            entry: "../api.hypermedia/src/index.ts",
+            entry: "../api.hypermedia/dist/index.js",
             handler: "handler",
 
             // Bundling configuration
             bundling: {
-                minify: this.isProduction(), // Only minify in production
-                sourceMap: true, // Always include source maps for debugging
+                minify: this.isProduction(),
+                sourceMap: true,
                 target: "node20",
-                format: OutputFormat.ESM, // ESM format for modern Node.js
+                format: OutputFormat.ESM,
                 mainFields: ["main", "module"],
-                externalModules: [
-                    // AWS SDK v3 is available in Lambda runtime
-                    "@aws-sdk/*",
-                ],
-                // Define environment variables at build time
+                externalModules: ["@aws-sdk/*"],
                 define: {
                     "process.env.NODE_ENV": JSON.stringify(this.appEnvironment),
                 },
-                // Use Docker for consistent builds
-                forceDockerBundling: true, // Set to true if you need consistent builds across platforms
-                // Additional esbuild options
+                // Banner to support dynamic require() in ESM context
+                banner: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
+                forceDockerBundling: true,
+                // Run tsc before esbuild to emit decorator metadata for DI
+                commandHooks: {
+                    beforeBundling(inputDir: string): string[] {
+                        const apiDir = `${inputDir}/api.hypermedia`;
+                        return [
+                            // Build with tsconfig.build.json (has types:["node"] instead of vitest)
+                            `cd ${apiDir} && npx tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && cp -r config dist/`,
+                        ];
+                    },
+                    afterBundling(): string[] {
+                        return [];
+                    },
+                    beforeInstall(): string[] {
+                        return [];
+                    },
+                },
                 loader: {
                     ".html": "text",
                     ".css": "text",

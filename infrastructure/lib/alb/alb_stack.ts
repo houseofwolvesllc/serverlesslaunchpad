@@ -68,24 +68,34 @@ export class AlbStack extends BaseStack {
     }
 
     /**
-     * Configure HTTP listener with redirect to HTTPS
+     * Configure HTTP listener
+     * - With certificate: redirect to HTTPS
+     * - Without certificate: forward directly to target group
      */
     private configureHttpListener(): void {
-        const httpListener = this.loadBalancer.addListener(this.constructId("http-listener"), {
-            protocol: ApplicationProtocol.HTTP,
-            port: 80,
-            defaultAction: ListenerAction.redirect({
-                protocol: "HTTPS",
-                port: "443",
-                permanent: true,
-            }),
-        });
+        const { alb } = this.configuration;
+        const hasCertificate = !!alb.certificateArn;
 
-        // For non-production, allow HTTP traffic to target group
-        if (!this.isProduction() && !this.configuration.alb.certificateArn) {
-            httpListener.addTargetGroups(this.constructId("http-target-group"), {
-                targetGroups: [this.targetGroup],
+        if (hasCertificate) {
+            // With certificate: redirect HTTP to HTTPS
+            this.loadBalancer.addListener(this.constructId("http-listener"), {
+                protocol: ApplicationProtocol.HTTP,
+                port: 80,
+                defaultAction: ListenerAction.redirect({
+                    protocol: "HTTPS",
+                    port: "443",
+                    permanent: true,
+                }),
             });
+            console.log("✅ HTTP listener configured with redirect to HTTPS");
+        } else {
+            // Without certificate: forward HTTP to target group
+            this.loadBalancer.addListener(this.constructId("http-listener"), {
+                protocol: ApplicationProtocol.HTTP,
+                port: 80,
+                defaultTargetGroups: [this.targetGroup],
+            });
+            console.log("⚠️  HTTP listener configured without HTTPS (no certificate provided)");
         }
     }
 
