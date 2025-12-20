@@ -16,7 +16,16 @@
         "node": ">=20.10.0",
         "npm": ">=10.2.5"
     },
+    "scripts": {
+        "dev:clean": "echo '🧹 Cleaning up stale development processes...' && (pkill -f 'vite.*moto' 2>/dev/null || true) && (pkill -f 'tsx.*dev_server' 2>/dev/null || true) && echo '✅ Cleanup complete'",
+        "dev:check": "echo '🔍 Checking for port conflicts...' && (lsof -i :5173-5176,3001 2>/dev/null || echo '✅ No port conflicts detected')",
+        "dev:web": "cd web && npm run local",
+        "dev:api": "cd api.hypermedia && npm run local local",
+        "dev": "npm run dev:clean && echo '🚀 Starting development servers...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta --names \"WEB,API\" \"npm run dev:web\" \"npm run dev:api\"",
+        "dev:reset": "npm run dev:clean && sleep 2 && npm run dev"
+    },
     "devDependencies": {
+        "concurrently": "^8.2.2",
         "vitest": "^3.0.8"
     },
     "dependencies": {

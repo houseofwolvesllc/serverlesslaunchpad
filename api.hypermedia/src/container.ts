@@ -19,6 +19,7 @@ import {
 import * as path from "path";
 import { z } from "zod";
 import { ApiLogger } from "./logging";
+import { getAWSConfig } from "./config/aws.config";
 
 /**
  * Singleton container instance for the API.Hypermedia application.
@@ -90,7 +91,14 @@ class AppContainer {
                 const configSchema = z.object({
                     session_token_salt: z.string(),
                 });
-                return new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment());
+                
+                // Use Moto-compatible configuration in development
+                const awsConfig = getAWSConfig();
+                return new AwsSecretsConfigurationStore(
+                    configSchema, 
+                    AppContainer.getEnvironment(),
+                    awsConfig
+                );
             })
             .asSingleton()
             .named("secrets");

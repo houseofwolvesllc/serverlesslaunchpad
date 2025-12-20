@@ -82,7 +82,7 @@ describe("AuthenticationController", () => {
         vi.clearAllMocks();
     });
 
-    describe("authenticate", () => {
+    describe("federate", () => {
         it("should authenticate user with valid credentials", async () => {
             // Arrange
             const user = createMockUser();
@@ -102,7 +102,7 @@ describe("AuthenticationController", () => {
             mockAuthenticator.authenticate.mockResolvedValue(mockAuthResult);
 
             // Act
-            const result = await controller.authenticate(event);
+            const result = await controller.federate(event);
 
             // Assert
             expect(mockAuthenticator.authenticate).toHaveBeenCalledWith({
@@ -138,8 +138,8 @@ describe("AuthenticationController", () => {
             mockAuthenticator.authenticate.mockResolvedValue(mockAuthResult);
 
             // Act & Assert
-            await expect(controller.authenticate(event)).rejects.toThrow(UnauthorizedError);
-            await expect(controller.authenticate(event)).rejects.toThrow("Bearer failed validation.");
+            await expect(controller.federate(event)).rejects.toThrow(UnauthorizedError);
+            await expect(controller.federate(event)).rejects.toThrow("Bearer failed validation.");
         });
 
         it("should set authentication cookie for HTML clients", async () => {
@@ -172,7 +172,7 @@ describe("AuthenticationController", () => {
             );
 
             // Act
-            await controller.authenticate(event);
+            await controller.federate(event);
 
             // Assert
             expect(AuthenticationCookieRepository.set).toHaveBeenCalledWith(
@@ -205,7 +205,7 @@ describe("AuthenticationController", () => {
             );
 
             // Act
-            await controller.authenticate(event);
+            await controller.federate(event);
             console.log("HEADERS", event.headers);
             // Assert
             expect(AuthenticationCookieRepository.set).not.toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe("AuthenticationController", () => {
             mockAuthenticator.authenticate.mockResolvedValue(mockAuthResult);
 
             // Act
-            const result = await controller.authenticate(event);
+            const result = await controller.federate(event);
 
             // Assert
             const responseBody = JSON.parse(result.body || "{}");
@@ -251,7 +251,7 @@ describe("AuthenticationController", () => {
         });
     });
 
-    describe("signout", () => {
+    describe("revoke", () => {
         it("should revoke session and clear cookie", async () => {
             // Arrange
             const event = createSignoutEvent();
@@ -262,7 +262,7 @@ describe("AuthenticationController", () => {
             );
 
             // Act
-            const result = await controller.signout(event);
+            const result = await controller.revoke(event);
 
             // Assert
             expect(mockAuthenticator.revoke).toHaveBeenCalledWith({
@@ -307,7 +307,7 @@ describe("AuthenticationController", () => {
             );
 
             // Act
-            await controller.authenticate(event);
+            await controller.federate(event);
 
             // Assert
             expect(AuthenticationCookieRepository.set).toHaveBeenCalled();
@@ -343,7 +343,7 @@ describe("AuthenticationController", () => {
             );
 
             // Act
-            await controller.authenticate(event);
+            await controller.federate(event);
 
             // Assert
             expect(AuthenticationCookieRepository.set).toHaveBeenCalled();

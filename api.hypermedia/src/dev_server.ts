@@ -1,7 +1,9 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
+import * as dotenv from "dotenv";
+import * as path from "path";
 
 // Parse command line argument for environment
-const environmentArg = process.argv[2] || 'development';
+const environmentArg = process.argv[2] || 'local';
 const validEnvironments = Object.values(Environment);
 
 if (!validEnvironments.includes(environmentArg as Environment)) {
@@ -11,6 +13,16 @@ if (!validEnvironments.includes(environmentArg as Environment)) {
 }
 
 const environment = environmentArg as Environment;
+
+// Load environment-specific .env file
+const envFile = path.join(process.cwd(), `.env.${environment}`);
+const envResult = dotenv.config({ path: envFile });
+
+if (envResult.error) {
+    console.warn(`⚠️  Could not load ${envFile}, using default environment variables`);
+} else {
+    console.log(`✅ Loaded environment configuration from .env.${environment}`);
+}
 
 // Set NODE_ENV for ConfigStore to use
 process.env.NODE_ENV = environment;
@@ -29,10 +41,17 @@ const PORT = process.env.PORT || 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.path} - ${req.ip}`);
+    next();
+});
+
 // CORS for local development
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "http://localhost:5173"); // Vite default port
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie");
+    res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, X-Forwarded-For");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header("Access-Control-Allow-Credentials", "true");
 
@@ -144,6 +163,24 @@ app.post("/auth/signout", async (req, res) => {
     albResultToExpress(result, res);
 });
 
+app.post("/auth/federate", async (req, res) => {
+    const event = expressToALBEvent(req);
+    const result = await handler(event);
+    albResultToExpress(result, res);
+});
+
+app.post("/auth/verify", async (req, res) => {
+    const event = expressToALBEvent(req);
+    const result = await handler(event);
+    albResultToExpress(result, res);
+});
+
+app.post("/auth/revoke", async (req, res) => {
+    const event = expressToALBEvent(req);
+    const result = await handler(event);
+    albResultToExpress(result, res);
+});
+
 // API Keys endpoints
 app.get("/api-keys", async (req, res) => {
     const event = expressToALBEvent(req);
@@ -178,7 +215,7 @@ app.use("*", async (req, res) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error("Express error:", err);
     res.status(500).json({
         error: {
@@ -197,6 +234,9 @@ app.listen(PORT, () => {
     console.log("  GET  /");
     console.log("  POST /auth/signin");
     console.log("  POST /auth/signout");
+    console.log("  POST /auth/federate");
+    console.log("  POST /auth/verify");
+    console.log("  POST /auth/revoke");
     console.log("  GET  /api-keys");
     console.log("  DELETE /api-keys/:key_id");
     console.log("  GET  /sessions");

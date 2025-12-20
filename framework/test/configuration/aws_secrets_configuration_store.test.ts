@@ -21,7 +21,7 @@ describe("AwsSecretsConfigurationStore", () => {
         const mockSecretsManagerClient = mockClient(SecretsManagerClient);
         mockSecretsManagerClient.on(GetSecretValueCommand).resolves(mockSecretValue);
 
-        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "test-configuration");
+        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "development" as any);
         const result = await store.get();
 
         expect(result.AWS_S3_BUCKET).toEqual("test-bucket");
@@ -38,7 +38,7 @@ describe("AwsSecretsConfigurationStore", () => {
         const mockSecretsManagerClient = mockClient(SecretsManagerClient);
         mockSecretsManagerClient.on(GetSecretValueCommand).resolves(mockSecretValue);
 
-        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "test-configuration");
+        const store = new AwsSecretsConfigurationStore(mockConfigSchema, "development" as any);
         await expect(store.get()).rejects.toThrow();
     });
 });
