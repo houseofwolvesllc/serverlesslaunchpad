@@ -46,6 +46,7 @@ describe('EntryPoint', () => {
             // Assert
             expect(global.fetch).toHaveBeenCalledWith(mockBaseUrl, {
                 method: 'GET',
+                credentials: 'include',
                 headers: {
                     'Accept': 'application/hal+json, application/json',
                 },
@@ -74,6 +75,7 @@ describe('EntryPoint', () => {
             // Assert
             expect(global.fetch).toHaveBeenCalledWith(mockBaseUrl, {
                 method: 'GET',
+                credentials: 'include',
                 headers: {
                     'Accept': 'application/hal+json, application/json',
                     'Authorization': 'Bearer token123',
@@ -304,6 +306,7 @@ describe('EntryPoint', () => {
             expect(global.fetch).toHaveBeenCalledTimes(2);
             expect(global.fetch).toHaveBeenLastCalledWith(mockBaseUrl, {
                 method: 'GET',
+                credentials: 'include',
                 headers: {
                     'Accept': 'application/hal+json, application/json',
                     'Authorization': 'Bearer newtoken123',
@@ -331,6 +334,7 @@ describe('EntryPoint', () => {
             expect(global.fetch).toHaveBeenCalledTimes(2);
             expect(global.fetch).toHaveBeenLastCalledWith(mockBaseUrl, {
                 method: 'GET',
+                credentials: 'include',
                 headers: {
                     'Accept': 'application/hal+json, application/json',
                 },

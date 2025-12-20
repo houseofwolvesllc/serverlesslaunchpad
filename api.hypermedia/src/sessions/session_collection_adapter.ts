@@ -58,31 +58,14 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
                     // Using path template for now - add route when implementing GET /users/{userId}/sessions/{sessionId}
                     self: this.createLink(`/users/${this.userId}/sessions/${session.sessionId}`)
                 },
-                _templates: {
-                    delete: this.createTemplate(
-                        "Delete Session",
-                        "DELETE",
-                        this.router.buildHref(SessionsController, 'deleteSessions', { userId: this.userId }),
-                        {
-                            contentType: "application/json",
-                            properties: [
-                                this.createProperty("sessionIds", {
-                                    prompt: "Session ID",
-                                    required: true,
-                                    type: "text",
-                                    value: session.sessionId
-                                })
-                            ]
-                        }
-                    )
-                }
+                // No individual delete template - use bulk delete only
             }))
         };
     }
 
     get _templates() {
-        // Sessions collection has bulk delete but no create operation
-        return {
+        const templates: any = {
+            // Sessions collection has bulk delete but no create operation
             bulkDelete: this.createTemplate(
                 "Delete Selected Sessions",
                 "DELETE",
@@ -100,6 +83,49 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
                 }
             )
         };
+
+        // Add pagination templates when applicable
+        const listEndpoint = this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId });
+
+        if (this.pagingData.next) {
+            templates.next = this.createTemplate(
+                "Next Page",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden",
+                            value: JSON.stringify(this.pagingData.next)
+                        })
+                    ]
+                }
+            );
+        }
+
+        if (this.pagingData.previous) {
+            templates.prev = this.createTemplate(
+                "Previous Page",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden",
+                            value: JSON.stringify(this.pagingData.previous)
+                        })
+                    ]
+                }
+            );
+        }
+
+        return templates;
     }
 
     // Return cursor-based paging instructions for client navigation

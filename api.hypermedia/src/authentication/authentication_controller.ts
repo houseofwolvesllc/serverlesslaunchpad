@@ -41,8 +41,6 @@ export class AuthenticationController extends BaseController {
 
         const authResult = await this.authenticator.authenticate(authMessage);
 
-        console.log("authResult", authResult);
-
         if (!authResult.authContext.identity) {
             throw new UnauthorizedError("Bearer failed validation.");
         }

@@ -89,7 +89,8 @@ export function useApiKeys() {
 
         try {
             const entryPoint = getEntryPoint();
-            const apiKeysHref = await entryPoint.getLinkHref('api-keys');
+            // Get API keys template target (now in templates for POST operations)
+            const apiKeysHref = await entryPoint.getTemplateTarget('listApiKeys');
 
             if (!apiKeysHref) {
                 throw new Error('API keys endpoint not found');

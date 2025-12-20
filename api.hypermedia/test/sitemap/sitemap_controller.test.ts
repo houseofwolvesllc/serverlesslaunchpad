@@ -3,6 +3,7 @@ import { Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBEvent } from "aws-lambda";
 import { getContainer } from "../../src/container";
 import { SitemapController } from "../../src/sitemap/sitemap_controller";
+import "../../src/index.js"; // Register Router in container
 
 describe("SitemapController", () => {
     let controller: SitemapController;
@@ -66,12 +67,11 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Admin sees: home, documentation, account, admin
-        expect(body.navigation.items.length).toBe(4);
-        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "account")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "admin")).toBeDefined();
+        // Admin sees: Main Navigation + Administration + User
+        expect(body._nav.length).toBe(3);
+        expect(body._nav[0].title).toBe("Main Navigation");
+        expect(body._nav[1].title).toBe("Administration");
+        expect(body._nav[2].title).toBe("User");
     });
 
     it("should return filtered sitemap for regular user", async () => {
@@ -83,12 +83,10 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Regular user sees: home, documentation, account (no admin)
-        expect(body.navigation.items.length).toBe(3);
-        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "account")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "admin")).toBeUndefined();
+        // Regular user sees: Main Navigation + User (no Administration)
+        expect(body._nav.length).toBe(2);
+        expect(body._nav[0].title).toBe("Main Navigation");
+        expect(body._nav[1].title).toBe("User");
     });
 
     it("should return public sitemap for unauthenticated request", async () => {
@@ -99,11 +97,10 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Unauthenticated sees: home, login, documentation
-        expect(body.navigation.items.length).toBe(3);
-        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "login")).toBeDefined();
-        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
+        // Unauthenticated sees: Public navigation only
+        expect(body._nav.length).toBe(1);
+        expect(body._nav[0].title).toBe("Public");
+        expect(body._nav[0].items[0].rel).toBe("home");
     });
 
     it("should include proper HAL links", async () => {
@@ -136,5 +133,60 @@ describe("SitemapController", () => {
 
         expect(result.statusCode).toBe(200);
         expect(result.headers?.["Content-Type"]).toBe("application/json");
+    });
+
+    it("should include sessions and api-keys as templates for authenticated users", async () => {
+        const user = createMockUser({ role: Role.User });
+        const event = createEvent(user);
+
+        const result = await controller.getSitemap(event);
+
+        expect(result.statusCode).toBe(200);
+
+        const body = JSON.parse(result.body);
+
+        // Should have templates
+        expect(body._templates).toBeDefined();
+        expect(body._templates.sessions).toBeDefined();
+        expect(body._templates["api-keys"]).toBeDefined();
+        expect(body._templates.logout).toBeDefined();
+
+        // Templates should be POST operations
+        expect(body._templates.sessions.method).toBe("POST");
+        expect(body._templates["api-keys"].method).toBe("POST");
+        expect(body._templates.logout.method).toBe("POST");
+    });
+
+    it("should not include templates for unauthenticated users", async () => {
+        const event = createEvent();
+
+        const result = await controller.getSitemap(event);
+
+        expect(result.statusCode).toBe(200);
+
+        const body = JSON.parse(result.body);
+
+        // No templates for unauthenticated users
+        expect(body._templates).toBeUndefined();
+    });
+
+    it("should mark sessions and api-keys as templates in navigation", async () => {
+        const user = createMockUser({ role: Role.User });
+        const event = createEvent(user);
+
+        const result = await controller.getSitemap(event);
+
+        expect(result.statusCode).toBe(200);
+
+        const body = JSON.parse(result.body);
+
+        const mainNav = body._nav.find((group: any) => group.title === "Main Navigation");
+        expect(mainNav).toBeDefined();
+
+        const sessionsItem = mainNav.items.find((item: any) => item.rel === "sessions");
+        const apiKeysItem = mainNav.items.find((item: any) => item.rel === "api-keys");
+
+        expect(sessionsItem.type).toBe("template");
+        expect(apiKeysItem.type).toBe("template");
     });
 });

@@ -19,7 +19,8 @@ export const DeleteSessionsSchema = z.object({
         userId: z.string()
     }),
     body: z.object({
-        sessionIds: z.array(z.string()).min(1, "Must provide at least one session ID")
+        sessionIds: z.array(z.string()).min(1, "Must provide at least one session ID"),
+        _method: z.string().optional() // Allow method override for DELETE via POST
     })
 });
 

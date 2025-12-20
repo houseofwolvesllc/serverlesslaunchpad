@@ -96,14 +96,24 @@ export class ApiKeysController extends BaseController {
             apiKeyIds: apiKeyIds,
         });
 
-        // Action response - no self link, use collection link with title
+        // Action response - no self link, use collection template (POST operation)
         const adapter = new MessageAdapter({
             message: `Deleted ${apiKeyIds.length} API keys for user ${userId}`,
-            links: {
+            templates: {
                 collection: {
-                    href: this.router.buildHref(ApiKeysController, "getApiKeys", { userId }),
-                    title: "API Keys",
-                },
+                    title: "View API Keys",
+                    method: "POST",
+                    target: this.router.buildHref(ApiKeysController, "getApiKeys", { userId }),
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
+                }
             },
             properties: {
                 deletedCount: apiKeyIds.length,
@@ -155,14 +165,24 @@ export class ApiKeysController extends BaseController {
         });
 
         // Return response with full key (one-time display)
-        // Action response - no self link, use collection link with title
+        // Action response - no self link, use collection template (POST operation)
         const adapter = new MessageAdapter({
             message: "API key created successfully",
-            links: {
+            templates: {
                 collection: {
-                    href: this.router.buildHref(ApiKeysController, "getApiKeys", { userId }),
-                    title: "API Keys",
-                },
+                    title: "View API Keys",
+                    method: "POST",
+                    target: this.router.buildHref(ApiKeysController, "getApiKeys", { userId }),
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
+                }
             },
             properties: {
                 apiKeyId: created.apiKeyId,

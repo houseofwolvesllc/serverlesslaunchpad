@@ -39,13 +39,13 @@ describe("EnvConfigurationStore", () => {
 
     it("should throw an error when environment variable is missing", async () => {
         delete process.env[mockConfigurationName];
-        expect(async () => await store.get()).rejects.toThrow(new Error("Unexpected end of JSON input"));
+        await expect(async () => await store.get()).rejects.toThrow(new SyntaxError("Unexpected end of JSON input"));
     });
 
     it("should throw an error for invalid JSON in environment variable", async () => {
         process.env[mockConfigurationName] = "invalid-json";
-        expect(async () => await store.get()).rejects.toThrow(
-            new Error(`Unexpected token 'i', "invalid-json" is not valid JSON`)
+        await expect(async () => await store.get()).rejects.toThrow(
+            new SyntaxError(`Unexpected token 'i', "invalid-json" is not valid JSON`)
         );
     });
 });

@@ -27,13 +27,18 @@ export const getAcceptedContentType = (event: ALBEvent): ContentType => {
     const acceptTypes = parseAcceptHeader(acceptHeader);
     
     for (const acceptType of acceptTypes) {
+        // Check for HAL+JSON (preferred for hypermedia clients)
+        if (acceptType.type === "application/hal+json") {
+            return CONTENT_TYPES.HAL_JSON;
+        }
+
         // Check for JSON
-        if (acceptType.type === "application/json" || 
+        if (acceptType.type === "application/json" ||
             acceptType.type === "application/*" ||
             acceptType.type === "*/*") {
             return CONTENT_TYPES.JSON;
         }
-        
+
         // Check for XHTML
         if (acceptType.type === "application/xhtml+xml" ||
             acceptType.type === "application/xml") {

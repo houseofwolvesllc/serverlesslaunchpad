@@ -13,6 +13,9 @@ export interface MessageAdapterConfig {
     /** Additional links beyond self and base links */
     links?: Record<string, { href: string; title?: string }>;
 
+    /** HAL-FORMS templates for POST operations */
+    templates?: Record<string, any>;
+
     /** Additional properties to include in the response */
     properties?: Record<string, any>;
 
@@ -92,6 +95,10 @@ export class MessageAdapter extends HalResourceAdapter {
         return links;
     }
 
+    get _templates(): HalObject["_templates"] {
+        return this.config.templates;
+    }
+
     get message() {
         return this.config.message;
     }
@@ -101,6 +108,11 @@ export class MessageAdapter extends HalResourceAdapter {
             message: this.message,
             _links: this._links,
         };
+
+        // Include templates if provided
+        if (this.config.templates) {
+            result._templates = this._templates;
+        }
 
         // Include dynamically assigned properties (from config.properties)
         for (const key of Object.keys(this)) {

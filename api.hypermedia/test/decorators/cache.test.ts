@@ -226,9 +226,9 @@ describe("@Cache Decorator", () => {
             // Verify both calls actually executed (not cached)
             const body1 = JSON.parse(result1.body || "{}");
             const body2 = JSON.parse(result2.body || "{}");
-            // HAL format: properties are flat at top level
-            expect(body1.count).toBe(1);
-            expect(body2.count).toBe(2);
+            // Adapter exposes testData object
+            expect(body1.testData.count).toBe(1);
+            expect(body2.testData.count).toBe(2);
         });
     });
 
@@ -302,9 +302,9 @@ describe("@Cache Decorator", () => {
             // Verify the method was only called once (second was cached)
             const body1 = JSON.parse(result1.body || "{}");
             const body2 = JSON.parse(result2.body || "{}");
-            // HAL format: properties are flat at top level
-            expect(body1.count).toBe(1);
-            expect(body2.count).toBe(1); // Same count, cached result
+            // Adapter exposes testData object
+            expect(body1.testData.count).toBe(1);
+            expect(body2.testData.count).toBe(1); // Same count, cached result
         });
     });
 });

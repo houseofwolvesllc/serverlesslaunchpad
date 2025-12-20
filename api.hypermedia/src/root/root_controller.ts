@@ -23,9 +23,9 @@ interface RootResponse {
             href: string;
             title?: string;
             templated?: boolean;
-            method?: string;
         }
     >;
+    _templates?: Record<string, any>;
 }
 
 /**
@@ -61,44 +61,73 @@ export class RootController extends BaseController {
             },
         };
 
-        // Unauthenticated links - available to all users
-        if (!isAuthenticated) {
-            response._links["auth:federate"] = {
-                href: this.router.buildHref(AuthenticationController, 'federate', {}),
+        // Always include sitemap link
+        response._links["sitemap"] = {
+            href: "/sitemap",
+            title: "API Navigation",
+        };
+
+        // Base templates available to all users (authenticated and unauthenticated)
+        response._templates = {
+            "federate": {
                 title: "Federate Identity Provider Token",
                 method: "POST",
-            };
-            response._links["sitemap"] = {
-                href: "/sitemap",
-                title: "API Navigation",
-            };
-        }
-
-        // Authenticated links - only available after sign-in
-        if (isAuthenticated && userId) {
-            response._links["auth:verify"] = {
-                href: this.router.buildHref(AuthenticationController, 'verify', {}),
+                target: this.router.buildHref(AuthenticationController, 'federate', {}),
+                contentType: "application/json",
+                properties: [
+                    {
+                        name: "idToken",
+                        prompt: "ID Token",
+                        required: true,
+                        type: "textarea"
+                    }
+                ]
+            },
+            "verify": {
                 title: "Verify Session",
                 method: "POST",
-            };
-            response._links["auth:revoke"] = {
-                href: this.router.buildHref(AuthenticationController, 'revoke', {}),
+                target: this.router.buildHref(AuthenticationController, 'verify', {}),
+                contentType: "application/json",
+                properties: []
+            }
+        };
+
+        // Add authenticated-only templates
+        if (isAuthenticated && userId) {
+            response._templates["revoke"] = {
                 title: "Revoke Session",
                 method: "POST",
+                target: this.router.buildHref(AuthenticationController, 'revoke', {}),
+                contentType: "application/json",
+                properties: []
             };
-            response._links["sessions"] = {
-                href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
-                title: "User Sessions",
-                method: "POST"
+            response._templates["listSessions"] = {
+                title: "View Sessions",
+                method: "POST",
+                target: this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                contentType: "application/json",
+                properties: [
+                    {
+                        name: "pagingInstruction",
+                        prompt: "Paging Instruction",
+                        required: false,
+                        type: "hidden"
+                    }
+                ]
             };
-            response._links["api-keys"] = {
-                href: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
-                title: "User API Keys",
-                method: "POST"
-            };
-            response._links["sitemap"] = {
-                href: "/sitemap",
-                title: "API Navigation",
+            response._templates["listApiKeys"] = {
+                title: "View API Keys",
+                method: "POST",
+                target: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
+                contentType: "application/json",
+                properties: [
+                    {
+                        name: "pagingInstruction",
+                        prompt: "Paging Instruction",
+                        required: false,
+                        type: "hidden"
+                    }
+                ]
             };
         }
 

@@ -34,9 +34,9 @@ describe("ALB Handler", () => {
         expect(body.version).toBeDefined();
         expect(body.environment).toBeDefined();
         expect(body._links).toBeDefined();
-        expect(body._links["auth:federate"]).toBeDefined();
         expect(body._links["sitemap"]).toBeDefined();
-        expect(body._links["auth:verify"]).toBeUndefined();
-        expect(body._links["auth:revoke"]).toBeUndefined();
+        expect(body._templates).toBeDefined();
+        expect(body._templates["federate"]).toBeDefined();
+        expect(body._templates["verify"]).toBeDefined();
     });
 });

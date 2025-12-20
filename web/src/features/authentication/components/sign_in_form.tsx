@@ -40,7 +40,7 @@ export const SignInForm = () => {
                     navigate(`/auth/reset-password`);
                     break;
                 case SignInStep.COMPLETED:
-                    const origin = location.state?.from?.pathname || '/dashboard';
+                    const origin = location.state?.from?.pathname || '/';
                     navigate(origin);
                     break;
                 default:
@@ -81,6 +81,13 @@ export const SignInForm = () => {
                         });
                         throw error;
                 }
+            } else {
+                // Handle non-AuthError exceptions (e.g., network errors, API errors)
+                notifications.show({
+                    color: 'red',
+                    title: 'Sign In Failed',
+                    message: error instanceof Error ? error.message : 'An unexpected error occurred during sign in',
+                });
             }
         } finally {
             setIsLoading(false);

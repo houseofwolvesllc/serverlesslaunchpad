@@ -1,5 +1,6 @@
 import { ActionIcon, Alert, Button, Checkbox, Group, Paper, Stack, Table, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { useSessions } from '../hooks/use_sessions';
 import { PaginationControls } from './pagination_controls';
 import { SessionRow } from './session_row';
@@ -15,12 +16,12 @@ import { confirmDelete } from '../../../utils/confirm_delete';
  * - Displays all active user sessions across devices
  * - Identifies and protects the current session (cannot be deleted)
  * - Server-side pagination with configurable page sizes (10, 25, 50, 100)
- * - Template-driven delete operations (per-session)
+ * - Template-driven bulk delete operations (checkbox selection)
  * - Loading and error states
  * - Refresh functionality
  *
  * All operations are driven by HAL-FORMS templates from the API:
- * - Delete operations use templates from each embedded session
+ * - Bulk delete uses the bulkDelete template from the collection
  *
  * @example
  * ```tsx
@@ -45,6 +46,7 @@ export function SessionsList() {
     } = useSessions();
 
     // Selection state for bulk operations
+    // Filter out current session - it cannot be deleted
     const {
         selected,
         toggleSelection,
@@ -55,7 +57,7 @@ export function SessionsList() {
         someSelected,
         hasSelection,
         count: selectedCount
-    } = useSelection(sessions, 'sessionId');
+    } = useSelection(sessions, 'sessionId', (session: any) => !session.isCurrent);
 
     // Template execution for bulk delete
     const { execute: executeBulkDelete, loading: bulkDeleteLoading } = useExecuteTemplate(
@@ -76,9 +78,22 @@ export function SessionsList() {
             message: 'Are you sure you want to delete the selected sessions?',
             count: selectedCount,
             onConfirm: async () => {
-                await executeBulkDelete(bulkDeleteTemplate, {
-                    sessionIds: selected
-                });
+                try {
+                    await executeBulkDelete(bulkDeleteTemplate, {
+                        sessionIds: selected
+                    });
+                    notifications.show({
+                        title: 'Success',
+                        message: `Successfully deleted ${selectedCount} session${selectedCount === 1 ? '' : 's'}`,
+                        color: 'green',
+                    });
+                } catch (err: any) {
+                    notifications.show({
+                        title: 'Error',
+                        message: err.message || 'Failed to delete sessions',
+                        color: 'red',
+                    });
+                }
             }
         });
     };
@@ -146,7 +161,6 @@ export function SessionsList() {
                                     <Table.Th>IP Address</Table.Th>
                                     <Table.Th>Last Access</Table.Th>
                                     <Table.Th>Created</Table.Th>
-                                    <Table.Th style={{ width: 100 }}>Actions</Table.Th>
                                 </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
@@ -154,7 +168,6 @@ export function SessionsList() {
                                     <SessionRow
                                         key={session.sessionId}
                                         session={session}
-                                        onDelete={refresh}
                                         showCheckbox={!!bulkDeleteTemplate}
                                         selected={isSelected(session.sessionId)}
                                         onToggleSelect={() => toggleSelection(session.sessionId)}

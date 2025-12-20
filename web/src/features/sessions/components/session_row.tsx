@@ -1,48 +1,35 @@
-import { useMemo, useState } from 'react';
-import { Badge, Button, Checkbox, Group, Stack, Table, Text } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { IconLock, IconTrash } from '@tabler/icons-react';
+import { useMemo } from 'react';
+import { Badge, Checkbox, Group, Stack, Table, Text } from '@mantine/core';
+import { IconLock } from '@tabler/icons-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
 import { Session } from '../types';
 import { parseUserAgent } from '../utils/parse_user_agent';
-import { confirmDelete } from '../../../utils/confirm_delete';
 
 interface SessionRowProps {
     session: Session;
-    onDelete?: () => void; // Callback after successful deletion
     showCheckbox?: boolean; // Show selection checkbox
     selected?: boolean; // Is this row selected
     onToggleSelect?: () => void; // Toggle selection callback
 }
 
 /**
- * Individual session table row with HAL-FORMS template integration
+ * Individual session table row
  *
  * Displays session information:
  * - Device details (browser and OS parsed from user agent)
  * - IP Address
  * - Last accessed (relative time)
  * - Created date
- * - Delete button (only shows if delete template exists and not current session)
+ * - Checkbox for bulk selection (when enabled)
  *
  * Current session:
  * - Highlighted with blue background
  * - Shows "Current" badge and lock icon
- * - Cannot be deleted (delete button hidden)
+ * - Cannot be selected for deletion (checkbox disabled)
  *
- * All delete operations use the HAL-FORMS delete template from the embedded resource.
+ * Delete operations are performed via bulk delete only.
  */
-export function SessionRow({ session, onDelete, showCheckbox, selected, onToggleSelect }: SessionRowProps) {
-    const [deleting, setDeleting] = useState(false);
-    const { execute } = useExecuteTemplate(() => {
-        notifications.show({
-            title: 'Success',
-            message: 'Session deleted successfully',
-            color: 'green',
-        });
-        onDelete?.();
-    });
+export function SessionRow({ session, showCheckbox, selected, onToggleSelect }: SessionRowProps) {
 
     // Memoize user agent parsing to avoid unnecessary re-computation
     const deviceInfo = useMemo(() => parseUserAgent(session.userAgent), [session.userAgent]);
@@ -58,30 +45,6 @@ export function SessionRow({ session, onDelete, showCheckbox, selected, onToggle
     );
 
     const created = useMemo(() => new Date(session.dateCreated).toLocaleDateString(), [session.dateCreated]);
-
-    const handleDelete = async () => {
-        const deleteTemplate = (session as any)._templates?.delete;
-        if (!deleteTemplate) return;
-
-        confirmDelete({
-            title: 'Delete Session',
-            message: `Are you sure you want to delete the session from ${deviceInfo.browser} on ${deviceInfo.os}?`,
-            onConfirm: async () => {
-                setDeleting(true);
-                try {
-                    await execute(deleteTemplate, {});
-                } catch (err) {
-                    notifications.show({
-                        title: 'Error',
-                        message: 'Failed to delete session',
-                        color: 'red',
-                    });
-                } finally {
-                    setDeleting(false);
-                }
-            }
-        });
-    };
 
     return (
         <Table.Tr
@@ -126,21 +89,6 @@ export function SessionRow({ session, onDelete, showCheckbox, selected, onToggle
             </Table.Td>
             <Table.Td>
                 <Text size="sm">{created}</Text>
-            </Table.Td>
-            <Table.Td>
-                {/* Delete button only shows if template exists and not current session */}
-                {!isCurrent && (session as any)._templates?.delete && (
-                    <Button
-                        size="xs"
-                        color="red"
-                        variant="subtle"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={handleDelete}
-                        loading={deleting}
-                    >
-                        Delete
-                    </Button>
-                )}
             </Table.Td>
         </Table.Tr>
     );
