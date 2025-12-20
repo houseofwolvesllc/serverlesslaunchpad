@@ -16,6 +16,7 @@ export class AthenaUserProvider implements UserProvider {
         this.athenaClient = athenaClient;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     protected mapToUser(row: Record<string, any>): User {
         return {
             userId: row.userId,

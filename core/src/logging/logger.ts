@@ -36,6 +36,7 @@ export interface LogContext {
     /**
      * Additional contextual data (flexible)
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
 

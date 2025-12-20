@@ -2,6 +2,7 @@ import { ContainerError, ServiceAlreadyRegisteredError, ServiceNotFoundError } f
 import { AbstractConstructor, BindOptions, Constructor, ServiceDescriptor } from "./types";
 
 export class ContainerRegistrar<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(private descriptor: ServiceDescriptor<T>, private registry: Map<string, ServiceDescriptor<any>>) {}
 
     to(implementationType: Constructor<T>): ContainerRegistrar<T> {
@@ -43,6 +44,7 @@ export class ContainerRegistrar<T> {
 }
 
 export class Container {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private registry: Map<string, ServiceDescriptor<any>> = new Map();
 
     bind<T>(serviceType: AbstractConstructor<T> | Constructor<T>, options?: BindOptions<T>): ContainerRegistrar<T> {
@@ -97,7 +99,8 @@ export class Container {
         const keys = Reflect.getMetadata("injection:keys", descriptor.implementation);
         const resolvedParams = !params
             ? []
-            : params.map((param: any, index: number) => {
+            : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              params.map((param: any, index: number) => {
                   if (!param) {
                       throw new ContainerError(
                           `Cannot resolve parameter of type ${param} for ${descriptor.implementation.name}`
@@ -107,6 +110,21 @@ export class Container {
                   const key = keys?.[index];
                   return this.resolve(param, key);
               });
+
+        console.log("Prior to loop, Resolved params:", resolvedParams);
+        console.log("Params:", params);
+
+        // Validate that all parameters were successfully resolved
+        resolvedParams.forEach((param, index) => {
+            console.log("Resolved param:", param);
+            console.log("Param type:", params[index]);
+            if (param === undefined) {
+                const paramType = params[index];
+                throw new ContainerError(
+                    `Cannot resolve dependency '${paramType.name}' for parameter ${index} of '${descriptor.implementation.name}' constructor. No binding found for ${paramType.name}.`
+                );
+            }
+        });
 
         switch (descriptor.lifecycle) {
             case "singleton":
