@@ -1,18 +1,26 @@
 # Serverless Launchpad Development Makefile
 .PHONY: help dev-start dev-stop dev-reset dev-status test-local clean
 
+# Default web frontend(s) to start: all, mantine, shadcn, daisyui, or none
+web ?= all
+
 # Default target
 help:
 	@echo "Serverless Launchpad Development Commands"
 	@echo "=========================================="
 	@echo ""
 	@echo "Development Environment:"
-	@echo "  make dev-start    - Start Moto and local development servers"
-	@echo "  make dev-stop     - Stop all services"
-	@echo "  make dev-restart  - Restart all services"
-	@echo "  make dev-reset    - Reset Moto data and restart"
-	@echo "  make moto-logs    - View Moto logs"
-	@echo "  make dev-status   - Check status of all services"
+	@echo "  make dev-start              - Start Moto and all web frontends (default)"
+	@echo "  make dev-start web=all      - Start Moto and all frontends (explicit)"
+	@echo "  make dev-start web=mantine  - Start Moto and Mantine frontend only"
+	@echo "  make dev-start web=shadcn   - Start Moto and shadcn frontend only"
+	@echo "  make dev-start web=daisyui  - Start Moto and DaisyUI frontend only"
+	@echo "  make dev-start web=none     - Start Moto only (infrastructure only)"
+	@echo "  make dev-stop               - Stop all services"
+	@echo "  make dev-restart            - Restart all services"
+	@echo "  make dev-reset              - Reset Moto data and restart"
+	@echo "  make moto-logs              - View Moto logs"
+	@echo "  make dev-status             - Check status of all services"
 	@echo ""
 	@echo "Cloud Environments:"
 	@echo "  make cloud-dev    - Run locally against AWS development environment"
@@ -69,14 +77,41 @@ dev-start:
 	@cd framework && npm run build >/dev/null 2>&1
 	@cd types && npm run build >/dev/null 2>&1
 	@echo ""
-	@echo "🚀 Starting development servers with file watching..."
-	@npm run dev:watch
+	@echo "🚀 Starting development servers with file watching (web=$(web))..."
+	@# Validate web argument
+	@if [ "$(web)" != "all" ] && [ "$(web)" != "mantine" ] && [ "$(web)" != "shadcn" ] && [ "$(web)" != "daisyui" ] && [ "$(web)" != "none" ]; then \
+		echo "❌ Invalid web value: $(web)"; \
+		echo "   Valid options: all, mantine, shadcn, daisyui, none"; \
+		exit 1; \
+	fi
+	@# Start development servers based on web argument
+	@if [ "$(web)" = "all" ]; then \
+		npm run dev:watch; \
+	elif [ "$(web)" = "mantine" ]; then \
+		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue --names "MANTINE,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue --names "SHADCN,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue --names "DAISYUI,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+	elif [ "$(web)" = "none" ]; then \
+		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue --names "API,TYPES,CORE,FRAMEWORK" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+	fi
 	@echo ""
 	@echo "✨ Development environment is ready!"
 	@echo ""
 	@echo "  Moto:       http://localhost:5555"
 	@echo "  API:        http://localhost:3001"
-	@echo "  Web:        http://localhost:5173"
+	@if [ "$(web)" = "all" ]; then \
+		echo "  Mantine:    http://localhost:5173"; \
+		echo "  shadcn:     http://localhost:5174"; \
+		echo "  DaisyUI:    http://localhost:5175"; \
+	elif [ "$(web)" = "mantine" ]; then \
+		echo "  Mantine:    http://localhost:5173"; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		echo "  shadcn:     http://localhost:5174"; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		echo "  DaisyUI:    http://localhost:5175"; \
+	fi
 	@echo ""
 	@echo "View Moto logs with: make moto-logs"
 	@echo "Check status with: make dev-status"
@@ -88,6 +123,9 @@ dev-stop:
 	@# Kill any process using our development ports (except Docker on 5555)
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5175 | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5176 | xargs kill -9 2>/dev/null || true
 	@# Kill specific process patterns
 	@pkill -f "concurrently.*WEB,API" 2>/dev/null || true
 	@pkill -f "concurrently.*TYPES,CORE,FRAMEWORK" 2>/dev/null || true
@@ -141,10 +179,26 @@ dev-status:
 		echo "  ❌ Not running"; \
 	fi
 	@echo ""
-	@echo "Web Server:"
+	@echo "Mantine Web:"
 	@if lsof -i :5173 >/dev/null 2>&1; then \
 		echo "  ✅ Running on port 5173"; \
 		curl -s http://localhost:5173 >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
+	else \
+		echo "  ❌ Not running"; \
+	fi
+	@echo ""
+	@echo "shadcn Web:"
+	@if lsof -i :5174 >/dev/null 2>&1; then \
+		echo "  ✅ Running on port 5174"; \
+		curl -s http://localhost:5174 >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
+	else \
+		echo "  ❌ Not running"; \
+	fi
+	@echo ""
+	@echo "DaisyUI Web:"
+	@if lsof -i :5175 >/dev/null 2>&1; then \
+		echo "  ✅ Running on port 5175"; \
+		curl -s http://localhost:5175 >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
 	else \
 		echo "  ❌ Not running"; \
 	fi
@@ -195,32 +249,72 @@ moto-services:
 
 # Cloud environment commands
 cloud-dev:
-	@echo "☁️  Starting development environment (Local → AWS Development)"
+	@echo "☁️  Starting development environment (Local → AWS Development, web=$(web))"
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS development environment)..."
 	@cd api.hypermedia && npm run local development > ../logs/api-dev.log 2>&1 &
-	@cd mantine.web && npm run local:development > ../logs/web-dev.log 2>&1 &
+	@if [ "$(web)" = "all" ]; then \
+		cd mantine.web && npm run local:development > ../logs/web-mantine-dev.log 2>&1 & \
+		cd shadcn.web && npm run local:development > ../logs/web-shadcn-dev.log 2>&1 & \
+		cd daisyui.web && npm run local:development > ../logs/web-daisyui-dev.log 2>&1 &; \
+	elif [ "$(web)" = "mantine" ]; then \
+		cd mantine.web && npm run local:development > ../logs/web-mantine-dev.log 2>&1 &; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		cd shadcn.web && npm run local:development > ../logs/web-shadcn-dev.log 2>&1 &; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		cd daisyui.web && npm run local:development > ../logs/web-daisyui-dev.log 2>&1 &; \
+	fi
 	@sleep 3
 	@echo "   Development servers started"
 	@echo ""
 	@echo "✨ Development environment ready (Local → AWS Development)!"
 	@echo ""
 	@echo "  API:        http://localhost:3001 → AWS Development"
-	@echo "  Web:        http://localhost:5173 → AWS Development"
+	@if [ "$(web)" = "all" ]; then \
+		echo "  Mantine:    http://localhost:5173 → AWS Development"; \
+		echo "  shadcn:     http://localhost:5174 → AWS Development"; \
+		echo "  DaisyUI:    http://localhost:5175 → AWS Development"; \
+	elif [ "$(web)" = "mantine" ]; then \
+		echo "  Mantine:    http://localhost:5173 → AWS Development"; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		echo "  shadcn:     http://localhost:5174 → AWS Development"; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		echo "  DaisyUI:    http://localhost:5175 → AWS Development"; \
+	fi
 
 cloud-staging:
-	@echo "☁️  Starting staging environment (Local → AWS Staging)"
+	@echo "☁️  Starting staging environment (Local → AWS Staging, web=$(web))"
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS staging environment)..."
 	@cd api.hypermedia && npm run local staging > ../logs/api-staging.log 2>&1 &
-	@cd mantine.web && npm run local:staging > ../logs/web-staging.log 2>&1 &
+	@if [ "$(web)" = "all" ]; then \
+		cd mantine.web && npm run local:staging > ../logs/web-mantine-staging.log 2>&1 & \
+		cd shadcn.web && npm run local:staging > ../logs/web-shadcn-staging.log 2>&1 & \
+		cd daisyui.web && npm run local:staging > ../logs/web-daisyui-staging.log 2>&1 &; \
+	elif [ "$(web)" = "mantine" ]; then \
+		cd mantine.web && npm run local:staging > ../logs/web-mantine-staging.log 2>&1 &; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		cd shadcn.web && npm run local:staging > ../logs/web-shadcn-staging.log 2>&1 &; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		cd daisyui.web && npm run local:staging > ../logs/web-daisyui-staging.log 2>&1 &; \
+	fi
 	@sleep 3
 	@echo "   Development servers started"
 	@echo ""
 	@echo "✨ Staging environment ready (Local → AWS Staging)!"
 	@echo ""
 	@echo "  API:        http://localhost:3001 → AWS Staging"
-	@echo "  Web:        http://localhost:5173 → AWS Staging"
+	@if [ "$(web)" = "all" ]; then \
+		echo "  Mantine:    http://localhost:5173 → AWS Staging"; \
+		echo "  shadcn:     http://localhost:5174 → AWS Staging"; \
+		echo "  DaisyUI:    http://localhost:5175 → AWS Staging"; \
+	elif [ "$(web)" = "mantine" ]; then \
+		echo "  Mantine:    http://localhost:5173 → AWS Staging"; \
+	elif [ "$(web)" = "shadcn" ]; then \
+		echo "  shadcn:     http://localhost:5174 → AWS Staging"; \
+	elif [ "$(web)" = "daisyui" ]; then \
+		echo "  DaisyUI:    http://localhost:5175 → AWS Staging"; \
+	fi
 
 # Create logs directory if it doesn't exist
 $(shell mkdir -p logs)
