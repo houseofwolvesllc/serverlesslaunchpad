@@ -137,7 +137,8 @@ The Network Stack handles VPC creation/lookup based on environment configuration
 
 ### Lambda VPC Behavior
 
-- **All Environments**: Lambda runs inside VPC private subnets for consistent architecture
+- **Development**: Lambda runs in VPC public subnets (default VPC limitation)
+- **Staging/Production**: Lambda runs in VPC private subnets with NAT Gateway for egress
 - **Benefits**: Prepared for future resources (RDS, ElastiCache, etc.) that require VPC
 - **ALB**: Always uses VPC (requires VPC for target groups)
 - **Target Groups**: Always require VPC (even for Lambda targets)

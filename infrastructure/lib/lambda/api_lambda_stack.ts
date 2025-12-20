@@ -337,9 +337,23 @@ export class ApiLambdaStack extends BaseStack {
         // Always run Lambda inside VPC for consistent architecture and future resource compatibility
         console.log("🔒 Configuring Lambda to run inside VPC...");
         functionProps.vpc = props.vpc;
-        functionProps.vpcSubnets = {
-            subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-        };
+        
+        // For development with default VPC (public subnets only), use public subnets
+        // For staging/production with custom VPC, use private subnets with NAT Gateway
+        if (this.appEnvironment === 'development') {
+            console.log("📍 Using public subnets for development environment (default VPC)");
+            functionProps.vpcSubnets = {
+                subnetType: SubnetType.PUBLIC,
+            };
+            // CDK requires explicit acknowledgment that Lambda in public subnet can't reach internet
+            // This is acceptable for development since we primarily call AWS services (which work via VPC endpoints)
+            functionProps.allowPublicSubnet = true;
+        } else {
+            console.log("📍 Using private subnets with egress for staging/production environment");
+            functionProps.vpcSubnets = {
+                subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+            };
+        }
     }
 
     /**
