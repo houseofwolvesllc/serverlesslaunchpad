@@ -1,9 +1,10 @@
-import { Authenticator, Injectable, User } from "@houseofwolves/serverlesslaunchpad.core";
+import { Authenticator, Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
+import { AuthContext, AuthContextAdapter } from "./auth_context_adapter";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
 
@@ -21,7 +22,7 @@ export class AuthenticationController extends BaseController {
 
     /**
      * Authenticate a user with a JWT token.
-     * Returns hypermedia response with available actions based on user's permissions.
+     * Returns HAL-compliant hypermedia response with user as main resource.
      */
     @Route("POST", "/auth/federate")
     async federate(event: ExtendedALBEvent): Promise<ALBResult> {
@@ -45,12 +46,12 @@ export class AuthenticationController extends BaseController {
             throw new UnauthorizedError("Bearer failed validation.");
         }
 
-        // Create response
-        const response = this.success(event, {
-            user: authResult.authContext.identity,
-            authContext: authResult.authContext,
-            links: this.buildUserLinks(authResult.authContext.identity),
-        });
+        // Use HAL adapter to structure the response
+        // Safe to assert - we've verified identity exists above
+        const hal = new AuthContextAdapter(authResult.authContext as AuthContext);
+
+        // Create response (adapter instance IS the HAL object)
+        const response = this.success(event, hal);
 
         // Set secure cookie if client accepts HTML for hypermedia browsing
         if (this.shouldSetAuthCookie(event)) {
@@ -97,26 +98,9 @@ export class AuthenticationController extends BaseController {
             throw new UnauthorizedError("Session verification failed");
         }
 
-        // Create response with user info and hypermedia links
-        const response = this.success(
-            event,
-            {
-                authenticated: true,
-                user: verifyResult.authContext.identity,
-                authContext: {
-                    type: verifyResult.authContext.access.type,
-                    expiresAt: verifyResult.authContext.access.dateExpires,
-                },
-                links: this.buildUserLinks(verifyResult.authContext.identity),
-            },
-            {
-                metadata: {
-                    title: "Authentication Verification",
-                    description: "Current session status and user information",
-                    resourceType: "SessionStatus",
-                },
-            }
-        );
+        const hal = new AuthContextAdapter(verifyResult.authContext as AuthContext);
+
+        const response = this.success(event, hal);
 
         // Refresh cookie if using cookie authentication and client accepts HTML
         if (!headers.authorization && this.shouldSetAuthCookie(event)) {
@@ -130,32 +114,6 @@ export class AuthenticationController extends BaseController {
         }
 
         return response;
-    }
-
-    /**
-     * Build hypermedia links based on user's permissions.
-     */
-    private buildUserLinks(user: User): Array<{ rel: string[]; href: string }> {
-        const links = [
-            {
-                rel: ["self"],
-                href: `/users/${user.userId}`,
-            },
-        ];
-
-        // Add session management links
-        links.push({
-            rel: ["sessions"],
-            href: `/users/${user.userId}/sessions/`,
-        });
-
-        // Add API key management links
-        links.push({
-            rel: ["api-keys"],
-            href: `/users/${user.userId}/api_keys/`,
-        });
-
-        return links;
     }
 
     @Route("POST", "/auth/revoke")

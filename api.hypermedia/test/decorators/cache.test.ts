@@ -2,6 +2,29 @@ import { ALBEvent } from "aws-lambda";
 import { describe, expect, it } from "vitest";
 import { BaseController } from "../../src/base_controller";
 import { Cache } from "../../src/decorators";
+import { HalResourceAdapter } from "../../src/content_types/hal_adapter";
+
+// Simple test adapter for cache decorator tests
+class TestDataAdapter extends HalResourceAdapter {
+    constructor(private testData: any) {
+        super();
+    }
+
+    get _links() {
+        return {
+            self: this.createLink("/test"),
+            ...this.getBaseLinks()
+        };
+    }
+
+    get data() {
+        return this.testData.data;
+    }
+
+    get count() {
+        return this.testData.count;
+    }
+}
 
 describe("@Cache Decorator", () => {
     describe("Basic Caching", () => {
@@ -10,7 +33,8 @@ describe("@Cache Decorator", () => {
             class TestController extends BaseController {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
-                    return this.success(request, { data: "test" });
+                    const adapter = new TestDataAdapter({ data: "test" });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -41,7 +65,8 @@ describe("@Cache Decorator", () => {
             class TestController extends BaseController {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
-                    return this.success(request, { data: "test" });
+                    const adapter = new TestDataAdapter({ data: "test" });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -90,7 +115,8 @@ describe("@Cache Decorator", () => {
             class TestController extends BaseController {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
-                    return this.success(request, { data: "test" });
+                    const adapter = new TestDataAdapter({ data: "test" });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -123,7 +149,8 @@ describe("@Cache Decorator", () => {
             class TestController extends BaseController {
                 @Cache({ ttl: 600 })
                 async testMethod(request: any) {
-                    return this.success(request, { data: "test" });
+                    const adapter = new TestDataAdapter({ data: "test" });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -155,7 +182,8 @@ describe("@Cache Decorator", () => {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
                     this.callCount++;
-                    return this.success(request, { data: "test", count: this.callCount });
+                    const adapter = new TestDataAdapter({ data: "test", count: this.callCount });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -198,8 +226,9 @@ describe("@Cache Decorator", () => {
             // Verify both calls actually executed (not cached)
             const body1 = JSON.parse(result1.body || "{}");
             const body2 = JSON.parse(result2.body || "{}");
-            expect(body1.properties.count).toBe(1);
-            expect(body2.properties.count).toBe(2);
+            // HAL format: properties are flat at top level
+            expect(body1.count).toBe(1);
+            expect(body2.count).toBe(2);
         });
     });
 
@@ -209,7 +238,8 @@ describe("@Cache Decorator", () => {
             class TestController extends BaseController {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
-                    return this.success(request, { data: "test" });
+                    const adapter = new TestDataAdapter({ data: "test" });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -243,7 +273,8 @@ describe("@Cache Decorator", () => {
                 @Cache({ ttl: 300 })
                 async testMethod(request: any) {
                     this.callCount++;
-                    return this.success(request, { data: "test", count: this.callCount });
+                    const adapter = new TestDataAdapter({ data: "test", count: this.callCount });
+                    return this.success(request, adapter);
                 }
             }
 
@@ -271,8 +302,9 @@ describe("@Cache Decorator", () => {
             // Verify the method was only called once (second was cached)
             const body1 = JSON.parse(result1.body || "{}");
             const body2 = JSON.parse(result2.body || "{}");
-            expect(body1.properties.count).toBe(1);
-            expect(body2.properties.count).toBe(1); // Same count, cached result
+            // HAL format: properties are flat at top level
+            expect(body1.count).toBe(1);
+            expect(body2.count).toBe(1); // Same count, cached result
         });
     });
 });

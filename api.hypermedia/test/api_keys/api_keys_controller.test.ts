@@ -112,10 +112,11 @@ describe("ApiKeysController", () => {
             expect(result.statusCode).toBe(200);
 
             const responseBody = JSON.parse(result.body || "{}");
-            expect(responseBody.properties.apiKeys).toHaveLength(2);
-            expect(responseBody.properties.apiKeys[0].apiKeyId).toBe("key-1");
-            expect(responseBody.properties.paging.next).toEqual({ offset: 20, limit: 10 });
-            expect(responseBody.properties.paging.previous).toBeNull();
+            // HAL format: embedded resources in _embedded
+            expect(responseBody._embedded.apiKeys).toHaveLength(2);
+            expect(responseBody._embedded.apiKeys[0].apiKeyId).toBe("key-1");
+            expect(responseBody.paging.next).toEqual({ offset: 20, limit: 10 });
+            expect(responseBody.paging.previous).toBeNull();
         });
 
         it("should allow user to access their own API keys", async () => {
@@ -281,8 +282,9 @@ describe("ApiKeysController", () => {
             expect(result.statusCode).toBe(200);
 
             const responseBody = JSON.parse(result.body || "{}");
-            expect(responseBody.properties.message).toBe("Deleted 3 API keys for user user-123");
-            expect(responseBody.properties.deletedCount).toBe(3);
+            // HAL format: properties are flat at top level
+            expect(responseBody.message).toBe("Deleted 3 API keys for user user-123");
+            expect(responseBody.deletedCount).toBe(3);
         });
 
         it("should allow user to delete their own API keys", async () => {
@@ -451,8 +453,9 @@ describe("ApiKeysController", () => {
 
             // Assert
             const responseBody = JSON.parse(result.body || "{}");
-            expect(responseBody.properties.message).toBe("Deleted 1 API keys for user user-123");
-            expect(responseBody.properties.deletedCount).toBe(1);
+            // HAL format: properties are flat at top level
+            expect(responseBody.message).toBe("Deleted 1 API keys for user user-123");
+            expect(responseBody.deletedCount).toBe(1);
         });
     });
 });

@@ -95,6 +95,8 @@ describe("AuthenticationController", () => {
                         type: "session" as const,
                         sessionToken: "session-token-123",
                         dateExpires: new Date("2024-12-31T23:59:59Z"),
+                        ipAddress: "127.0.0.1",
+                        userAgent: "test-agent/1.0",
                     },
                 },
             };
@@ -118,11 +120,38 @@ describe("AuthenticationController", () => {
             expect(result.statusCode).toBe(200);
 
             const responseBody = JSON.parse(result.body || "{}");
-            expect(responseBody.properties.user.userId).toBe("user-123");
-            expect(responseBody.properties.links).toContainEqual({
-                rel: ["self"],
-                href: "/users/user-123",
-            });
+            // HAL format: user properties are at top level (user is the main resource)
+            expect(responseBody.userId).toBe("user-123");
+            expect(responseBody.email).toBe("test@example.com");
+            expect(responseBody.firstName).toBe("Test");
+            expect(responseBody.lastName).toBe("User");
+
+            // HAL uses _links object, not links array
+            expect(responseBody._links).toHaveProperty("self");
+            expect(responseBody._links.self.href).toBe("/users/user-123");
+            expect(responseBody._links).toHaveProperty("sessions");
+            expect(responseBody._links.sessions.href).toBe("/users/user-123/sessions/");
+            expect(responseBody._links).toHaveProperty("api-keys");
+
+            // Base navigation links automatically injected
+            expect(responseBody._links).toHaveProperty("home");
+            expect(responseBody._links.home.href).toBe("/");
+            expect(responseBody._links).toHaveProperty("sitemap");
+            expect(responseBody._links.sitemap.href).toBe("/sitemap");
+
+            // HAL-FORMS templates for actions
+            expect(responseBody._templates).toHaveProperty("verify");
+            expect(responseBody._templates.verify.method).toBe("POST");
+            expect(responseBody._templates.verify.target).toBe("/auth/verify");
+            expect(responseBody._templates).toHaveProperty("revoke");
+            expect(responseBody._templates.revoke.method).toBe("POST");
+            expect(responseBody._templates.revoke.target).toBe("/auth/revoke");
+
+            // Embedded access information
+            expect(responseBody._embedded).toHaveProperty("access");
+            expect(responseBody._embedded.access.type).toBe("session");
+            expect(responseBody._embedded.access.ipAddress).toBeDefined();
+            expect(responseBody._embedded.access.userAgent).toBeDefined();
         });
 
         it("should throw UnauthorizedError when authentication fails", async () => {
@@ -234,20 +263,15 @@ describe("AuthenticationController", () => {
 
             // Assert
             const responseBody = JSON.parse(result.body || "{}");
-            const links = responseBody.properties.links;
+            // HAL uses _links object instead of links array
+            const links = responseBody._links;
 
-            expect(links).toContainEqual({
-                rel: ["self"],
-                href: "/users/user-123",
-            });
-            expect(links).toContainEqual({
-                rel: ["sessions"],
-                href: "/users/user-123/sessions/",
-            });
-            expect(links).toContainEqual({
-                rel: ["api-keys"],
-                href: "/users/user-123/api_keys/",
-            });
+            expect(links).toHaveProperty("self");
+            expect(links.self.href).toBe("/users/user-123");
+            expect(links).toHaveProperty("sessions");
+            expect(links.sessions.href).toBe("/users/user-123/sessions/");
+            expect(links).toHaveProperty("api-keys");
+            expect(links["api-keys"].href).toBe("/users/user-123/api_keys/");
         });
     });
 
