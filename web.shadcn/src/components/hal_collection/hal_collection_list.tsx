@@ -4,16 +4,18 @@
  * This component automatically renders a table with:
  * - Inferred columns from embedded items
  * - Selection and bulk operations
- * - Action toolbar with create/refresh/delete
+ * - Action toolbar with create/refresh/bulk operations
  * - Field renderers based on data type
  * - Empty and loading states
  * - Template categorization (navigation/form/action)
  * - Context-aware template execution
  *
+ * Checkboxes are only shown when bulkOperations is provided and has items.
+ *
  * This is the main component that drastically reduces feature code.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { useHalCollection, type ColumnConfig } from '@/hooks/use_hal_collection';
 import { useSelection } from '@/hooks/use_selection';
 import { HalResourceRow } from './hal_resource_row';
@@ -34,6 +36,7 @@ import { TemplateForm } from '@/components/hal_forms/template_form';
 import { ConfirmationDialog } from '@/components/ui/confirmation_dialog';
 import {
     type HalObject,
+    type BulkOperation,
     categorizeTemplate,
     buildTemplateData,
     getConfirmationConfig,
@@ -46,7 +49,6 @@ export interface HalCollectionListProps {
     resource: HalObject | null | undefined;
     onRefresh?: () => void;
     onCreate?: () => void;
-    onBulkDelete?: (selectedIds: string[]) => void;
     onRowClick?: (item: HalObject) => void;
     /** Template execution handler (for categorized templates) */
     onTemplateExecute?: (template: HalTemplate, data: Record<string, any>) => Promise<void>;
@@ -57,12 +59,13 @@ export interface HalCollectionListProps {
     emptyIcon?: React.ReactNode;
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
-    showBulkDelete?: boolean;
     className?: string;
     selectableFilter?: (item: HalObject) => boolean;
     getRowClassName?: (item: HalObject) => string;
     /** Page title to display in the header row */
     title?: string;
+    /** Bulk operations to show when items are selected. Checkboxes only appear when this has items. */
+    bulkOperations?: BulkOperation[];
 }
 
 /**
@@ -81,7 +84,9 @@ export interface HalCollectionListProps {
  *   resource={data}
  *   onRefresh={refresh}
  *   onCreate={() => setCreateModalOpen(true)}
- *   onBulkDelete={handleBulkDelete}
+ *   bulkOperations={[
+ *     { id: 'delete', label: 'Delete Selected', variant: 'destructive', handler: handleBulkDelete }
+ *   ]}
  *   columnConfig={{
  *     dateLastUsed: { nullText: "Never" }
  *   }}
@@ -95,7 +100,6 @@ export function HalCollectionList({
     resource,
     onRefresh,
     onCreate,
-    onBulkDelete,
     onRowClick,
     onTemplateExecute,
     columnConfig = {},
@@ -105,11 +109,11 @@ export function HalCollectionList({
     emptyIcon,
     showCreateButton = true,
     showRefreshButton = true,
-    showBulkDelete = true,
     className = '',
     selectableFilter,
     getRowClassName,
     title,
+    bulkOperations = [],
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
 
@@ -149,10 +153,9 @@ export function HalCollectionList({
 
     // Get templates from resource
     const createTemplate = templates?.default || templates?.create;
-    const bulkDeleteTemplate = templates?.bulkDelete || templates?.['bulk-delete'];
 
-    // Determine if bulk delete is available
-    const canBulkDelete = showBulkDelete && (!!bulkDeleteTemplate || !!onBulkDelete);
+    // Checkboxes are shown only when bulk operations are defined
+    const showCheckboxes = bulkOperations.length > 0;
 
     // Handle template execution with context
     const executeTemplate = async (template: HalTemplate, context: TemplateExecutionContext) => {
@@ -198,29 +201,6 @@ export function HalCollectionList({
                     templateKey: 'create',
                 });
             }
-        }
-    };
-
-    // Handle bulk delete action
-    const handleBulkDelete = () => {
-        if (onBulkDelete) {
-            // Legacy onBulkDelete handler
-            const selectedIds = Array.from(selected);
-            onBulkDelete(selectedIds);
-        } else if (bulkDeleteTemplate && onTemplateExecute) {
-            // Use template categorization
-            const context: TemplateExecutionContext = {
-                template: bulkDeleteTemplate,
-                selections: Array.from(selected),
-                resource,
-            };
-
-            // Show confirmation dialog
-            setConfirmationState({
-                open: true,
-                template: bulkDeleteTemplate,
-                context,
-            });
         }
     };
 
@@ -344,12 +324,18 @@ export function HalCollectionList({
                 )}
 
                 <div className="flex items-center gap-2">
-                    {hasSelection && canBulkDelete && (
-                        <Button variant="outline" size="sm" onClick={handleBulkDelete}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Selected
+                    {hasSelection && bulkOperations.map((op) => (
+                        <Button
+                            key={op.id}
+                            variant={op.variant === 'destructive' ? 'destructive' : (op.variant || 'outline')}
+                            size="sm"
+                            onClick={() => op.handler(Array.from(selected))}
+                            disabled={op.disabled?.(Array.from(selected))}
+                        >
+                            {op.icon ? <span className="mr-2">{op.icon as ReactNode}</span> : null}
+                            {op.label}
                         </Button>
-                    )}
+                    ))}
                     {showCreateButton && createTemplate && (
                         <Button variant="outline" size="sm" onClick={handleCreate}>
                             <Plus className="mr-2 h-4 w-4" />
@@ -371,7 +357,7 @@ export function HalCollectionList({
                     <TableHeader>
                         <TableRow>
                             {/* Select all checkbox */}
-                            {canBulkDelete && (
+                            {showCheckboxes && (
                                 <TableHead className="w-12">
                                     <Checkbox
                                         checked={allSelected}
@@ -392,7 +378,7 @@ export function HalCollectionList({
                     <TableBody>
                         {items.map((item) => {
                             const itemId = item[detectedPrimaryKey];
-                            const itemSelectable = canBulkDelete && (!selectableFilter || selectableFilter(item));
+                            const itemSelectable = showCheckboxes && (!selectableFilter || selectableFilter(item));
 
                             return (
                                 <HalResourceRow
@@ -401,7 +387,7 @@ export function HalCollectionList({
                                     columns={columns}
                                     selectable={itemSelectable}
                                     selected={isSelected(itemId)}
-                                    onToggleSelect={() => toggleSelection(itemId)}
+                                    onToggleSelect={showCheckboxes ? () => toggleSelection(itemId) : undefined}
                                     onRowClick={onRowClick}
                                     customRenderers={customRenderers}
                                     getRowClassName={getRowClassName}

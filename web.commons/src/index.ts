@@ -107,7 +107,6 @@ export {
     inferVisibleColumns,
     inferFieldType,
     isSortable,
-    getFieldPriority,
     extractEmbeddedItems,
     extractResourceFields,
     humanizeLabel,
@@ -124,6 +123,8 @@ export {
     type CollectionData,
     type FieldConventions,
     type InferenceOptions,
+    type BulkOperation,
+    type BulkOperationVariant,
 } from './collection';
 
 // ============================================================================
