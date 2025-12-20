@@ -1,10 +1,12 @@
 import {
     ApiKeyRepository,
-    Authenticator, ConfigurationStore, Container,
+    Authenticator,
+    ConfigurationStore,
+    Container,
     Environment,
     LogLevel,
     SessionRepository,
-    UserRepository
+    UserRepository,
 } from "@houseofwolves/serverlesslaunchpad.core";
 import {
     AthenaApiKeyRepository,
@@ -49,39 +51,57 @@ class AppContainer {
         container.bind(Authenticator).to(SystemAuthenticator).asSingleton();
         container.bind(SessionRepository).to(AthenaSessionRepository).asSingleton();
         container.bind(ApiKeyRepository).to(AthenaApiKeyRepository).asSingleton();
-        
+
         // User management bindings
         container.bind(UserRepository).to(AthenaUserRepository).asSingleton();
 
-        container.bind(ConfigurationStore<{
-            auth: { cognito: { userPoolId: string; userPoolClientId: string } }
-        }>)
+        container
+            .bind(
+                ConfigurationStore<{
+                    auth: { cognito: { userPoolId: string; userPoolClientId: string } };
+                }>
+            )
             .toFactory(() => {
                 const configSchema = z.object({
                     auth: z.object({
                         cognito: z.object({
                             userPoolId: z.string(),
-                            userPoolClientId: z.string()
-                        })
-                    })
+                            userPoolClientId: z.string(),
+                        }),
+                    }),
                 });
-                
-                return new FileConfigurationStore(configSchema, path.join(__dirname, "../config"), `${AppContainer.getEnvironment()}.config.json`);
-            }).asSingleton();
 
-        container.bind(ConfigurationStore<{
-            session_token_salt: string;
-        }>).toFactory(() => {
-            const configSchema = z.object({
-                session_token_salt: z.string()
-            });
-            return new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment(), );
-        }).asSingleton();        
+                return new FileConfigurationStore(
+                    configSchema,
+                    path.join(__dirname, "../config"),
+                    `${AppContainer.getEnvironment()}.config.json`
+                );
+            })
+            .asSingleton()
+            .named("configuration");
 
-        container.bind(ApiLogger).toFactory(() => {
-            const logLevel = AppContainer.getLogLevelForEnvironment(AppContainer.getEnvironment());
-            return new ApiLogger(logLevel);
-        }).asSingleton();
+        container
+            .bind(
+                ConfigurationStore<{
+                    session_token_salt: string;
+                }>
+            )
+            .toFactory(() => {
+                const configSchema = z.object({
+                    session_token_salt: z.string(),
+                });
+                return new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment());
+            })
+            .asSingleton()
+            .named("secrets");
+
+        container
+            .bind(ApiLogger)
+            .toFactory(() => {
+                const logLevel = AppContainer.getLogLevelForEnvironment(AppContainer.getEnvironment());
+                return new ApiLogger(logLevel);
+            })
+            .asSingleton();
     }
 
     /**

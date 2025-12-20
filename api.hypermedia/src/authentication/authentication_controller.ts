@@ -1,8 +1,4 @@
-import {
-    Authenticator,
-    Injectable,
-    User
-} from "@houseofwolves/serverlesslaunchpad.core";
+import { Authenticator, Injectable, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { z } from "zod";
 import { BaseController } from "../base_controller";
@@ -14,24 +10,24 @@ import { AuthenticationCookieRepository } from "./authentication_cookie_reposito
 // Define the authentication request schema
 const authenticateSchema = z.object({
     headers: z.object({
-        authorization: z.string().startsWith('Bearer '),
-        'user-agent': z.string(),
-        'x-forwarded-for': z.string()
+        authorization: z.string().startsWith("Bearer "),
+        "user-agent": z.string(),
+        "x-forwarded-for": z.string(),
     }),
     body: z.object({
         sessionKey: z.string(),
         email: z.string().email(),
         firstName: z.string(),
-        lastName: z.string()
-    })
+        lastName: z.string(),
+    }),
 });
 
 const signoutSchema = z.object({
     headers: z.object({
-        authorization: z.string().startsWith('SessionToken '),
-        'user-agent': z.string(),
-        'x-forwarded-for': z.string()        
-    })
+        authorization: z.string().startsWith("SessionToken "),
+        "user-agent": z.string(),
+        "x-forwarded-for": z.string(),
+    }),
 });
 
 // type AuthMessage = z.infer<typeof AuthMessageSchema>;
@@ -42,9 +38,7 @@ const signoutSchema = z.object({
  */
 @Injectable()
 export class AuthenticationController extends BaseController {
-    constructor(
-        private authenticator: Authenticator
-    ) {
+    constructor(private authenticator: Authenticator) {
         super();
     }
 
@@ -52,15 +46,14 @@ export class AuthenticationController extends BaseController {
      * Authenticate a user with a JWT token.
      * Returns hypermedia response with available actions based on user's permissions.
      */
-    @Route('POST', '/signin')
+    @Route("POST", "/signin")
     async authenticate(event: ExtendedALBEvent): Promise<ALBResult> {
-        
         const { headers, body } = this.parseRequest(event, authenticateSchema);
 
         const authMessage = {
-            accessToken: headers.authorization.replace('Bearer ', ''),
-            ipAddress: headers['x-forwarded-for'],
-            userAgent: headers['user-agent'],
+            accessToken: headers.authorization.replace("Bearer ", ""),
+            ipAddress: headers["x-forwarded-for"],
+            userAgent: headers["user-agent"],
             sessionKey: body.sessionKey,
             email: body.email,
             firstName: body.firstName,
@@ -78,15 +71,17 @@ export class AuthenticationController extends BaseController {
         const response = this.success(event, {
             user: authResult.authContext.identity,
             authContext: authResult.authContext,
-            links: this.buildUserLinks(authResult.authContext.identity)
+            links: this.buildUserLinks(authResult.authContext.identity),
         });
 
         // Set secure cookie if client accepts HTML for hypermedia browsing
         if (this.shouldSetAuthCookie(event)) {
             AuthenticationCookieRepository.set(
-                response, 
-                authResult.authContext.access.sessionToken || "", 
-                authResult.authContext.access.dateExpires ? Math.floor(authResult.authContext.access.dateExpires.getTime() / 1000) : 60 * 60 * 24 * 7
+                response,
+                authResult.authContext.access.sessionToken || "",
+                authResult.authContext.access.dateExpires
+                    ? Math.floor(authResult.authContext.access.dateExpires.getTime() / 1000)
+                    : 60 * 60 * 24 * 7
             );
         }
 
@@ -100,33 +95,33 @@ export class AuthenticationController extends BaseController {
         const links = [
             {
                 rel: ["self"],
-                href: `/users/${user.userId}`
-            }
+                href: `/users/${user.userId}`,
+            },
         ];
 
         // Add session management links
         links.push({
             rel: ["sessions"],
-            href: `/users/${user.userId}/sessions/`
+            href: `/users/${user.userId}/sessions/`,
         });
 
         // Add API key management links
         links.push({
             rel: ["api-keys"],
-            href: `/users/${user.userId}/api_keys/`
+            href: `/users/${user.userId}/api_keys/`,
         });
 
         return links;
     }
 
-    @Route('POST', '/signout')
+    @Route("POST", "/signout")
     async signout(event: ExtendedALBEvent): Promise<ALBResult> {
         const { headers } = this.parseRequest(event, signoutSchema);
 
         await this.authenticator.revoke({
-            sessionToken: headers.authorization.replace('SessionToken ', ''),
-            ipAddress: headers['x-forwarded-for'],
-            userAgent: headers['user-agent'],
+            sessionToken: headers.authorization.replace("SessionToken ", ""),
+            ipAddress: headers["x-forwarded-for"],
+            userAgent: headers["user-agent"],
         });
 
         // Create response
@@ -142,10 +137,8 @@ export class AuthenticationController extends BaseController {
      * Determine if we should set authentication cookie for this request
      */
     private shouldSetAuthCookie(event: ExtendedALBEvent): boolean {
-        const accept = event.headers?.accept || event.headers?.Accept || '';
-        
+        const accept = event.headers?.accept || event.headers?.Accept || "";
         // Set cookie if client accepts HTML (for hypermedia browsing)
-        return accept.includes('text/html') || 
-               accept.includes('application/xhtml+xml');
+        return accept.includes("text/html") || accept.includes("application/xhtml+xml");
     }
 }
