@@ -32,7 +32,7 @@ CLIENT_SECRET=$(aws --endpoint-url=${AWS_ENDPOINT_URL} ssm get-parameter \
 echo "Creating unified API secrets..."
 aws --endpoint-url=${AWS_ENDPOINT_URL} \
   secretsmanager create-secret \
-  --name ${ENVIRONMENT}.serverlesslaunchpad.secrets \
+  --name ${ENVIRONMENT}.serverlesslaunchpad.com \
   --region ${AWS_REGION} \
   --secret-string '{
     "cognito": {
@@ -44,7 +44,7 @@ aws --endpoint-url=${AWS_ENDPOINT_URL} \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified secret: ${ENVIRONMENT}.serverlesslaunchpad.secrets"
+echo "✓ Created/verified secret: ${ENVIRONMENT}.serverlesslaunchpad.com"
 
 # Legacy API secrets for backward compatibility during migration
 echo "Creating legacy API secrets..."
