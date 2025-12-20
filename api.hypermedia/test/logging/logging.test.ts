@@ -31,9 +31,9 @@ describe("Logging", () => {
         requestContext: {} as any,
         body: null,
         isBase64Encoded: false,
-        queryStringParameters: null,
+        queryStringParameters: undefined,
         multiValueHeaders: {},
-        multiValueQueryStringParameters: null,
+        multiValueQueryStringParameters: undefined,
         ...overrides,
     });
 
@@ -52,7 +52,7 @@ describe("Logging", () => {
 
         it("should track logger method calls", () => {
             const logger = createMockLogger();
-            
+
             logger.info("test message", { userId: "123" });
             logger.error("error message");
 
