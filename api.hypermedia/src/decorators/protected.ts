@@ -1,7 +1,7 @@
 import { Authenticator } from "@houseofwolves/serverlesslaunchpad.core";
 import { z } from "zod";
-import { UnauthorizedError, ValidationError } from "../common/errors";
-import { ExtendedALBEvent } from "../common/extended_alb_event";
+import { UnauthorizedError, ValidationError } from "../errors";
+import { ExtendedALBEvent } from "../extended_alb_event";
 import { getContainer } from "../container";
 import { AuthenticationCookieRepository } from "../authentication/authentication_cookie_repository";
 

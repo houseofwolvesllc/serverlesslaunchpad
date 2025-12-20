@@ -1,5 +1,5 @@
-import { ALBEvent, ALBResult } from "aws-lambda";
-import { HypermediaResponse } from "../common/types";
+import { ALBEvent } from "aws-lambda";
+import { HypermediaResponse } from "../base_controller";
 
 /**
  * Repository for managing authentication session cookies.

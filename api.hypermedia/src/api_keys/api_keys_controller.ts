@@ -1,7 +1,6 @@
 import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
-import { BaseController } from "../base_controller.js";
-import { AuthenticatedALBEvent } from "../common/extended_alb_event.js";
-import { HypermediaResponse } from "../common/types.js";
+import { BaseController, HypermediaResponse } from "../base_controller.js";
+import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
 import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas.js";
