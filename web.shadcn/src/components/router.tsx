@@ -9,10 +9,12 @@ import {
     SignUpForm,
 } from '../features/authentication';
 import { NoMatch } from './no_match';
+import { NavigationHistoryProvider } from '@/context/navigation_history_context';
 
 export const Router = () => {
     return (
-        <Routes>
+        <NavigationHistoryProvider>
+            <Routes>
             {/* Public routes - HARDCODED (Cognito/web-owned) */}
             <Route path="auth/signin" element={<SignInForm />} />
             <Route path="auth/signup" element={<SignUpForm />} />
@@ -33,5 +35,6 @@ export const Router = () => {
             {/* Fallback for truly unknown routes */}
             <Route path="*" element={<NoMatch />} />
         </Routes>
+        </NavigationHistoryProvider>
     );
 };

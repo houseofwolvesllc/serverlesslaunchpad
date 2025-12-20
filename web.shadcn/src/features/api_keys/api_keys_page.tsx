@@ -6,8 +6,15 @@
  */
 
 import { ApiKeysList } from './components/api_keys_list';
+import { useApiKeys } from './hooks/use_api_keys';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
 
 export const ApiKeysPage = () => {
+    const { data } = useApiKeys();
+
+    // Track navigation for breadcrumbs
+    useHalResourceTracking(data);
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
