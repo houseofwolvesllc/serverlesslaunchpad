@@ -115,13 +115,15 @@ export class ApiLambdaStack extends BaseStack {
 
     /**
      * Add Secrets Manager policy for configuration access
+     * Uses explicit ARN pattern with wildcard suffix since secrets have random suffixes
      */
     private addSecretsManagerPolicy(): void {
+        const secretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${this.configuration.secrets.secretName}-*`;
         this.executionRole.addToPolicy(
             new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
-                resources: [this.configurationSecret.secretArn],
+                resources: [secretArn],
             })
         );
     }
