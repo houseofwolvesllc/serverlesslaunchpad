@@ -9,10 +9,12 @@ interface LinksGroupProps {
     icon: React.FC<any>;
     label: string;
     initiallyOpened?: boolean;
+    link?: string;
+    newTab?: boolean;
     links?: { label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }[];
 }
 
-export function LinksGroup({ icon: Icon, label, initiallyOpened, links }: LinksGroupProps) {
+export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, links }: LinksGroupProps) {
     const hasLinks = Array.isArray(links);
     const [opened, setOpened] = useState(initiallyOpened || false);
     const navigate = useNavigate();
@@ -46,9 +48,24 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, links }: LinksG
         </Text>
     ));
 
+    const handleParentClick = () => {
+        // If has children, toggle collapse
+        if (hasLinks) {
+            setOpened((o) => !o);
+        }
+        // If has a link but no children, navigate
+        else if (link) {
+            if (newTab) {
+                window.open(link, '_blank', 'noopener,noreferrer');
+            } else {
+                navigate(link);
+            }
+        }
+    };
+
     return (
         <>
-            <UnstyledButton onClick={() => setOpened((o) => !o)} className={classes.control}>
+            <UnstyledButton onClick={handleParentClick} className={classes.control}>
                 <Group justify="space-between" gap={0}>
                     <Box style={{ display: 'flex', alignItems: 'center' }}>
                         <ThemeIcon variant="light" size={30}>
