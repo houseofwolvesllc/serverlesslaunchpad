@@ -1,4 +1,4 @@
-import type { PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
+import type { PagingInstruction } from "@houseofwolves/serverlesslaunchpad.types";
 
 /**
  * DynamoDB-specific paging instruction using LastEvaluatedKey
