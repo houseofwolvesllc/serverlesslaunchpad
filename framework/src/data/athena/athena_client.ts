@@ -2,8 +2,8 @@ import {
     AthenaClient as AwsAthenaClient,
     GetQueryExecutionCommand,
     GetQueryResultsCommand,
-    StartQueryExecutionCommand,
     QueryExecutionState,
+    StartQueryExecutionCommand,
 } from "@aws-sdk/client-athena";
 
 export interface AthenaClientConfig {
@@ -51,21 +51,6 @@ export class AthenaClient {
         }
 
         return rawResults.map(mapper);
-    }
-
-    /**
-     * Prepare SQL with parameters to prevent SQL injection (legacy method for backward compatibility)
-     */
-    prepareSql(sql: string, params: SqlParameter[] = []): string {
-        let processedSql = sql;
-
-        for (const param of params) {
-            const placeholderRegex = new RegExp(`:${param.name}\\b`, "g");
-            const replacement = this.formatParameterValue(param.value);
-            processedSql = processedSql.replace(placeholderRegex, replacement);
-        }
-
-        return processedSql;
     }
 
     /**
