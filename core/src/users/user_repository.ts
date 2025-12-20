@@ -1,6 +1,7 @@
 export abstract class UserProvider {
     abstract getUserByEmail(message: GetUserByEmailMessage): Promise<User | undefined>;
     abstract getUserById(message: GetUserByIdMessage): Promise<User | undefined>;
+    abstract getAllUsers(message: GetAllUsersMessage): Promise<GetAllUsersResult>;
 }
 
 export abstract class UserRepository extends UserProvider {
@@ -50,4 +51,15 @@ export type UpsertUserMessage = {
     features: Features;
     dateCreated: Date;
     dateModified: Date;
+};
+
+export type GetAllUsersMessage = {
+    limit?: number;
+    lastEvaluatedKey?: string;
+};
+
+export type GetAllUsersResult = {
+    users: User[];
+    lastEvaluatedKey?: string;
+    totalCount?: number;
 };

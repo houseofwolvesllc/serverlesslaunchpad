@@ -355,8 +355,14 @@ ${methodField}${fields}
         if (prop.maxLength !== undefined) validationAttrs += ` maxlength="${this.escapeHtml(String(prop.maxLength))}"`;
         if (prop.regex) validationAttrs += ` pattern="${this.escapeHtml(prop.regex)}"`;
 
-        // Handle select/options
+        // Handle select/options with bitfield detection
         if (prop.options && prop.options.length > 0) {
+            // Bitfield properties render as checkboxes
+            if (this.isBitfieldProperty(prop)) {
+                return this.renderCheckboxGroup(prop, prompt, required);
+            }
+
+            // Regular enums render as select box
             const options = prop.options.map(opt =>
                 `        <option value="${this.escapeHtml(opt.value)}">${this.escapeHtml(opt.prompt || opt.value)}</option>`
             ).join('\n');
@@ -403,6 +409,51 @@ ${options}
         <input type="${this.escapeHtml(type)}"
                name="${this.escapeHtml(prop.name)}"${value}${required}${validationAttrs} />
       </label>`;
+    }
+
+    /**
+     * Detect if property is a bitfield (multi-select)
+     */
+    private isBitfieldProperty(prop: HalTemplateProperty): boolean {
+        // Check explicit metadata hints
+        if ((prop as any).isBitfield === true) return true;
+        if ((prop as any).multiSelect === true) return true;
+
+        // Check if type is checkbox
+        if (prop.type === 'checkbox') return true;
+
+        // Check if type is array with options (multi-select)
+        if (prop.type === 'array' && prop.options && prop.options.length > 0) return true;
+
+        // Fallback: Check known bitfield field names
+        const bitfieldNames = ['features', 'permissions', 'flags'];
+        if (bitfieldNames.includes(prop.name.toLowerCase())) return true;
+
+        return false;
+    }
+
+    /**
+     * Render checkbox group for bitfield properties
+     */
+    private renderCheckboxGroup(prop: HalTemplateProperty, prompt: string, required: string): string {
+        const checkboxes = prop.options!.map((opt) => {
+            const checked = Array.isArray(prop.value) && prop.value.includes(opt.value) ? ' checked="checked"' : '';
+            const description = (opt as any).description ? `<br/><small style="color: #666; margin-left: 1.5rem;">${this.escapeHtml((opt as any).description)}</small>` : '';
+
+            return `        <label style="display: block; margin: 0.5rem 0;">
+          <input type="checkbox"
+                 name="${this.escapeHtml(prop.name)}"
+                 value="${this.escapeHtml(opt.value)}"${checked}${required}
+                 style="width: auto; margin-right: 0.5rem;" />
+          ${this.escapeHtml(opt.prompt || opt.value)}
+          ${description}
+        </label>`;
+        }).join('\n');
+
+        return `      <fieldset style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; margin: 1rem 0;">
+        <legend style="font-weight: 500; color: #333;">${this.escapeHtml(prompt)}</legend>
+${checkboxes}
+      </fieldset>`;
     }
 
     /**

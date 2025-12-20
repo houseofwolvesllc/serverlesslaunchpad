@@ -56,3 +56,18 @@ export const UpdateUserSchema = z.object({
 });
 
 export type UpdateUserRequest = z.infer<typeof UpdateUserSchema>;
+
+/**
+ * POST /users/list
+ * Retrieves paginated list of all users (Admin only)
+ *
+ * Authorization: Admin role required
+ */
+export const GetUsersSchema = z.object({
+    body: z.object({
+        // Accept pagination instruction as plain JSON object
+        pagingInstruction: z.any().optional(),
+    }),
+});
+
+export type GetUsersRequest = z.infer<typeof GetUsersSchema>;

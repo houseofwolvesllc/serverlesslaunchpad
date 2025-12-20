@@ -369,7 +369,7 @@ export function HalCollectionList({
 
                             {/* Column headers */}
                             {columns.map((col) => (
-                                <TableHead key={col.key} style={{ width: col.width }}>
+                                <TableHead key={col.key} style={{ width: col.width }} className="whitespace-nowrap">
                                     {col.label}
                                 </TableHead>
                             ))}
