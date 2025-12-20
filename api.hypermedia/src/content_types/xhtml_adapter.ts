@@ -1,7 +1,15 @@
 import { ResponseData } from "../base_controller";
 
 /**
+ * Helper to check if data is a HalObject
+ */
+function isHalObject(data: any): data is { _links?: any; _embedded?: any; _templates?: any; [key: string]: any } {
+    return data && typeof data === 'object' && ('_links' in data || '_embedded' in data);
+}
+
+/**
  * XHTML format adapter for hypermedia responses
+ * Works exclusively with HAL (Hypertext Application Language) structure
  */
 export class XhtmlAdapter {
     private readonly namespace = "https://github.com/houseofwolvesllc/serverlesslaunchpad#";
@@ -21,7 +29,8 @@ export class XhtmlAdapter {
      * Format successful response as XHTML
      */
     private formatSuccess(response: ResponseData): string {
-        const title = response.metadata?.title || "Serverless Launchpad API";
+        const data = response.data;
+        const title = this.extractTitle(data);
         const content = this.formatContent(response);
 
         return `<!DOCTYPE html>
@@ -56,6 +65,16 @@ ${content}
     }
 
     /**
+     * Extract title from HAL object or use default
+     */
+    private extractTitle(data: any): string {
+        if (isHalObject(data)) {
+            return data.title || data.name || "Serverless Launchpad API";
+        }
+        return "Serverless Launchpad API";
+    }
+
+    /**
      * Format error response as XHTML
      */
     private formatError(response: ResponseData): string {
@@ -87,13 +106,13 @@ ${content}
         <dl>
             <dt>Type</dt>
             <dd property="slp:type">${this.escapeHtml(this.getErrorTypeName(error.status))}</dd>
-            
+
             <dt>Status</dt>
             <dd property="slp:status">${error.status}</dd>
-            
+
             <dt>Title</dt>
             <dd property="slp:title">${this.escapeHtml(error.title)}</dd>
-            
+
             ${
                 error.detail
                     ? `
@@ -101,7 +120,7 @@ ${content}
             <dd property="slp:detail">${this.escapeHtml(error.detail)}</dd>`
                     : ""
             }
-            
+
             ${
                 error.instance
                     ? `
@@ -109,15 +128,14 @@ ${content}
             <dd property="slp:instance">${this.escapeHtml(error.instance)}</dd>`
                     : ""
             }
-            
+
             <dt>Timestamp</dt>
             <dd property="slp:timestamp">${error.timestamp || new Date().toISOString()}</dd>
-            
+
             <dt>Trace ID</dt>
             <dd property="slp:traceId">${error.traceId || this.generateTraceId()}</dd>
             ${violationsHtml}
         </dl>
-        ${this.formatNavigation(response.links)}
     </div>`;
 
         return `<!DOCTYPE html>
@@ -146,65 +164,81 @@ ${content}
     }
 
     /**
-     * Format main content based on response data
+     * Format main content based on HAL response data
      */
     private formatContent(response: ResponseData): string {
-        const resourceType = response.metadata?.resourceType || "Resource";
-        const resourceUri = response.metadata?.resourceUri || "";
+        const data = response.data;
 
-        let content = "";
-
-        // Format data based on type
-        if (Array.isArray(response.data)) {
-            // Collection
-            content = `
-    <div xmlns:slp="${this.namespace}" typeof="slp:Collection" resource="${this.escapeHtml(resourceUri)}">
-        <h1>${this.escapeHtml(response.metadata?.title || "Collection")}</h1>
-        ${response.metadata?.description ? `<p>${this.escapeHtml(response.metadata.description)}</p>` : ""}
-        <div class="collection">
-            ${response.data.map((item) => this.formatItem(item, resourceType)).join("\n            ")}
-        </div>
-        ${this.formatActions(response.actions)}
-        ${this.formatNavigation(response.links)}
-    </div>`;
-        } else if (response.data && typeof response.data === "object") {
-            // Single entity
-            content = `
-    <div xmlns:slp="${this.namespace}" typeof="slp:${resourceType}" resource="${this.escapeHtml(resourceUri)}">
-        <h1>${this.escapeHtml(response.metadata?.title || resourceType)}</h1>
-        ${response.metadata?.description ? `<p>${this.escapeHtml(response.metadata.description)}</p>` : ""}
-        ${this.formatEntity(response.data)}
-        ${this.formatActions(response.actions)}
-        ${this.formatNavigation(response.links)}
-    </div>`;
-        } else {
-            // Simple value
-            content = `
+        if (!isHalObject(data)) {
+            // Simple non-HAL value
+            return `
     <div xmlns:slp="${this.namespace}">
-        <h1>${this.escapeHtml(response.metadata?.title || "Result")}</h1>
-        <p>${this.escapeHtml(String(response.data))}</p>
-        ${this.formatNavigation(response.links)}
+        <h1>Result</h1>
+        <p>${this.escapeHtml(String(data))}</p>
     </div>`;
         }
 
-        return content;
+        // HAL object - extract components
+        const selfHref = data._links?.self?.href || "";
+        const title = data.title || data.name || "Resource";
+
+        // Check if this is a collection (has _embedded)
+        if (data._embedded) {
+            return this.formatCollection(data, title, selfHref);
+        }
+
+        // Single resource
+        return this.formatResource(data, title, selfHref);
+    }
+
+    /**
+     * Format a HAL collection
+     */
+    private formatCollection(data: any, title: string, resourceUri: string): string {
+        // Get the first embedded collection
+        const embeddedKey = Object.keys(data._embedded)[0];
+        const items = embeddedKey ? data._embedded[embeddedKey] : [];
+
+        return `
+    <div xmlns:slp="${this.namespace}" typeof="slp:Collection" resource="${this.escapeHtml(resourceUri)}">
+        <h1>${this.escapeHtml(title)}</h1>
+        ${data.count !== undefined ? `<p>Count: ${data.count}</p>` : ""}
+        <div class="collection">
+            ${Array.isArray(items) ? items.map((item) => this.formatCollectionItem(item)).join("\n            ") : ""}
+        </div>
+        ${this.formatHalTemplates(data._templates)}
+        ${this.formatHalLinks(data._links)}
+    </div>`;
+    }
+
+    /**
+     * Format a single HAL resource
+     */
+    private formatResource(data: any, title: string, resourceUri: string): string {
+        return `
+    <div xmlns:slp="${this.namespace}" typeof="slp:Resource" resource="${this.escapeHtml(resourceUri)}">
+        <h1>${this.escapeHtml(title)}</h1>
+        ${this.formatEntity(data)}
+        ${this.formatHalTemplates(data._templates)}
+        ${this.formatHalLinks(data._links)}
+    </div>`;
     }
 
     /**
      * Format a collection item
      */
-    private formatItem(item: any, resourceType: string): string {
+    private formatCollectionItem(item: any): string {
         return `
-            <div class="collection-item" typeof="slp:${resourceType}">
+            <div class="collection-item" typeof="slp:Resource">
                 ${this.formatEntity(item)}
             </div>`;
     }
 
     /**
-     * Format an entity as definition list
+     * Format an entity as definition list (excludes HAL reserved properties)
      */
     private formatEntity(entity: any): string {
-        const { _links, _actions, _class, _rel, ...properties } = entity;
+        const { _links, _embedded, _templates, ...properties } = entity;
 
         const propertyItems = Object.entries(properties)
             .map(([key, value]) => {
@@ -243,70 +277,82 @@ ${content}
     }
 
     /**
-     * Format navigation links
+     * Format HAL _links as navigation
      */
-    private formatNavigation(links?: ResponseData["links"]): string {
-        if (!links?.length) return "";
+    private formatHalLinks(links?: any): string {
+        if (!links || typeof links !== 'object') return "";
 
-        const linkItems = links
-            .map((link) => {
-                const rel = Array.isArray(link.rel) ? link.rel.join(" ") : link.rel;
-                const title = link.title || this.humanizeKey(rel);
-                return `<li><a href="${this.escapeHtml(link.href)}" rel="slp:${rel}">${this.escapeHtml(
-                    title
-                )}</a></li>`;
+        const linkEntries = Object.entries(links)
+            .filter(([rel]) => rel !== 'self') // Skip self link
+            .map(([rel, link]: [string, any]) => {
+                const href = Array.isArray(link) ? link[0]?.href : link?.href;
+                const title = Array.isArray(link) ? link[0]?.title : link?.title;
+                const displayTitle = title || this.humanizeKey(rel);
+
+                if (!href) return '';
+
+                return `<li><a href="${this.escapeHtml(href)}" rel="slp:${rel}">${this.escapeHtml(displayTitle)}</a></li>`;
             })
-            .join("\n            ");
+            .filter(Boolean);
+
+        if (linkEntries.length === 0) return "";
 
         return `
         <nav>
+            <h2>Links</h2>
             <ul>
-            ${linkItems}
+            ${linkEntries.join("\n            ")}
             </ul>
         </nav>`;
     }
 
     /**
-     * Format actions as forms
+     * Format HAL-FORMS _templates as forms
      */
-    private formatActions(actions?: ResponseData["actions"]): string {
-        if (!actions?.length) return "";
+    private formatHalTemplates(templates?: any): string {
+        if (!templates || typeof templates !== 'object') return "";
 
-        return actions
-            .map((action) => {
-                const method = action.method.toUpperCase();
-                const fields = action.fields
-                    ?.map((field) => {
-                        const inputType = this.getInputType(field.type);
-                        const required = field.required ? "required" : "";
-                        const value = field.value ? `value="${this.escapeHtml(String(field.value))}"` : "";
+        const forms = Object.entries(templates)
+            .map(([name, template]: [string, any]) => {
+                const method = template.method?.toUpperCase() || 'POST';
+                const target = template.target || '';
+                const title = template.title || this.humanizeKey(name);
+
+                const fields = template.properties
+                    ?.map((prop: any) => {
+                        const inputType = this.getInputType(prop.type);
+                        const required = prop.required ? "required" : "";
+                        const value = prop.value ? `value="${this.escapeHtml(String(prop.value))}"` : "";
+                        const prompt = prop.prompt || this.humanizeKey(prop.name);
 
                         return `
-            <label for="${this.escapeHtml(field.name)}">${this.humanizeKey(field.name)}${
-                            field.required ? " *" : ""
+            <label for="${this.escapeHtml(prop.name)}">${this.escapeHtml(prompt)}${
+                            prop.required ? " *" : ""
                         }</label>
-            <input type="${inputType}" id="${this.escapeHtml(field.name)}" name="${this.escapeHtml(
-                            field.name
+            <input type="${inputType}" id="${this.escapeHtml(prop.name)}" name="${this.escapeHtml(
+                            prop.name
                         )}" ${required} ${value} />`;
                     })
-                    .join("");
+                    .join("") || "";
 
                 return `
-        <form action="${this.escapeHtml(action.href)}" method="${method}" ${
-                    action.type ? `enctype="${this.escapeHtml(action.type)}"` : ""
+        <form action="${this.escapeHtml(target)}" method="${method}" ${
+                    template.contentType ? `enctype="${this.escapeHtml(template.contentType)}"` : ""
                 }>
-            <h3>${this.escapeHtml(action.title)}</h3>
-            ${fields || ""}
-            <button type="submit">${this.escapeHtml(action.title)}</button>
+            <h3>${this.escapeHtml(title)}</h3>
+            ${fields}
+            <button type="submit">${this.escapeHtml(title)}</button>
         </form>`;
             })
             .join("");
+
+        return forms ? `<div class="templates">${forms}</div>` : "";
     }
 
     /**
      * Get HTML input type for a field type
      */
-    private getInputType(fieldType: string): string {
+    private getInputType(fieldType?: string): string {
         switch (fieldType) {
             case "email":
                 return "email";

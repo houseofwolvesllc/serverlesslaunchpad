@@ -6,15 +6,17 @@ export interface User {
     firstName: string;
     lastName: string;
     name: string;
-    // Hypermedia-specific properties
-    links?: Array<{ rel: string[]; href: string; method?: string }>;
+    // Hypermedia-specific properties (HAL)
+    links?: Record<string, { href: string; title?: string }>;
+    // Access context from _embedded.access in HAL response
     authContext?: {
-        type?: string;
-        expiresAt?: string;
-        access?: {
-            sessionToken?: string;
-            dateExpires?: Date;
-        };
+        type: "session" | "apiKey" | "unknown";
+        description?: string;
+        ipAddress: string;
+        userAgent: string;
+        sessionToken?: string;
+        dateLastAccessed?: string;
+        dateExpires?: string;
     };
 }
 

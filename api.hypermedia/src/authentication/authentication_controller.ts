@@ -4,6 +4,7 @@ import { BaseController } from "../base_controller";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
+import { MessageAdapter } from "../content_types/message_adapter";
 import { AuthContext, AuthContextAdapter } from "./auth_context_adapter";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
@@ -126,8 +127,13 @@ export class AuthenticationController extends BaseController {
             userAgent: headers["user-agent"],
         });
 
-        // Create response
-        const response = this.success(event, {});
+        // Create HAL response for successful revocation
+        const adapter = new MessageAdapter({
+            selfHref: "/auth/revoke",
+            message: "Session revoked successfully"
+        });
+
+        const response = this.success(event, adapter);
 
         // Clear the session cookie
         AuthenticationCookieRepository.remove(response);
