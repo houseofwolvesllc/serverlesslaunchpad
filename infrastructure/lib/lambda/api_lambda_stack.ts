@@ -9,14 +9,7 @@ import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
-
-// ES module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export interface ApiLambdaStackProps extends BaseStackProps {
     configurationSecret: Secret;
@@ -45,64 +38,9 @@ export class ApiLambdaStack extends BaseStack {
         this.targetGroup = this.createTargetGroup(props);
         this.apiFunction = this.createLambdaFunction(props);
         this.configureLambdaIntegration();
-
-        // Generate configuration file after creating resources
-        this.generateConfigurationFile(props);
         this.createOutputs();
     }
 
-    /**
-     * Generate configuration file and copy it to api.hypermedia project
-     */
-    private generateConfigurationFile(props: ApiLambdaStackProps): void {
-        const { userPoolId, userPoolClientId, queryResultsBucket } = props;
-
-        // Build configuration from dependency stack outputs
-        const config = {
-            environment: this.appEnvironment,
-            cognito: {
-                user_pool_id: userPoolId,
-                user_pool_client_id: userPoolClientId,
-                user_pool_provider_url: `https://cognito-idp.${this.region}.amazonaws.com/${userPoolId}`,
-            },
-            athena: {
-                workgroup: this.configuration.athena.workGroupName,
-                results_bucket: queryResultsBucket.bucketName,
-            },
-            alb: {
-                target_group_arn: this.targetGroup.targetGroupArn,
-            },
-            features: {
-                enable_analytics: this.appEnvironment === "production",
-                enable_rate_limiting: this.appEnvironment !== "development",
-                enable_advanced_security: this.appEnvironment === "production",
-            },
-            limits: {
-                max_api_keys_per_user: this.appEnvironment === "production" ? 3 : 10,
-                session_timeout_hours: this.appEnvironment === "production" ? 8 : 24,
-                max_query_timeout_seconds: this.appEnvironment === "production" ? 120 : 300,
-            },
-        };
-
-        // Write config to api.hypermedia project
-        const apiProjectPath = join(__dirname, "../../../api.hypermedia");
-        const configDir = join(apiProjectPath, "config");
-        const configFile = join(configDir, `${this.appEnvironment}.config.json`);
-
-        try {
-            // Create config directory if it doesn't exist
-            if (!existsSync(configDir)) {
-                mkdirSync(configDir, { recursive: true });
-            }
-
-            // Write configuration file
-            writeFileSync(configFile, JSON.stringify(config, null, 2));
-            console.log(`✅ Generated configuration file: ${configFile}`);
-        } catch (error) {
-            console.error(`❌ Failed to generate config file: ${error}`);
-            throw error;
-        }
-    }
 
     /**
      * Create CloudWatch log group for Lambda logs
@@ -310,6 +248,21 @@ export class ApiLambdaStack extends BaseStack {
             environment: {
                 NODE_ENV: this.appEnvironment,
                 AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1", // AWS SDK optimization
+                // Pass all configuration as environment variables
+                // The Lambda code can read these and build its config object
+                COGNITO_USER_POOL_ID: props.userPoolId,
+                COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
+                ATHENA_WORKGROUP: this.configuration.athena.workGroupName,
+                ATHENA_RESULTS_BUCKET: props.queryResultsBucket.bucketName,
+                CONFIGURATION_SECRET_ARN: props.configurationSecret.secretArn,
+                // Feature flags
+                ENABLE_ANALYTICS: String(this.appEnvironment === "production"),
+                ENABLE_RATE_LIMITING: String(this.appEnvironment !== "development"),
+                ENABLE_ADVANCED_SECURITY: String(this.appEnvironment === "production"),
+                // Limits
+                MAX_API_KEYS_PER_USER: String(this.appEnvironment === "production" ? 3 : 10),
+                SESSION_TIMEOUT_HOURS: String(this.appEnvironment === "production" ? 8 : 24),
+                MAX_QUERY_TIMEOUT_SECONDS: String(this.appEnvironment === "production" ? 120 : 300),
             },
 
             // Security and monitoring
