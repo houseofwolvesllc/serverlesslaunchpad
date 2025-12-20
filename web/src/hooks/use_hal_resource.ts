@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HalObject, HalTemplate } from '../types/hal';
+import { HalObject, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { halClient, ValidationError } from '../lib/hal_forms_client';
 
 /**

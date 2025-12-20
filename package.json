@@ -7,7 +7,7 @@
     "workspaces": [
         "./core",
         "./web",
-        "./commons",
+        "./types",
         "./framework",
         "./infrastructure",
         "./api.hypermedia"
@@ -21,12 +21,12 @@
         "dev:check": "echo '🔍 Checking for port conflicts...' && (lsof -i :5173-5176,3001 2>/dev/null || echo '✅ No port conflicts detected')",
         "dev:web": "cd web && npm run local:watch",
         "dev:api": "cd api.hypermedia && npm run local:watch",
-        "dev:watch:commons": "cd commons && npm run build:watch",
+        "dev:watch:types": "cd types && npm run build:watch",
         "dev:watch:core": "cd core && npm run build:watch",
         "dev:watch:framework": "cd framework && npm run build:watch",
-        "dev:watch:packages": "concurrently --kill-others-on-fail --prefix-colors yellow,green,blue --names \"COMMONS,CORE,FRAMEWORK\" \"npm run dev:watch:commons\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
+        "dev:watch:packages": "concurrently --kill-others-on-fail --prefix-colors yellow,green,blue --names \"TYPES,CORE,FRAMEWORK\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
         "dev": "echo '🚀 Starting development servers...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta --names \"WEB,API\" \"npm run dev:web\" \"npm run dev:api\"",
-        "dev:watch": "echo '🚀 Starting development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue --names \"WEB,API,COMMONS,CORE,FRAMEWORK\" \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:watch:commons\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
+        "dev:watch": "echo '🚀 Starting development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue --names \"WEB,API,TYPES,CORE,FRAMEWORK\" \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
         "dev:reset": "npm run dev:clean && sleep 2 && npm run dev"
     },
     "devDependencies": {

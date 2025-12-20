@@ -9,7 +9,7 @@ import {
     Title,
     Alert,
 } from '@mantine/core';
-import { HalTemplate, HalTemplateProperty } from '../../types/hal';
+import { HalTemplate, HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { ValidationError } from '../../lib/hal_forms_client';
 
 /**

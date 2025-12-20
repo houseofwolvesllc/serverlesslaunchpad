@@ -1,8 +1,8 @@
 {
-    "name": "@houseofwolves/serverlesslaunchpad.commons",
+    "name": "@houseofwolves/serverlesslaunchpad.types",
     "version": "1.0.0",
     "author": "k-gar",
-    "description": "Library for common types, schemas, and utils shared across the Serverless Launchpad platform.",
+    "description": "Shared TypeScript type definitions for Serverless Launchpad monorepo - HAL/HATEOAS types, pagination types, and common interfaces",
     "private": true,
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -23,5 +23,17 @@
     },
     "dependencies": {
         "zod": "^3.24.2"
-    }
+    },
+    "exports": {
+        ".": "./dist/index.js",
+        "./hal": "./dist/hal/index.js",
+        "./pagination": "./dist/pagination/index.js"
+    },
+    "keywords": [
+        "types",
+        "typescript",
+        "hal",
+        "hateoas",
+        "pagination"
+    ]
 }

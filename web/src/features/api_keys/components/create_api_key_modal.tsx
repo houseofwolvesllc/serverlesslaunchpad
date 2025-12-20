@@ -3,7 +3,7 @@ import { Modal, Stack } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { TemplateForm } from '../../../components/hal_forms/template_form';
 import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
-import { HalTemplate } from '../../../types/hal';
+import { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { ApiKeyDisplay } from './api_key_display';
 
 /**

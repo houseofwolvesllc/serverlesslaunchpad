@@ -1,4 +1,4 @@
-import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.commons";
+import { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { ApiKey } from "@houseofwolves/serverlesslaunchpad.core";
 import { HalResourceAdapter } from "../content_types/hal_adapter";
 import { Router } from "../router";

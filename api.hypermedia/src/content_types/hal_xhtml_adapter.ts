@@ -358,7 +358,7 @@ ${methodField}${fields}
         // Handle select/options
         if (prop.options && prop.options.length > 0) {
             const options = prop.options.map(opt =>
-                `        <option value="${this.escapeHtml(opt.value)}">${this.escapeHtml(opt.prompt)}</option>`
+                `        <option value="${this.escapeHtml(opt.value)}">${this.escapeHtml(opt.prompt || opt.value)}</option>`
             ).join('\n');
 
             return `      <label>

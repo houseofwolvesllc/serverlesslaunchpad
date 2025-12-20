@@ -15,7 +15,7 @@
         "build:watch": "tsc --watch & tsc-alias --watch",
         "build:release": "npm run clean && tsc && tsc-alias && cp -r config dist/",
         "local": "npm run build && node dist/dev_server.js local 2>&1 | tee ../logs/api.log",
-        "local:watch": "nodemon --watch src --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --exec \"npm run build && node dist/dev_server.js local\" --ext ts --delay 1 2>&1 | tee ../logs/api.log",
+        "local:watch": "nodemon --watch src --watch ../core/dist --watch ../framework/dist --watch ../types/dist --exec \"npm run build && node dist/dev_server.js local\" --ext ts --delay 1 2>&1 | tee ../logs/api.log",
         "local:development": "npm run build && node dist/dev_server.js development",
         "local:staging": "npm run build && node dist/dev_server.js staging",
         "local:production": "npm run build && node dist/dev_server.js production",
@@ -44,9 +44,9 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "@houseofwolves/serverlesslaunchpad.commons": "*",
         "@houseofwolves/serverlesslaunchpad.core": "*",
         "@houseofwolves/serverlesslaunchpad.framework": "*",
+        "@houseofwolves/serverlesslaunchpad.types": "*",
         "aws-lambda": "^1.0.7",
         "halson": "^3.0.0",
         "reflect-metadata": "^0.2.2",

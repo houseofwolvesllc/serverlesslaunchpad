@@ -8,7 +8,7 @@
  * @see https://datatracker.ietf.org/doc/html/rfc6570
  */
 
-import type { HalLink, HalObject } from '../types/hal';
+import type { HalLink, HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Link Navigator Service for traversing HAL resources
