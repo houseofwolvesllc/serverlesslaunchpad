@@ -2,7 +2,7 @@ import { Injectable, Role, SessionRepository } from "@houseofwolves/serverlessla
 import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../common/extended_alb_event.js";
 import { HypermediaResponse } from "../common/types.js";
-import { Cache, Protected } from "../decorators/index.js";
+import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
 import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
 
@@ -27,6 +27,7 @@ export class SessionsController extends BaseController {
      * 2. Protected - authenticates user and validates role/owner access
      * 3. Log - wraps entire execution
      */
+    @Log()
     @Protected()
     @Cache({ ttl: 300, vary: ['Authorization'] })
     @Route('POST', '/users/{userId}/sessions/list')
@@ -65,6 +66,7 @@ export class SessionsController extends BaseController {
      * Example: POST /users/123/sessions/delete
      * Requires session authentication (no API key access)
      */
+    @Log()
     @Protected()
     @Route('POST', '/users/{userId}/sessions/delete')
     async deleteSessions(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {

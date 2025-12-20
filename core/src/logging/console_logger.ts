@@ -12,17 +12,37 @@ export class ConsoleLogger implements Logger {
     }
 
     /**
-     * Parse log level from LOG_LEVEL environment variable
+     * Parse log level from environment variables.
+     * First priority: explicit LOG_LEVEL
+     * Second priority: derive from NODE_ENV
      */
     private parseLogLevelFromEnv(): LogLevel {
-        const envLevel = process.env.LOG_LEVEL?.toUpperCase();
+        // First priority: explicit LOG_LEVEL
+        const logLevel = process.env.LOG_LEVEL?.toUpperCase();
+        if (logLevel) {
+            switch (logLevel) {
+                case 'DEBUG': return LogLevel.DEBUG;
+                case 'INFO': return LogLevel.INFO;
+                case 'WARN': return LogLevel.WARN;
+                case 'ERROR': return LogLevel.ERROR;
+            }
+        }
         
-        switch (envLevel) {
-            case 'DEBUG': return LogLevel.DEBUG;
-            case 'INFO': return LogLevel.INFO;
-            case 'WARN': return LogLevel.WARN;
-            case 'ERROR': return LogLevel.ERROR;
-            default: return LogLevel.INFO; // Default to INFO
+        // Second priority: derive from NODE_ENV
+        const nodeEnv = process.env.NODE_ENV?.toLowerCase();
+        switch (nodeEnv) {
+            case 'development':
+            case 'dev': 
+                return LogLevel.DEBUG;
+            case 'test':
+                return LogLevel.WARN; // Reduce noise in tests
+            case 'staging':
+                return LogLevel.INFO;
+            case 'production':
+            case 'prod':
+                return LogLevel.WARN; // Production should be quiet
+            default:
+                return LogLevel.INFO; // Safe default
         }
     }
 
