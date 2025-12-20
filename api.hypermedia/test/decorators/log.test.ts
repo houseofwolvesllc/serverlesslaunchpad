@@ -37,7 +37,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     return { statusCode: 200, body: "success" };
                 }
             }
@@ -85,7 +85,7 @@ describe("@Log Decorator", () => {
             
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     throw testError;
                 }
             }
@@ -127,7 +127,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     return { statusCode: 201, body: "created" };
                 }
             }
@@ -162,7 +162,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     return { data: "success" }; // No statusCode property
                 }
             }
@@ -199,7 +199,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     // Simulate some async work
                     await new Promise(resolve => setTimeout(resolve, 10));
                     return { statusCode: 200 };
@@ -223,7 +223,7 @@ describe("@Log Decorator", () => {
             await controller.testMethod(event);
 
             // Assert
-            const successCall = mockLogger.logRequestSuccess.mock.calls[0];
+            const successCall = (mockLogger.logRequestSuccess as any).mock.calls[0];
             const duration = successCall[3]; // Fourth argument is duration
             expect(duration).toBeGreaterThan(0);
             expect(duration).toBeLessThan(1000); // Should be reasonable duration
@@ -233,7 +233,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     await new Promise(resolve => setTimeout(resolve, 10));
                     throw new Error("Test error");
                 }
@@ -256,7 +256,7 @@ describe("@Log Decorator", () => {
             await expect(controller.testMethod(event)).rejects.toThrow();
 
             // Assert
-            const errorCall = mockLogger.logRequestError.mock.calls[0];
+            const errorCall = (mockLogger.logRequestError as any).mock.calls[0];
             const duration = errorCall[3]; // Fourth argument is duration
             expect(duration).toBeGreaterThan(0);
         });
@@ -267,7 +267,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class UserController {
                 @Log()
-                async getUser(event: ALBEvent) {
+                async getUser(_event: ALBEvent) {
                     return { statusCode: 200 };
                 }
             }
@@ -309,7 +309,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Debug()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     return { statusCode: 200 };
                 }
             }
@@ -341,7 +341,7 @@ describe("@Log Decorator", () => {
             // Arrange
             class TestController {
                 @Log()
-                async testMethod(event: ALBEvent) {
+                async testMethod(_event: ALBEvent) {
                     return { statusCode: 200 };
                 }
             }

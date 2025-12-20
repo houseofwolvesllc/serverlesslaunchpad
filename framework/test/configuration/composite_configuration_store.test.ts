@@ -134,7 +134,7 @@ describe("CompositeConfigurationStore", () => {
     });
 
     it("should log warnings when stores fail", async () => {
-        const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => { /* no-op */ });
 
         const mockConfig: MockConfig = {
             AWS_S3_BUCKET: "bucket-2",

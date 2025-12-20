@@ -40,7 +40,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
         }
 
         let sql = `SELECT * FROM api_keys WHERE userId = ?`;
-        let params: any[] = [message.userId];
+        const params: any[] = [message.userId];
 
         if (message.pagingInstruction?.cursor) {
             const operator = message.pagingInstruction.direction === "backward" ? ">" : "<";

@@ -10,11 +10,11 @@ export class AwsSecretsConfigurationStore<T extends z.ZodType> implements Config
     private readonly zodSchema: T;
     private readonly environment: Environment;
 
-    constructor(zodSchema: T, environment: Environment, configurationName?: string) {
+    constructor(zodSchema: T, environment: Environment, awsConfig?: any, configurationName?: string) {
         this.zodSchema = zodSchema;
         this.environment = environment;
         this.configurationName = configurationName ?? "serverlesslaunchpad.com";
-        this.client = new SecretsManagerClient({});
+        this.client = new SecretsManagerClient(awsConfig || {});
     }
 
     async get(): Promise<z.infer<T>> {

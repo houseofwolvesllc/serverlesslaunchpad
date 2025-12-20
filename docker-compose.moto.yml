@@ -1,0 +1,24 @@
+services:
+  moto:
+    container_name: serverlesslaunchpad-moto
+    image: motoserver/moto:latest
+    ports:
+      - "5555:5000"            # Moto server port (external:internal)
+    environment:
+      # Enable all services your app needs
+      - MOTO_HOST=0.0.0.0
+      - MOTO_PORT=5000
+      # Enable specific services
+      - MOTO_COGNITO_IDP_USER_POOL_DOMAIN_CERT_VALIDATION=false
+    command: ["-H", "0.0.0.0", "-p", "5000"]
+    networks:
+      - serverlesslaunchpad
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/moto-api/reset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  serverlesslaunchpad:
+    driver: bridge
