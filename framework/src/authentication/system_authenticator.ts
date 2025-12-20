@@ -3,7 +3,6 @@ import {
     AuthenticateMessage,
     AuthenticateResult,
     Authenticator,
-    ConfigurationStore,
     Features,
     Injectable,
     RevokeMessage,
@@ -14,6 +13,7 @@ import {
 } from "@houseofwolves/serverlesslaunchpad.core";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import crypto from "crypto";
+import { ApplicationSecretsStore, InfrastructureConfigurationStore } from "../configuration";
 
 @Injectable()
 export class SystemAuthenticator implements Authenticator {
@@ -21,10 +21,8 @@ export class SystemAuthenticator implements Authenticator {
         private readonly userRepository: UserRepository,
         private readonly sessionRepository: SessionRepository,
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly configuration: ConfigurationStore<{
-            auth: { cognito: { userPoolId: string; userPoolClientId: string } } | undefined;
-            session_token_salt: string;
-        }>
+        private readonly infrastructureConfig: InfrastructureConfigurationStore,
+        private readonly secretsConfig: ApplicationSecretsStore
     ) {}
 
     async authenticate(message: AuthenticateMessage): Promise<AuthenticateResult> {
@@ -81,17 +79,12 @@ export class SystemAuthenticator implements Authenticator {
     }
 
     private async verifyAccessToken(accessToken: string): Promise<boolean> {
-        const configuration = await this.configuration.get();
-        const cognito = configuration.auth?.cognito;
-
-        if (!cognito) {
-            throw new Error("Cognito configuration not found");
-        }
+        const infraConfig = await this.infrastructureConfig.get();
 
         const verifier = CognitoJwtVerifier.create({
-            userPoolId: cognito.userPoolId,
+            userPoolId: infraConfig.cognito.user_pool_id,
             tokenUse: "access",
-            clientId: cognito.userPoolClientId,
+            clientId: infraConfig.cognito.client_id,
         });
 
         try {
@@ -108,10 +101,10 @@ export class SystemAuthenticator implements Authenticator {
         ipAddress: string;
         userAgent: string;
     }): Promise<string> {
-        const config = await this.configuration.get();
+        const secrets = await this.secretsConfig.get();
         return crypto
             .createHash("sha256")
-            .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${config.session_token_salt}`)
+            .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${secrets.session_token_salt}`)
             .digest("hex");
     }
 

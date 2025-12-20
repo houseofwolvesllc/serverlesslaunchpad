@@ -47,3 +47,6 @@ cdk.context.json
 
 # CDK Output
 cdk.out/
+
+# Environment files
+.env*

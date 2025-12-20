@@ -1,4 +1,3 @@
-import swc from "unplugin-swc";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -10,5 +9,4 @@ export default defineConfig({
         reporters: "verbose",
         testTimeout: 10000,
     },
-    plugins: [swc.vite()],
 });

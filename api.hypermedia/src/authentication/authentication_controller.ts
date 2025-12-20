@@ -37,7 +37,6 @@ export class AuthenticationController extends BaseController {
             lastName: body.lastName,
         };
 
-        // Use Authority to authorize and get the authenticated user
         const authResult = await this.authenticator.authenticate(authMessage);
 
         if (!authResult.authContext.identity) {

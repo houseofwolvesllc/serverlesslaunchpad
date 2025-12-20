@@ -32,3 +32,6 @@ dist/
 *.csv
 *.prod.config.json
 working_dir/
+
+# Environment files
+.env*

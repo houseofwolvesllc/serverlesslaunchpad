@@ -1,4 +1,4 @@
-import { ConfigurationStore, Injectable } from "@houseofwolves/serverlesslaunchpad.core";
+import { ConfigurationStore, Injectable, ConfigurationOptions } from "@houseofwolves/serverlesslaunchpad.core";
 import { readFile } from "fs/promises";
 import path from "path";
 import { z } from "zod";
@@ -14,8 +14,16 @@ export class FileConfigurationStore<T extends z.ZodType> implements Configuratio
         this.zodSchema = zodSchema;
     }
 
-    async get(): Promise<z.infer<T>> {
+    async get(_options?: ConfigurationOptions): Promise<z.infer<T>> {
         const fileContent = await readFile(this.filePath, "utf-8");
-        return this.zodSchema.parse(JSON.parse(fileContent));
+        const data = JSON.parse(fileContent);
+
+        // Direct parse - will throw ZodError if invalid
+        // With role-based stores, we expect complete, valid configuration
+        console.info(`[FileConfigurationStore] Loading configuration from ${this.filePath}`);
+        const config = this.zodSchema.parse(data);
+        console.info(`[FileConfigurationStore] Configuration loaded and validated successfully`);
+
+        return config;
     }
 }

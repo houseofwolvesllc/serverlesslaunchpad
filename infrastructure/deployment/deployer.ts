@@ -226,11 +226,11 @@ export class Deployer extends StackManager {
         console.log(chalk.blue("\n📝 Checking configuration..."));
         
         const configPath = path.join(__dirname, "../../api.hypermedia/config");
-        const configFile = path.join(configPath, `${environment}.config.json`);
-        
+        const configFile = path.join(configPath, `${environment}.infrastructure.json`);
+
         // Check if config already exists
         if (fs.existsSync(configFile)) {
-            console.log(chalk.gray("Configuration file already exists, will be updated during deployment"));
+            console.log(chalk.gray("Infrastructure configuration files already exist, will be updated during deployment"));
             return;
         }
         
@@ -285,7 +285,7 @@ export class Deployer extends StackManager {
             const config = {
                 cognito: stackOutputs['cognito'] ? {
                     user_pool_id: userPoolId,
-                    user_pool_client_id: getOutputValue('cognito', 'UserPoolClientId'),
+                    client_id: getOutputValue('cognito', 'UserPoolClientId'),
                     user_pool_provider_url: `https://cognito-idp.${process.env.AWS_REGION}.amazonaws.com/${userPoolId}`,
                 } : {},
                 athena: stackOutputs['data'] ? {
@@ -424,14 +424,11 @@ export class Deployer extends StackManager {
             max_query_timeout_seconds: environment === Environment.Production ? 120 : 300,
         };
         
-        // Write environment-specific config
-        this.writeConfig(config, `${environment}.config.json`);
-        
-        // Always write local.config.json
-        this.writeConfig({
-            ...config,
-            _source: `Generated from ${environment} environment`
-        }, 'local.config.json');
+        // Write environment-specific infrastructure config for API
+        this.writeApiConfig(config, `${environment}.infrastructure.json`);
+
+        // Write environment-specific infrastructure config for Web (service-specific subset)
+        this.writeWebConfig(this.extractWebConfig(config), `${environment}.infrastructure.json`);
     }
     
     /**
@@ -463,7 +460,7 @@ export class Deployer extends StackManager {
                     if (output.OutputKey.includes('UserPoolId')) {
                         result.user_pool_id = output.OutputValue;
                     } else if (output.OutputKey.includes('UserPoolClientId')) {
-                        result.user_pool_client_id = output.OutputValue;
+                        result.client_id = output.OutputValue;
                     } else if (output.OutputKey.includes('UserPoolProviderUrl')) {
                         result.user_pool_provider_url = output.OutputValue;
                     }
@@ -509,17 +506,55 @@ export class Deployer extends StackManager {
     }
     
     /**
-     * Write configuration file
+     * Extract Web-specific configuration from full config
      */
-    private writeConfig(config: any, filename: string): void {
+    private extractWebConfig(config: any): any {
+        // Return only the fields needed by the Web application
+        return {
+            environment: config.environment,
+            _generated: config._generated,
+            _source: config._source,
+            aws: config.aws,
+            cognito: config.cognito,
+            api: config.api,
+            features: {
+                mock_auth: config.features.mock_auth,
+                debug_mode: config.features.debug_mode,
+                enable_logging: config.features.enable_logging,
+                enable_mfa: config.features.enable_mfa,
+                enable_analytics: config.features.enable_analytics,
+                enable_notifications: config.features.enable_notifications,
+            },
+        };
+    }
+
+    /**
+     * Write API configuration file
+     */
+    private writeApiConfig(config: any, filename: string): void {
         const configDir = path.join(__dirname, '../../api.hypermedia/config');
         const configPath = path.join(configDir, filename);
-        
+
         if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
         }
-        
+
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        console.log(chalk.green(`✅ Generated ${filename}`));
+        console.log(chalk.green(`✅ Generated API config: ${filename}`));
+    }
+
+    /**
+     * Write Web configuration file
+     */
+    private writeWebConfig(config: any, filename: string): void {
+        const configDir = path.join(__dirname, '../../web/config');
+        const configPath = path.join(configDir, filename);
+
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
+
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        console.log(chalk.green(`✅ Generated Web config: ${filename}`));
     }
 }

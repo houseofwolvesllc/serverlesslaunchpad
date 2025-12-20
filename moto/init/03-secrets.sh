@@ -16,8 +16,35 @@ echo "========================================="
 echo "Initializing Secrets & Parameters for Moto"
 echo "========================================="
 
-# Create API secrets
-echo "Creating API secrets..."
+# Get Cognito client secret from SSM (set by 01-cognito.sh)
+echo "Retrieving Cognito client secret..."
+CLIENT_SECRET=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
+  --name "/serverlesslaunchpad/local/cognito/client-secret" \
+  --region $AWS_REGION \
+  --with-decryption \
+  --query 'Parameter.Value' \
+  --output text 2>/dev/null || echo "local-dev-client-secret")
+
+# Create unified secrets for API configuration schema
+echo "Creating unified API secrets..."
+aws --endpoint-url=$AWS_ENDPOINT_URL \
+  secretsmanager create-secret \
+  --name local.serverlesslaunchpad.secrets \
+  --region $AWS_REGION \
+  --secret-string '{
+    "cognito": {
+      "client_secret": "'$CLIENT_SECRET'"
+    },
+    "session_token_salt": "local-dev-session-salt-min-32-characters-long!",
+    "encryption_key": "local-dev-encryption-key-32-characters!",
+    "jwt_secret": "local-dev-jwt-secret-key-min-32-characters-long!!"
+  }' >/dev/null 2>&1 || \
+  echo "   (Secret already exists)"
+
+echo "✓ Created/verified secret: local.serverlesslaunchpad.secrets"
+
+# Legacy API secrets for backward compatibility during migration
+echo "Creating legacy API secrets..."
 aws --endpoint-url=$AWS_ENDPOINT_URL \
   secretsmanager create-secret \
   --name serverlesslaunchpad/local/api \
@@ -30,7 +57,7 @@ aws --endpoint-url=$AWS_ENDPOINT_URL \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified secret: serverlesslaunchpad/local/api"
+echo "✓ Created/verified legacy secret: serverlesslaunchpad/local/api"
 
 # Create database credentials (for future use)
 echo "Creating database credentials..."

@@ -34,10 +34,7 @@ dist/
 working_dir/
 
 # Infrastructure generated config
-config/*.config.json
+config/*
 
 # Environment files
-.env
-.env.local
-.env.development
-.env.production
+.env*
