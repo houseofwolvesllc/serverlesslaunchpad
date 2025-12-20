@@ -95,4 +95,20 @@ export class MessageAdapter extends HalResourceAdapter {
     get message() {
         return this.config.message;
     }
+
+    toJSON(): HalObject {
+        const result: HalObject = {
+            message: this.message,
+            _links: this._links,
+        };
+
+        // Include dynamically assigned properties (from config.properties)
+        for (const key of Object.keys(this)) {
+            if (!key.startsWith('_') && key !== 'config') {
+                result[key] = (this as any)[key];
+            }
+        }
+
+        return result;
+    }
 }

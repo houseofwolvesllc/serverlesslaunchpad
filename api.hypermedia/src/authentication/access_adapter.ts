@@ -53,4 +53,34 @@ export class AccessAdapter extends HalResourceAdapter {
 
         return {};
     }
+
+    toJSON(): HalObject {
+        const result: HalObject = {
+            type: this.type,
+            ipAddress: this.ipAddress,
+            userAgent: this.userAgent,
+        };
+
+        // Optional properties
+        if (this.description !== undefined) {
+            result.description = this.description;
+        }
+        if (this.sessionId !== undefined) {
+            result.sessionId = this.sessionId;
+        }
+        if (this.dateLastAccessed !== undefined) {
+            result.dateLastAccessed = this.dateLastAccessed;
+        }
+        if (this.dateExpires !== undefined) {
+            result.dateExpires = this.dateExpires;
+        }
+
+        // Add links (embedded resources don't include base links)
+        const links = this._links;
+        if (links && Object.keys(links).length > 0) {
+            result._links = { ...this.getBaseLinks(), ...links };
+        }
+
+        return result;
+    }
 }

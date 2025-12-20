@@ -70,4 +70,13 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
     get count() {
         return this.apiKeys.length;
     }
+
+    toJSON() {
+        return {
+            count: this.count,
+            paging: this.paging,
+            _links: this._links,
+            _embedded: this._embedded,
+        };
+    }
 }

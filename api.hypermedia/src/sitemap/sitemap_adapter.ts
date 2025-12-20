@@ -148,4 +148,12 @@ export class SitemapAdapter extends HalResourceAdapter {
     protected getBaseLinks(): Record<string, import("../content_types/hal_adapter").HalLink> | undefined {
         return undefined;
     }
+
+    toJSON(): HalObject {
+        return {
+            title: this.title,
+            navigation: this.navigation,
+            _links: this._links,
+        };
+    }
 }
