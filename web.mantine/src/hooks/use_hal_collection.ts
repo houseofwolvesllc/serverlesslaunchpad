@@ -97,10 +97,11 @@ export function useHalCollection(
         });
     }, [items, columnConfig, conventions]);
 
-    // Get visible columns only
+    // Get visible columns only and sort by priority
     const columns = useMemo(() => {
-        if (!visibleOnly) return allColumns;
-        return allColumns.filter(col => !col.hidden);
+        const filtered = visibleOnly ? allColumns.filter(col => !col.hidden) : allColumns;
+        // Sort by priority (lower priority = earlier in order)
+        return filtered.sort((a, b) => a.priority - b.priority);
     }, [allColumns, visibleOnly]);
 
     return {
