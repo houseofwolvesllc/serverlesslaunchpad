@@ -1,12 +1,11 @@
-import { AppShell, Burger, Text, Image, Skeleton, Alert, Stack } from '@mantine/core';
+import { ActionIcon, Alert, AppShell, Box, Button, Group, Image, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { Group, ScrollArea, rem, Button } from '@mantine/core';
-import { IconAlertCircle, IconRefresh } from '@tabler/icons-react';
-import { UserButton } from '../../components/user_button/user_button';
-import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
-import classes from './dashboard.module.css';
+import { IconAlertCircle, IconChevronRight, IconMenu2, IconRefresh } from '@tabler/icons-react';
 import { Outlet } from 'react-router-dom';
+import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
+import { UserButton } from '../../components/user_button/user_button';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
+import classes from './dashboard.module.css';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
@@ -67,8 +66,30 @@ export const Dashboard = () => {
         >
             <AppShell.Header>
                 <Group h="100%" px="md">
-                    <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
-                    <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
+                    <ActionIcon onClick={toggleMobile} variant="subtle" size="lg" hiddenFrom="sm">
+                        <Box
+                            style={{
+                                transform: mobileOpened ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 250ms ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            {mobileOpened ? <IconChevronRight size={20} /> : <IconMenu2 size={20} />}
+                        </Box>
+                    </ActionIcon>
+                    <ActionIcon onClick={toggleDesktop} variant="subtle" size="lg" visibleFrom="sm">
+                        <Box
+                            style={{
+                                transform: desktopOpened ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 250ms ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            {desktopOpened ? <IconChevronRight size={20} /> : <IconMenu2 size={20} />}
+                        </Box>
+                    </ActionIcon>
                     <Image
                         src="/svg/serverless_launchpad_logo.svg"
                         alt="Serverless Launchpad Logo"
