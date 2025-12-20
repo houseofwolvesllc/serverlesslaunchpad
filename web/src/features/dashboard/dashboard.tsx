@@ -1,14 +1,15 @@
 import { ActionIcon, Alert, AppShell, Box, Button, Group, Image, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { IconAlertCircle, IconChevronRight, IconMenu2, IconRefresh } from '@tabler/icons-react';
+import { IconAlertCircle, IconChevronRight, IconMenu2, IconRefresh, IconApi } from '@tabler/icons-react';
 import { Route, Routes } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
 import { UserButton } from '../../components/user_button/user_button';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { generateRoutesFromSitemap } from '../../routing/route_generator';
 import { NoMatch } from '../../components/no_match';
 import { DashboardHome } from './dashboard_home';
+import WebConfigurationStore from '../../configuration/web_config_store';
 import classes from './dashboard.module.css';
 
 export const Dashboard = () => {
@@ -18,6 +19,14 @@ export const Dashboard = () => {
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
+    const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
+
+    // Load API base URL for documentation link
+    useEffect(() => {
+        WebConfigurationStore.getConfig().then((config) => {
+            setApiBaseUrl(config.api.base_url);
+        });
+    }, []);
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
@@ -67,7 +76,19 @@ export const Dashboard = () => {
             );
         }
 
-        return mainNav.map((item) => <LinksGroup {...item} key={item.label} />);
+        return (
+            <>
+                {mainNav.map((item) => <LinksGroup {...item} key={item.label} />)}
+                {apiBaseUrl && (
+                    <LinksGroup
+                        icon={IconApi}
+                        label="Hypermedia API Documentation"
+                        link={apiBaseUrl}
+                        newTab={true}
+                    />
+                )}
+            </>
+        );
     };
 
     return (
