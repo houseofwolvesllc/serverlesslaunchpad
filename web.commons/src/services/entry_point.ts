@@ -11,6 +11,7 @@
  */
 
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import { LinkNavigator } from './link_navigator';
 
 /**
  * Configuration for the Entry Point Service
@@ -42,23 +43,21 @@ interface CachedEntryPoint {
  *
  * @example
  * ```typescript
- * import { LinkNavigator } from './link_navigator';
- *
  * const entryPoint = new EntryPoint({
  *   baseUrl: 'https://api.example.com',
  *   cacheTtl: 5 * 60 * 1000 // 5 minutes
  * });
  *
- * const linkNavigator = new LinkNavigator();
- *
  * // Discover available capabilities
  * const root = await entryPoint.fetch();
- * const userHref = linkNavigator.getHref(root, 'user');
+ * const userHref = await entryPoint.getLinkHref('user');
+ * const hasAdmin = await entryPoint.hasCapability('admin');
  * ```
  */
 export class EntryPoint {
     private config: Required<EntryPointConfig>;
     private cache: CachedEntryPoint | null = null;
+    private linkNavigator: LinkNavigator;
 
     constructor(config: EntryPointConfig) {
         this.config = {
@@ -66,6 +65,7 @@ export class EntryPoint {
             defaultHeaders: config.defaultHeaders || {},
             cacheTtl: config.cacheTtl || 5 * 60 * 1000, // 5 minutes default
         };
+        this.linkNavigator = new LinkNavigator();
     }
 
     /**
@@ -114,67 +114,52 @@ export class EntryPoint {
      * Get a link href from the entry point
      * Convenience method that fetches and extracts link in one call
      *
-     * Note: Requires LinkNavigator to be passed in to avoid circular dependencies
-     *
      * @param rel - Link relation to find
-     * @param linkNavigator - LinkNavigator instance for extracting href
      * @param params - Optional parameters for URI template expansion
      * @returns The href or undefined if not found
      *
      * @example
-     * const sessionsUrl = await entryPoint.getLinkHref('sessions', linkNavigator, { userId: '123' });
+     * const sessionsUrl = await entryPoint.getLinkHref('sessions', { userId: '123' });
      */
     async getLinkHref(
         rel: string | string[],
-        linkNavigator: { getHref: (resource: HalObject, rel: string | string[], params?: Record<string, any>) => string | undefined },
         params?: Record<string, any>
     ): Promise<string | undefined> {
         const root = await this.fetch();
-        return linkNavigator.getHref(root, rel, params);
+        return this.linkNavigator.getHref(root, rel, params);
     }
 
     /**
      * Check if the API provides a specific capability
      * Useful for feature flags and conditional UI
      *
-     * Note: Requires LinkNavigator to be passed in to avoid circular dependencies
-     *
      * @param rel - Link relation to check
-     * @param linkNavigator - LinkNavigator instance for capability checking
      * @returns True if the capability exists
      *
      * @example
-     * const hasAdmin = await entryPoint.hasCapability('admin', linkNavigator);
+     * const hasAdmin = await entryPoint.hasCapability('admin');
      * if (hasAdmin) {
      *   // Show admin menu
      * }
      */
-    async hasCapability(
-        rel: string | string[],
-        linkNavigator: { hasCapability: (resource: HalObject, rel: string | string[]) => boolean }
-    ): Promise<boolean> {
+    async hasCapability(rel: string | string[]): Promise<boolean> {
         const root = await this.fetch();
-        return linkNavigator.hasCapability(root, rel);
+        return this.linkNavigator.hasCapability(root, rel);
     }
 
     /**
      * Get all available capabilities from the entry point
      * Returns all link relations
      *
-     * Note: Requires LinkNavigator to be passed in to avoid circular dependencies
-     *
-     * @param linkNavigator - LinkNavigator instance for extracting relations
      * @returns Array of available link relations
      *
      * @example
-     * const capabilities = await entryPoint.getCapabilities(linkNavigator);
+     * const capabilities = await entryPoint.getCapabilities();
      * // Returns: ['self', 'user', 'sessions', 'api-keys', 'sitemap']
      */
-    async getCapabilities(
-        linkNavigator: { getAvailableRelations: (resource: HalObject) => string[] }
-    ): Promise<string[]> {
+    async getCapabilities(): Promise<string[]> {
         const root = await this.fetch();
-        return linkNavigator.getAvailableRelations(root);
+        return this.linkNavigator.getAvailableRelations(root);
     }
 
     /**
@@ -201,6 +186,21 @@ export class EntryPoint {
     async hasTemplate(templateName: string): Promise<boolean> {
         const root = await this.fetch();
         return !!root._templates?.[templateName];
+    }
+
+    /**
+     * Get a template by name from the entry point
+     * Returns null if template doesn't exist
+     *
+     * @param templateName - Template name to find
+     * @returns The template or null if not found
+     *
+     * @example
+     * const createTemplate = await entryPoint.getTemplate('create');
+     */
+    async getTemplate(templateName: string): Promise<any | null> {
+        const root = await this.fetch();
+        return root._templates?.[templateName] || null;
     }
 
     /**
