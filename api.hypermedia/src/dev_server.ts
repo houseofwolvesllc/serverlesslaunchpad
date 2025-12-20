@@ -38,9 +38,20 @@ app.use((req, _res, next) => {
     next();
 });
 
-// CORS for local development
+// CORS for local development - allow any localhost origin
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+    const origin = req.headers.origin;
+
+    // Allow any localhost origin (any port)
+    if (origin && origin.startsWith("http://localhost:")) {
+        res.header("Access-Control-Allow-Origin", origin);
+    } else if (origin && origin.startsWith("http://127.0.0.1:")) {
+        res.header("Access-Control-Allow-Origin", origin);
+    } else {
+        // Fallback for requests without origin header
+        res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+    }
+
     res.header(
         "Access-Control-Allow-Headers",
         "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, X-Forwarded-For"

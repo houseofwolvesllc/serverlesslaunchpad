@@ -9,7 +9,7 @@
     "type": "module",
     "scripts": {
         "build": "tsc && tsc-alias",
-        "build:watch": "tsc --watch & tsc-alias --watch",
+        "build:watch": "tsc --watch & tsc-alias --watch & wait",
         "typecheck": "tsc --noEmit",
         "test": "vitest --coverage",
         "test:watch": "vitest --watch"
