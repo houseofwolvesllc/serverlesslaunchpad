@@ -23,6 +23,7 @@ export class SystemAuthenticator implements Authenticator {
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly configuration: ConfigurationStore<{
             auth: { cognito: { userPoolId: string; userPoolClientId: string } } | undefined;
+            session_token_salt: string;
         }>
     ) {}
 
@@ -47,7 +48,7 @@ export class SystemAuthenticator implements Authenticator {
             const session = await this.sessionRepository.createSession({
                 userId: user.userId,
                 sessionId: crypto.randomUUID(),
-                sessionSignature: this.generateSessionSignature(message),
+                sessionSignature: await this.generateSessionSignature(message),
                 ipAddress: message.ipAddress,
                 userAgent: message.userAgent,
             });
@@ -97,16 +98,16 @@ export class SystemAuthenticator implements Authenticator {
             await verifier.verify(accessToken);
             return true;
         } catch (error) {
-            // should throw error if not expected
-            console.log(error);
+            // Token verification failed - this is expected for invalid tokens
             return false;
         }
     }
 
-    private generateSessionSignature(message: { sessionKey: string; ipAddress: string; userAgent: string }): string {
+    private async generateSessionSignature(message: { sessionKey: string; ipAddress: string; userAgent: string }): Promise<string> {
+        const config = await this.configuration.get();
         return crypto
             .createHash("sha256")
-            .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${process.env.SESSION_TOKEN_SALT}`)
+            .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${config.session_token_salt}`)
             .digest("hex");
     }
 
@@ -114,9 +115,15 @@ export class SystemAuthenticator implements Authenticator {
         if (message.sessionToken) {
             const { sessionKey, userId } = this.parseSessionToken(message.sessionToken);
 
+            const sessionSignature = await this.generateSessionSignature({
+                sessionKey,
+                ipAddress: message.ipAddress,
+                userAgent: message.userAgent,
+            });
+
             const result = await this.sessionRepository.verifySession({
                 userId,
-                sessionSignature: sessionKey,
+                sessionSignature,
             });
 
             if (!result) {
@@ -197,7 +204,7 @@ export class SystemAuthenticator implements Authenticator {
     async revoke(message: RevokeMessage): Promise<void> {
         const { sessionKey, userId } = this.parseSessionToken(message.sessionToken);
 
-        const sessionSignature = this.generateSessionSignature({
+        const sessionSignature = await this.generateSessionSignature({
             sessionKey,
             ipAddress: message.ipAddress,
             userAgent: message.userAgent,

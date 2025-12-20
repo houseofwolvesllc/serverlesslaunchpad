@@ -1,6 +1,6 @@
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
-import { ConfigurationStore } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
 import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
+import { ConfigurationStore, Environment } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
 import { z } from "zod";
 
 @Injectable()
@@ -8,16 +8,18 @@ export class AwsSecretsConfigurationStore<T extends z.ZodType> implements Config
     private readonly configurationName: string;
     private readonly client: SecretsManagerClient;
     private readonly zodSchema: T;
+    private readonly environment: Environment;
 
-    constructor(zodSchema: T, configurationName?: string) {
+    constructor(zodSchema: T, environment: Environment, configurationName?: string) {
         this.zodSchema = zodSchema;
+        this.environment = environment;
         this.configurationName = configurationName ?? "serverlesslaunchpad.com";
         this.client = new SecretsManagerClient({});
     }
 
     async get(): Promise<z.infer<T>> {
         const command = new GetSecretValueCommand({
-            SecretId: `${process.env.NODE_ENV}.${this.configurationName}`,
+            SecretId: `${this.environment}.${this.configurationName}`,
         });
 
         const response = await this.client.send(command);

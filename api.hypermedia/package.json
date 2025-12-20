@@ -37,9 +37,9 @@
         "vitest": "^3.0.8"
     },
     "dependencies": {
-        "@houseofwolves/serverlesslaunchpad.commons": "file:../commons",
-        "@houseofwolves/serverlesslaunchpad.core": "file:../core",
-        "@houseofwolves/serverlesslaunchpad.framework": "file:../framework",
+        "@houseofwolves/serverlesslaunchpad.commons": "*",
+        "@houseofwolves/serverlesslaunchpad.core": "*",
+        "@houseofwolves/serverlesslaunchpad.framework": "*",
         "@types/reflect-metadata": "^0.0.5",
         "reflect-metadata": "^0.2.2",
         "zod": "^3.22.4"
