@@ -1,9 +1,15 @@
+import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
 import chalk from "chalk";
-import { $ } from "zx";
 import { config } from "dotenv";
-import * as path from "path";
 import * as fs from "fs";
-import { StackManager, EnvironmentType } from "./stack_manager";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import { $ } from "zx";
+import { StackManager } from "./stack_manager";
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Handles destruction of CDK stacks with interactive prompts
@@ -23,16 +29,14 @@ export class Destroyer extends StackManager {
             console.log(chalk.green(`\nUsing AWS profile: ${chalk.bold(awsProfile)}\n`));
 
             const environment = await this.promptForEnvironment();
-            
+
             // Extra confirmation for production
             if (environment === "production") {
                 console.log(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT SELECTED! 🚨"));
                 console.log(chalk.red("This will destroy PRODUCTION resources!"));
-                
-                const prodConfirm = await this.question(
-                    chalk.red('Type "DESTROY PRODUCTION" to confirm: ')
-                );
-                
+
+                const prodConfirm = await this.question(chalk.red('Type "DESTROY PRODUCTION" to confirm: '));
+
                 if (prodConfirm !== "DESTROY PRODUCTION") {
                     console.log(chalk.yellow("\nDestruction cancelled."));
                     process.exit(0);
@@ -59,9 +63,9 @@ export class Destroyer extends StackManager {
     /**
      * Load environment-specific configuration
      */
-    private async loadEnvironmentConfig(environment: EnvironmentType): Promise<void> {
+    private async loadEnvironmentConfig(environment: Environment): Promise<void> {
         const envFile = path.join(__dirname, "..", "environments", `.env.${environment}`);
-        
+
         if (fs.existsSync(envFile)) {
             config({ path: envFile });
             console.log(chalk.green("✅ Environment configuration loaded"));
@@ -74,7 +78,7 @@ export class Destroyer extends StackManager {
     /**
      * Confirm destruction with user
      */
-    async confirmDestruction(environment: EnvironmentType, services: string[], awsProfile: string): Promise<boolean> {
+    async confirmDestruction(environment: Environment, services: string[], awsProfile: string): Promise<boolean> {
         const stacks = await this.listStacks(environment, services, awsProfile);
 
         if (stacks.length === 0) {
@@ -90,23 +94,21 @@ export class Destroyer extends StackManager {
         const confirm = await this.question(
             chalk.red("Are you absolutely sure you want to destroy these resources? (yes/no): ")
         );
-        
+
         if (confirm.toLowerCase() !== "yes") {
             return false;
         }
 
         // Double confirmation
-        const doubleConfirm = await this.question(
-            chalk.red("Type the environment name to confirm destruction: ")
-        );
-        
+        const doubleConfirm = await this.question(chalk.red("Type the environment name to confirm destruction: "));
+
         return doubleConfirm.toLowerCase() === environment.toLowerCase();
     }
 
     /**
      * Destroy the selected stacks
      */
-    async destroy(environment: EnvironmentType, services: string[], awsProfile: string): Promise<void> {
+    async destroy(environment: Environment, services: string[], awsProfile: string): Promise<void> {
         const stacks = await this.listStacks(environment, services, awsProfile);
 
         if (stacks.length === 0) {
@@ -131,19 +133,19 @@ export class Destroyer extends StackManager {
                 // Destroy stacks one by one in reverse order
                 for (const stack of reversedStacks) {
                     console.log(chalk.yellow(`\nDestroying ${stack}...`));
-                    
+
                     // Set environment variables and verbose mode for this command
                     const previousVerbose = $.verbose;
                     $.verbose = true;
-                    
+
                     process.env.FORCE_COLOR = "true";
-                    
+
                     await $`AWS_PROFILE=${awsProfile} npx cdk destroy ${stack} --force`;
-                    
+
                     // Restore previous verbose setting
                     $.verbose = previousVerbose;
                 }
-                
+
                 console.log(chalk.green.bold("\n✅ All selected stacks destroyed successfully!"));
                 await this.cleanupLocalFiles(environment);
                 return;
@@ -155,15 +157,14 @@ export class Destroyer extends StackManager {
             process.env.FORCE_COLOR = "true";
 
             await destroyCommand;
-            
+
             // Restore previous verbose setting
             $.verbose = previousVerbose;
 
             console.log(chalk.green.bold("\n✅ Destruction completed successfully!"));
-            
+
             // Clean up local files
             await this.cleanupLocalFiles(environment);
-
         } catch (error) {
             console.error(chalk.red(`\n❌ Destruction failed: ${(error as Error).message}`));
             console.error(chalk.yellow("Some resources may have been partially destroyed."));
@@ -175,7 +176,7 @@ export class Destroyer extends StackManager {
     /**
      * Clean up local configuration files
      */
-    private async cleanupLocalFiles(environment: EnvironmentType): Promise<void> {
+    private async cleanupLocalFiles(environment: Environment): Promise<void> {
         console.log(chalk.blue("\n🧹 Cleaning up local files..."));
 
         const filesToClean = [
@@ -189,14 +190,16 @@ export class Destroyer extends StackManager {
                     fs.unlinkSync(file);
                     console.log(chalk.green(`✅ Removed ${path.basename(file)}`));
                 } catch (error) {
-                    console.warn(chalk.yellow(`⚠️  Failed to remove ${path.basename(file)}: ${(error as Error).message}`));
+                    console.warn(
+                        chalk.yellow(`⚠️  Failed to remove ${path.basename(file)}: ${(error as Error).message}`)
+                    );
                 }
             }
         }
 
         // Clean CDK context if destroying all environments
-        const allEnvironments: EnvironmentType[] = ["development", "staging", "production"];
-        const remainingEnvFiles = allEnvironments.some(env => 
+        const allEnvironments: Environment[] = [Environment.Development, Environment.Staging, Environment.Production];
+        const remainingEnvFiles = allEnvironments.some((env) =>
             fs.existsSync(path.join(__dirname, "..", "environments", `.vpc.${env}.json`))
         );
 
