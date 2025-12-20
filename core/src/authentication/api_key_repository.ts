@@ -15,7 +15,7 @@ export type ApiKey = {
     apiKeyId: string;
     userId: string;
     apiKey: string;
-    description: string;
+    label: string;
     dateCreated: Date;
     dateLastAccessed: Date;
 };
@@ -33,6 +33,7 @@ export type GetApiKeysMessage = {
 export type CreateApiKeyMessage = {
     userId: string;
     apiKey: string;
+    label: string;
 };
 
 export type VerifyApiKeyMessage = {
@@ -41,5 +42,5 @@ export type VerifyApiKeyMessage = {
 
 export type DeleteApiKeysMessage = {
     userId: string;
-    apiKeys: string[];
+    apiKeyIds: string[];
 };

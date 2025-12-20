@@ -29,7 +29,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
             apiKeyId: row.apiKeyId,
             userId: row.userId,
             apiKey: row.apiKey,
-            description: row.description,
+            label: row.description, // Map database 'description' to domain 'label'
             dateCreated: new Date(row.dateCreated),
             dateLastAccessed: new Date(row.dateLastAccessed),
         };
@@ -112,7 +112,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
             apiKeyId,
             message.userId,
             message.apiKey,
-            "API Key",
+            message.label, // Map domain 'label' to database 'description'
             this.athenaClient.formatTimestamp(dateCreated),
             this.athenaClient.formatTimestamp(dateCreated),
         ];
@@ -169,7 +169,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
                 apiKeyId: row["apiKey.apiKeyId"],
                 userId: row["apiKey.userId"],
                 apiKey: row["apiKey.apiKey"],
-                description: row["apiKey.description"],
+                label: row["apiKey.description"], // Map database 'description' to domain 'label'
                 dateCreated: new Date(row["apiKey.dateCreated"]),
                 dateLastAccessed: new Date(row["apiKey.dateLastAccessed"]),
             };
@@ -192,8 +192,8 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
     }
 
     async deleteApiKeys(message: DeleteApiKeysMessage): Promise<void> {
-        const sql = `DELETE FROM api_keys WHERE userId = ? AND apiKey IN (${message.apiKeys.map(() => "?").join(",")})`;
-        const params = [message.userId, ...message.apiKeys];
+        const sql = `DELETE FROM api_keys WHERE userId = ? AND apiKeyId IN (${message.apiKeyIds.map(() => "?").join(",")})`;
+        const params = [message.userId, ...message.apiKeyIds];
 
         await this.athenaClient.query(sql, params);
     }

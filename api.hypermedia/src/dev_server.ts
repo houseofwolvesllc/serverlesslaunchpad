@@ -70,6 +70,17 @@ function expressToALBEvent(req: express.Request): ALBEvent {
         }
     });
 
+    // Inject x-forwarded-for header if not present (simulates AWS ALB behavior)
+    // In production, AWS ALB automatically adds this header
+    if (!headers["x-forwarded-for"]) {
+        // Normalize IPv6 localhost (::1) to IPv4 (127.0.0.1) for session consistency
+        let ipAddress = req.ip || "127.0.0.1";
+        if (ipAddress === "::1" || ipAddress === "::ffff:127.0.0.1") {
+            ipAddress = "127.0.0.1";
+        }
+        headers["x-forwarded-for"] = ipAddress;
+    }
+
     // Extract path parameters from route params
     const pathParameters = req.params && Object.keys(req.params).length > 0 ? req.params : null;
 

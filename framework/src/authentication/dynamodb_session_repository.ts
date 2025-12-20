@@ -293,9 +293,17 @@ export class DynamoDbSessionRepository extends SessionRepository {
     private isDdbPagingInstruction(
         pagingInstruction: PagingInstruction | undefined
     ): pagingInstruction is DdbPagingInstruction {
+        if (pagingInstruction === undefined) {
+            return false;
+        }
+
+        const ddbInstruction = pagingInstruction as DdbPagingInstruction;
+
+        // lastEvaluatedKey can be undefined (first page) or an object (subsequent pages)
+        // but NOT null (typeof null === "object" but it's not valid)
         return (
-            pagingInstruction !== undefined &&
-            typeof (pagingInstruction as DdbPagingInstruction).lastEvaluatedKey === "object"
+            ddbInstruction.lastEvaluatedKey === undefined ||
+            (typeof ddbInstruction.lastEvaluatedKey === "object" && ddbInstruction.lastEvaluatedKey !== null)
         );
     }
 }

@@ -40,8 +40,9 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
             apiKeys: this.apiKeys.map(apiKey => ({
                 apiKeyId: apiKey.apiKeyId,
                 userId: apiKey.userId,
-                description: apiKey.description,
-                apiKey: apiKey.apiKey,
+                label: apiKey.label,
+                apiKey: apiKey.apiKey, // Full API key
+                keyPrefix: apiKey.apiKey.substring(0, 8), // First 8 chars for reference
                 dateCreated: apiKey.dateCreated.toISOString(),
                 dateLastAccessed: apiKey.dateLastAccessed.toISOString(),
                 _links: {

@@ -25,7 +25,7 @@ export type AuthenticateResult = {
             description?: string;
             ipAddress: string;
             userAgent: string;
-            sessionToken?: string;
+            sessionId?: string;
             dateLastAccessed?: Date;
             dateExpires?: Date;
         };

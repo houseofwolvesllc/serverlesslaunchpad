@@ -28,6 +28,7 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
 
     /**
      * Map DynamoDB item to ApiKey domain object
+     * Note: Database column is 'description' but mapped to 'label' for backward compatibility
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     protected mapToApiKey(item: Record<string, any>, client: DynamoDbClient): ApiKey {
@@ -35,7 +36,7 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
             apiKeyId: item.apiKeyId,
             userId: item.userId,
             apiKey: item.apiKey,
-            description: item.description,
+            label: item.description, // Map database 'description' to domain 'label'
             dateCreated: client.parseTimestamp(item.dateCreated),
             dateLastAccessed: client.parseTimestamp(item.dateLastAccessed),
         };
@@ -111,17 +112,18 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
 
     /**
      * Create a new API key with ULID for apiKeyId
+     * Note: Maps 'label' to database 'description' column for backward compatibility
      */
     async createApiKey(message: CreateApiKeyMessage): Promise<ApiKey> {
         const client = await this.clientFactory.getClient();
         const dateCreated = new Date();
         const apiKeyId = ulid(); // Generate time-ordered ULID
 
-        const item = {
+        const item: Record<string, any> = {
             apiKeyId: apiKeyId,
             userId: message.userId,
             apiKey: message.apiKey,
-            description: "API Key",
+            description: message.label, // Map domain 'label' to database 'description'
             dateCreated: client.formatTimestamp(dateCreated),
             dateLastAccessed: client.formatTimestamp(dateCreated),
         };
@@ -188,41 +190,19 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
     }
 
     /**
-     * Batch delete API keys
+     * Batch delete API keys by ID
      */
     async deleteApiKeys(message: DeleteApiKeysMessage): Promise<void> {
         const client = await this.clientFactory.getClient();
 
-        const deleteKeys = message.apiKeys.map((apiKey) => {
-            // We need to query to get the apiKeyId first since we only have the apiKey value
-            // This is a limitation - ideally the message would include apiKeyIds
-            // For now, we'll do individual queries
-            return client
-                .query<Record<string, any>>({
-                    TableName: this.tableName,
-                    IndexName: "apiKey-index",
-                    KeyConditionExpression: "apiKey = :key",
-                    ExpressionAttributeValues: {
-                        ":key": apiKey,
-                    },
-                })
-                .then((result) => {
-                    if (result.items.length > 0) {
-                        const item = result.items[0] as Record<string, any>;
-                        return {
-                            userId: item.userId,
-                            apiKeyId: item.apiKeyId,
-                        };
-                    }
-                    return null;
-                });
-        });
+        // Build delete keys from apiKeyIds (we now have IDs directly)
+        const deleteKeys = message.apiKeyIds.map((apiKeyId) => ({
+            userId: message.userId,
+            apiKeyId: apiKeyId,
+        }));
 
-        const resolvedKeys = await Promise.all(deleteKeys);
-        const validKeys = resolvedKeys.filter((key) => key !== null) as Record<string, any>[];
-
-        if (validKeys.length > 0) {
-            await client.batchWriteItems(this.tableName, validKeys);
+        if (deleteKeys.length > 0) {
+            await client.batchWriteItems(this.tableName, deleteKeys);
         }
     }
 
@@ -232,9 +212,17 @@ export class DynamoDbApiKeyRepository extends ApiKeyRepository {
     private isDdbPagingInstruction(
         pagingInstruction: PagingInstruction | undefined
     ): pagingInstruction is DdbPagingInstruction {
+        if (pagingInstruction === undefined) {
+            return false;
+        }
+
+        const ddbInstruction = pagingInstruction as DdbPagingInstruction;
+
+        // lastEvaluatedKey can be undefined (first page) or an object (subsequent pages)
+        // but NOT null (typeof null === "object" but it's not valid)
         return (
-            pagingInstruction !== undefined &&
-            typeof (pagingInstruction as DdbPagingInstruction).lastEvaluatedKey === "object"
+            ddbInstruction.lastEvaluatedKey === undefined ||
+            (typeof ddbInstruction.lastEvaluatedKey === "object" && ddbInstruction.lastEvaluatedKey !== null)
         );
     }
 }

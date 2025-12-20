@@ -115,12 +115,15 @@ export function Protected(options: ProtectedOptions = {}) {
                 });
 
                 if (!verifyResult?.authContext?.identity) {
-                    // Token was provided but invalid - ALWAYS throw (not anonymous)
-                    throw new UnauthorizedError("Invalid authentication credentials");
-                }
+                    if (!options.allowAnonymous) {
+                        throw new UnauthorizedError("Invalid authentication credentials");
+                    }
 
-                // Valid token - inject into event
-                event.authContext = verifyResult.authContext;
+                    AuthenticationCookieRepository.remove(event as any);
+                } else {
+                    // Valid token - inject into event
+                    event.authContext = verifyResult.authContext;
+                }
             }
 
             // Call the original method with the enriched event

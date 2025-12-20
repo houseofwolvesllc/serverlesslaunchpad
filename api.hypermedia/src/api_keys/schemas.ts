@@ -23,5 +23,15 @@ export const DeleteApiKeysSchema = z.object({
     })
 });
 
+export const CreateApiKeySchema = z.object({
+    params: z.object({
+        userId: z.string()
+    }),
+    body: z.object({
+        label: z.string().min(1, "Label is required").max(255, "Label too long (max 255 characters)")
+    })
+});
+
 export type GetApiKeysMessage = z.infer<typeof GetApiKeysSchema>;
 export type DeleteApiKeysMessage = z.infer<typeof DeleteApiKeysSchema>;
+export type CreateApiKeyMessage = z.infer<typeof CreateApiKeySchema>;

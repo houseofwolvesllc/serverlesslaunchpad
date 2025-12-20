@@ -13,6 +13,8 @@
 
 import { getIcon } from './icon_mapper';
 import type { Icon } from '@tabler/icons-react';
+import { createPostActionHandler } from './navigation_actions';
+import type { NavigateFunction } from 'react-router-dom';
 
 /**
  * Navigation item structure from the API
@@ -36,7 +38,7 @@ export interface LinksGroupProps {
     icon: Icon;
     label: string;
     initiallyOpened?: boolean;
-    links?: { label: string; link?: string; onClick?: () => Promise<void> }[];
+    links?: { label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }[];
 }
 
 /**
@@ -118,7 +120,9 @@ export function transformNavigationItem(
     const icon = getIcon(item.icon);
 
     // Transform child items if present
-    let links: Array<{ label: string; link?: string; onClick?: () => Promise<void> }> | undefined = undefined;
+    let links:
+        | Array<{ label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }>
+        | undefined = undefined;
 
     if (item.items) {
         const childLinks = item.items
@@ -134,11 +138,10 @@ export function transformNavigationItem(
                 }
 
                 // Create onClick handler for POST methods
-                const onClick = childItem.method === 'POST' ? async () => {
-                    console.log(`POST navigation to ${href} - TODO: Implement proper API call`);
-                    // TODO: Implement proper POST request handling via apiClient
-                    // For now, just log the action
-                } : undefined;
+                const onClick =
+                    childItem.method === 'POST' && href
+                        ? createPostActionHandler(href, childItem.title)
+                        : undefined;
 
                 return {
                     label: childItem.title,
