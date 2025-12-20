@@ -14,13 +14,20 @@ import { NoMatch } from './NoMatch';
 export const Router = () => {
     return (
         <Routes>
+            <Route path="auth/signin" element={<SignInForm />} />
             <Route path="auth/signup" element={<SignUpForm />} />
             <Route path="auth/confirm-signup" element={<ConfirmSignUpForm />} />
             <Route path="auth/reset-password" element={<ResetPasswordForm />} />
             <Route path="auth/confirm-reset-password" element={<ConfirmResetPasswordForm />} />
-            <Route path="auth/signin" element={<SignInForm />} />
             <Route
                 index
+                element={
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
                 path="dashboard"
                 element={
                     <ProtectedRoute>

@@ -8,11 +8,11 @@ export const ConfirmResetPasswordForm = () => {
     const auth = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const confirmationEmail = searchParams.get('email');
+    const confirmationEmail = (searchParams.get('email') || '').trim().replace(/\s/g, '+');
 
     const form = useForm({
         initialValues: {
-            confirmationEmail: confirmationEmail || '',
+            confirmationEmail: confirmationEmail,
             confirmationCode: '',
             newPassword: '',
             confirmNewPassword: '',
@@ -67,7 +67,11 @@ export const ConfirmResetPasswordForm = () => {
                         form.setFieldError('confirmationCode', 'Too many attempts. Please try again later.');
                         return;
                     default:
-                        console.error('Unhandled auth error:', error);
+                        notifications.show({
+                            color: 'red',
+                            title: 'Something Unexpected Happened',
+                            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+                        });
                         throw error;
                 }
             }

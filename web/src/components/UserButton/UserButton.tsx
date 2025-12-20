@@ -1,13 +1,19 @@
 import { IconUser, IconLogout } from '@tabler/icons-react';
 import { LinksGroup } from '../NavbarLinksGroup/NavbarLinksGroup';
-import { useAuth } from '../../features/Authentication';
+import { AuthenticationContext, useAuth } from '../../features/Authentication';
+import { useContext } from 'react';
 
 export function UserButton() {
     const auth = useAuth();
+    const { signedInUser, initialized } = useContext(AuthenticationContext);
+
+    if (!initialized || !signedInUser) {
+        return null;
+    }
 
     const userMenuData = [
         {
-            label: auth.signedInUser?.name || 'User Menu',
+            label: signedInUser.name || 'User Menu',
             icon: IconUser,
             initiallyOpened: false,
             links: [
