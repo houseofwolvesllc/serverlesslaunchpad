@@ -2,13 +2,15 @@
 	import { goto } from '$app/navigation';
 	import { signUp, SignInStep } from '$lib/auth';
 	import { logger } from '$lib/logging/logger';
-	
+	import { Eye, EyeOff } from 'lucide-svelte';
+
 	let email = '';
 	let password = '';
 	let firstName = '';
 	let lastName = '';
 	let loading = false;
 	let errorMessage = '';
+	let showPassword = false;
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -87,13 +89,27 @@
 
 			<label class="label">
 				<span>Password *</span>
-				<input 
-					class="input" 
-					type="password" 
-					bind:value={password}
-					required
-					disabled={loading}
-				/>
+				<div class="relative">
+					<input
+						class="input w-full pr-10"
+						type={showPassword ? "text" : "password"}
+						bind:value={password}
+						required
+						disabled={loading}
+					/>
+					<button
+						type="button"
+						on:click={() => showPassword = !showPassword}
+						class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-900"
+						aria-label={showPassword ? "Hide password" : "Show password"}
+					>
+						{#if showPassword}
+							<EyeOff class="h-4 w-4" />
+						{:else}
+							<Eye class="h-4 w-4" />
+						{/if}
+					</button>
+				</div>
 				<div class="text-xs text-surface-600-300-token mt-1">
 					Must be at least 8 characters with uppercase, lowercase, number, and special character
 				</div>

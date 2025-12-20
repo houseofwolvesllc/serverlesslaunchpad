@@ -4,6 +4,7 @@
 	import { navigationHistoryStore } from '$lib/stores/navigation_history_store';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { signOut } from '$lib/auth';
 	import { authStore } from '$lib/stores/auth_store';
 	import { onMount } from 'svelte';
 	import webConfigStore from '$lib/config/web_config_store';
@@ -52,9 +53,9 @@
 
 	async function handleLogout() {
 		try {
-			await authStore.signOut();
+			await signOut();
 			toastStore.success('Logged out successfully');
-			goto('/auth/signin');
+			await goto('/auth/signin', { replaceState: true, invalidateAll: true });
 		} catch (error) {
 			toastStore.error('Failed to logout');
 		}

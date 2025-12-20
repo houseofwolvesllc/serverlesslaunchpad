@@ -14,6 +14,7 @@ export default defineConfig({
         port: 5175,
         strictPort: true, // Fail if port is already in use
     },
+    clearScreen: false, // Preserve terminal scrollback history
     build: {
         outDir: 'dist',
         sourcemap: true,

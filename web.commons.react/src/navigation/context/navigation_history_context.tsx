@@ -96,13 +96,11 @@ export function NavigationHistoryProvider({ children }: NavigationHistoryProvide
   }, []);
 
   const markNextNavigationAsMenu = useCallback(() => {
-    console.log('[Nav History] Setting menu flag to TRUE');
     nextNavigationIsMenu.current = true;
   }, []);
 
   const isNextNavigationMenu = useCallback(() => {
     const wasMenu = nextNavigationIsMenu.current;
-    console.log('[Nav History] Reading menu flag:', wasMenu, '(resetting to false)');
     nextNavigationIsMenu.current = false; // Reset after reading
     return wasMenu;
   }, []);

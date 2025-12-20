@@ -242,18 +242,11 @@ export async function verifySession(): Promise<User> {
     }
 }
 
-async function revokeSession(sessionToken: string | undefined): Promise<void> {
+async function revokeSession(): Promise<void> {
     try {
         const entryPoint = getEntryPoint();
 
-        logger.debug('Revoking hypermedia API session', {
-            hasSessionToken: !!sessionToken
-        });
-
-        if (!sessionToken) {
-            logger.warn('No session token available for revocation');
-            return;
-        }
+        logger.debug('Revoking hypermedia API session');
 
         const revokeHref = await entryPoint.getTemplateTarget('revoke');
         if (!revokeHref) {
@@ -262,12 +255,13 @@ async function revokeSession(sessionToken: string | undefined): Promise<void> {
         }
 
         try {
-            logger.debug('Calling revoke endpoint with SessionToken', { revokeHref });
+            logger.debug('Calling revoke endpoint (using cookie auth)', { revokeHref });
 
+            // Let the API use the session cookie for authentication
+            // The cookie was set during federation and contains the sessionToken
             await apiClient.request(revokeHref, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `SessionToken ${sessionToken}`,
                     'Content-Type': 'application/json',
                 },
             });
@@ -418,28 +412,17 @@ export async function signOut() {
     try {
         logger.debug('Sign out initiated');
 
-        // Get current auth state
-        const authState = await new Promise<any>((resolve) => {
-            const unsubscribe = authStore.subscribe(value => {
-                unsubscribe();
-                resolve(value);
-            });
-        });
-
-        const sessionId = authState.user?.authContext?.sessionId;
-        logger.debug('Extracted sessionId', {
-            hasSessionId: !!sessionId
-        });
-
-        if (sessionId) {
-            await revokeSession(sessionId);
-        } else {
-            logger.warn('No sessionId found in user context, skipping revoke');
-        }
+        // Revoke the session using cookie-based authentication
+        await revokeSession();
     } catch (error) {
         logger.warn('Error during signout revoke', { error });
     }
 
-    await amplify.signOut();
+    try {
+        await amplify.signOut();
+    } catch (error) {
+        logger.warn('Amplify signOut error (continuing)', { error });
+    }
+
     authStore.signOut();
 }

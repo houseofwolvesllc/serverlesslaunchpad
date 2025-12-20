@@ -35,7 +35,7 @@
         "dev:watch:framework": "cd framework && npm run build:watch",
         "dev:watch:packages": "concurrently --kill-others-on-fail --prefix-colors yellow,green,blue --names \"TYPES,CORE,FRAMEWORK\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
         "dev": "echo '🚀 Starting development servers...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta --names \"WEB,API\" \"npm run dev:web:mantine\" \"npm run dev:api\"",
-        "dev:watch": "echo '🚀 Starting all development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,teal,green,blue,magenta,yellow,orange,red --names \"MANTINE,SHADCN,DAISYUI,SVELTE,API,TYPES,CORE,FRAMEWORK\" \"npm run dev:web:mantine\" \"npm run dev:web:shadcn\" \"npm run dev:web:daisyui\" \"npm run dev:web:svelte\" \"npm run dev:api\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
+        "dev:watch": "echo '🚀 Starting all development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,teal,green,blue,magenta,yellow,orange,red,white --names \"MANTINE,SHADCN,DAISYUI,SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO\" \"npm run dev:web:mantine\" \"npm run dev:web:shadcn\" \"npm run dev:web:daisyui\" \"npm run dev:web:svelte\" \"npm run dev:api\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\" \"docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG\"",
         "dev:reset": "npm run dev:clean && sleep 2 && npm run dev"
     },
     "devDependencies": {

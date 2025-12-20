@@ -51,6 +51,9 @@ Thumbs.db
 .env*
 config/*
 
+# Generated infrastructure config files (created by moto init scripts)
+**/config/moto.infrastructure.json
+
 .cognito/
 .claude/
 claude.md
