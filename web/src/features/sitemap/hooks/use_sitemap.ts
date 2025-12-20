@@ -105,17 +105,19 @@ const RETRY_DELAY = 1000;
  * for backward compatibility with route generation
  */
 function convertNavToNavigationItems(
-    navGroups: NavGroup[],
-    links: Record<string, HalLink>
+    nav: (NavItem | NavGroup)[],
+    links: Record<string, HalLink>,
+    templates: Record<string, HalTemplate>
 ): NavigationItem[] {
     const items: NavigationItem[] = [];
 
-    for (const group of navGroups) {
-        for (const item of group.items) {
-            if ('rel' in item) {
-                const navItem = item as NavItem;
-                const link = links[navItem.rel];
+    function processItem(item: NavItem | NavGroup) {
+        if ('rel' in item) {
+            // Root-level NavItem
+            const navItem = item as NavItem;
 
+            if (navItem.type === 'link') {
+                const link = links[navItem.rel];
                 if (link) {
                     items.push({
                         id: navItem.rel,
@@ -124,8 +126,52 @@ function convertNavToNavigationItems(
                         method: 'GET',
                     });
                 }
+            } else if (navItem.type === 'template') {
+                const template = templates[navItem.rel];
+                if (template) {
+                    items.push({
+                        id: navItem.rel,
+                        title: navItem.title || template.title || navItem.rel,
+                        href: template.target,
+                        method: template.method,
+                    });
+                }
+            }
+        } else {
+            // NavGroup - process all items in the group
+            const group = item as NavGroup;
+            for (const groupItem of group.items) {
+                if ('rel' in groupItem) {
+                    const navItem = groupItem as NavItem;
+
+                    if (navItem.type === 'link') {
+                        const link = links[navItem.rel];
+                        if (link) {
+                            items.push({
+                                id: navItem.rel,
+                                title: navItem.title || link.title || navItem.rel,
+                                href: link.href,
+                                method: 'GET',
+                            });
+                        }
+                    } else if (navItem.type === 'template') {
+                        const template = templates[navItem.rel];
+                        if (template) {
+                            items.push({
+                                id: navItem.rel,
+                                title: navItem.title || template.title || navItem.rel,
+                                href: template.target,
+                                method: template.method,
+                            });
+                        }
+                    }
+                }
             }
         }
+    }
+
+    for (const item of nav) {
+        processItem(item);
     }
 
     return items;
@@ -244,7 +290,7 @@ export function useSitemap(): UseSitemapResult {
 
                 if (response._nav) {
                     // New structure: Convert _nav to old NavigationItem[] for route generation
-                    items = convertNavToNavigationItems(response._nav, response._links || {});
+                    items = convertNavToNavigationItems(response._nav, response._links || {}, response._templates || {});
                 } else if (response.navigation?.items) {
                     // Old structure: Use directly
                     items = response.navigation.items;

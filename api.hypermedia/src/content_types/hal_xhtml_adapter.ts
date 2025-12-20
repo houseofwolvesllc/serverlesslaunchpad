@@ -182,16 +182,22 @@ ${renderedItems}
             return '';
         }
 
-        const links = Object.entries(hal._links).map(([rel, link]) => {
-            // Handle both single link and array of links (HAL allows arrays)
-            const linkObj = Array.isArray(link) ? link[0] : link;
-            const title = linkObj.title || rel;
-            return `    <a rel="${this.escapeHtml(rel)}" href="${this.escapeHtml(linkObj.href)}">${this.escapeHtml(title)}</a>`;
-        }).join('\n');
+        const links = Object.entries(hal._links)
+            .map(([rel, link]) => {
+                // Handle both single link and array of links (HAL allows arrays)
+                const linkObj = Array.isArray(link) ? link[0] : link;
+                const title = linkObj.title || rel;
+                return `    <a rel="${this.escapeHtml(rel)}" href="${this.escapeHtml(linkObj.href)}">${this.escapeHtml(title)}</a>`;
+            })
+            .filter(Boolean);
+
+        if (links.length === 0) {
+            return '';
+        }
 
         return `  <nav class="hal-links">
     <h3>Links</h3>
-${links}
+${links.join('\n')}
   </nav>`;
     }
 

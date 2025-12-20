@@ -1,6 +1,9 @@
 import { User } from "@houseofwolves/serverlesslaunchpad.core";
 import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
 import { AccessAdapter, AccessContext } from "./access_adapter";
+import { Router } from "../router";
+import { SessionsController } from "../sessions/sessions_controller";
+import { ApiKeysController } from "../api_keys/api_keys_controller";
 
 export interface AuthContext {
     identity: User;
@@ -8,7 +11,10 @@ export interface AuthContext {
 }
 
 export class AuthContextAdapter extends HalResourceAdapter {
-    constructor(private authContext: AuthContext) {
+    constructor(
+        private authContext: AuthContext,
+        private router: Router
+    ) {
         super();
     }
 
@@ -47,21 +53,45 @@ export class AuthContextAdapter extends HalResourceAdapter {
     get _links(): HalObject["_links"] {
         return {
             self: this.createLink(`/users/${this.userId}`),
-            sessions: this.createLink(`/users/${this.userId}/sessions/`, {
-                title: "Manage user sessions",
-            }),
-            "api-keys": this.createLink(`/users/${this.userId}/api_keys/`, {
-                title: "Manage API keys",
-            }),
         };
     }
 
     get _templates(): HalObject["_templates"] {
         const templates: HalObject["_templates"] = {
             verify: this.createTemplate(
-                "Verify current session",
+                "Verify Session",
                 "POST",
                 "/auth/verify"
+            ),
+            sessions: this.createTemplate(
+                "Sessions",
+                "POST",
+                this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        })
+                    ]
+                }
+            ),
+            "api-keys": this.createTemplate(
+                "API Keys",
+                "POST",
+                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        })
+                    ]
+                }
             ),
         };
 

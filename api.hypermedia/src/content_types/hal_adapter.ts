@@ -207,8 +207,8 @@ export abstract class HalResourceAdapter implements HalObject {
 
     protected getBaseLinks(): Record<string, HalLink> | undefined {
         return {
-            home: this.createLink("/", { title: "API Home" }),
-            sitemap: this.createLink("/sitemap", { title: "Navigation" })
+            home: this.createLink("/", { title: "API Root" }),
+            sitemap: this.createLink("/sitemap", { title: "API Navigation" })
         };
     }
 

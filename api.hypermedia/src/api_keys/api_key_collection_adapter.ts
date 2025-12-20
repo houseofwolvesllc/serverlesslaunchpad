@@ -21,26 +21,11 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
     }
 
     get _links() {
-        const selfHref = this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId });
-
-        const links: any = {
-            self: this.createLink(selfHref, { title: "API Keys" }),
-            ...this.getBaseLinks(),
+        // POST-only API: only include GET-able navigation links
+        // Operations (self, next, prev) are in _templates only
+        return {
+            ...this.getBaseLinks(), // home, sitemap
         };
-
-        if (this.pagingData.next) {
-            links.next = this.createLink(selfHref, {
-                title: "Next page",
-            });
-        }
-
-        if (this.pagingData.previous) {
-            links.previous = this.createLink(selfHref, {
-                title: "Previous page",
-            });
-        }
-
-        return links;
     }
 
     get _embedded() {
@@ -53,18 +38,32 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                 keyPrefix: apiKey.apiKey.substring(0, 8), // First 8 chars for reference
                 dateCreated: apiKey.dateCreated.toISOString(),
                 dateLastAccessed: apiKey.dateLastAccessed.toISOString(),
-                _links: {
-                    // Note: Individual API key resource doesn't have a route yet
-                    // Using path template for now - add route when implementing GET /users/{userId}/api-keys/{apiKeyId}
-                    self: this.createLink(`/users/${this.userId}/api-keys/${apiKey.apiKeyId}`),
-                },
-                // No individual delete template - use bulk delete only
+                // No _links - all API key data is visible in collection view
+                // No individual API key endpoint needed
             })),
         };
     }
 
     get _templates() {
+        const listEndpoint = this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId });
+
         const templates: any = {
+            // Self template - allows link to reference this POST operation
+            self: this.createTemplate(
+                "API Keys",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        })
+                    ]
+                }
+            ),
             default: this.createTemplate(
                 "Create API Key",
                 "POST",
@@ -99,7 +98,6 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
         };
 
         // Add pagination templates when applicable
-        const listEndpoint = this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId });
 
         if (this.pagingData.next) {
             templates.next = this.createTemplate(

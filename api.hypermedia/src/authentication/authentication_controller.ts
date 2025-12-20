@@ -47,7 +47,7 @@ export class AuthenticationController extends BaseController {
 
         // Use HAL adapter to structure the response
         // Safe to assert - we've verified identity exists above
-        const hal = new AuthContextAdapter(authResult.authContext as AuthContext);
+        const hal = new AuthContextAdapter(authResult.authContext as AuthContext, this.router);
 
         // Create response (adapter instance IS the HAL object)
         const response = this.success(event, hal);
@@ -100,7 +100,7 @@ export class AuthenticationController extends BaseController {
             throw new UnauthorizedError("Session verification failed");
         }
 
-        const hal = new AuthContextAdapter(verifyResult.authContext as AuthContext);
+        const hal = new AuthContextAdapter(verifyResult.authContext as AuthContext, this.router);
 
         const response = this.success(event, hal);
 
