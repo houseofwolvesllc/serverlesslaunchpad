@@ -132,7 +132,7 @@ echo "Generating infrastructure configuration files..."
 generate_infrastructure_config "api.hypermedia/config/local.infrastructure.json"
 
 # Generate Web configuration (same content, different location)
-generate_infrastructure_config "web/config/local.infrastructure.json"
+generate_infrastructure_config "mantine.web/config/local.infrastructure.json"
 
 echo ""
 echo "========================================="
@@ -141,7 +141,7 @@ echo "========================================="
 echo ""
 echo "Generated files:"
 echo "  - api.hypermedia/config/local.infrastructure.json"
-echo "  - web/config/local.infrastructure.json"
+echo "  - mantine.web/config/local.infrastructure.json"
 echo ""
 echo "These files contain non-sensitive infrastructure references."
 echo "Sensitive data (secrets, salts) remains in AWS Secrets Manager."
