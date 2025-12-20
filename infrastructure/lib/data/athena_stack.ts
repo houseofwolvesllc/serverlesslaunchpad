@@ -26,7 +26,7 @@ export class AthenaStack extends BaseStack {
      */
     private createDataBucket(): Bucket {
         return new Bucket(this, this.constructId("data_bucket"), {
-            bucketName: `${this.environment}.serverlesslaunchpad.data`,
+            bucketName: `${this.appEnvironment}.slp.data`,
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             versioned: this.isProduction(),
@@ -40,7 +40,7 @@ export class AthenaStack extends BaseStack {
      */
     private createQueryResultsBucket(): Bucket {
         return new Bucket(this, this.constructId("query_results_bucket"), {
-            bucketName: `${this.environment}.serverlesslaunchpad.results`,
+            bucketName: `${this.appEnvironment}.slp.results`,
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             versioned: this.isProduction(),
@@ -75,7 +75,7 @@ export class AthenaStack extends BaseStack {
 
         return new CfnWorkGroup(this, this.constructId("athena_work_group"), {
             name: athena.workGroupName,
-            description: `Athena workgroup for Serverless Launchpad ${this.environment} environment`,
+            description: `Athena workgroup for Serverless Launchpad ${this.appEnvironment} environment`,
             workGroupConfiguration: this.getWorkGroupConfiguration(),
             tags: this.getWorkGroupTags(),
         });
@@ -107,7 +107,7 @@ export class AthenaStack extends BaseStack {
      */
     private getWorkGroupTags() {
         return [
-            { key: "Environment", value: this.environment },
+            { key: "Environment", value: this.appEnvironment },
             { key: "Purpose", value: "QueryExecution" },
         ];
     }

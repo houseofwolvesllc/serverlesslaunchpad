@@ -1,6 +1,6 @@
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
-import { ApplicationTargetGroup } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { ApplicationTargetGroup, Protocol, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LambdaTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { Effect, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
@@ -19,15 +19,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export interface ApiLambdaStackProps extends BaseStackProps {
-    targetGroup: ApplicationTargetGroup;
     configurationSecret: Secret;
     queryResultsBucket: Bucket;
     userPoolId: string;
     userPoolClientId: string;
-    vpc?: IVpc;
-    vpcConfig?: {
-        type: "default" | "custom" | "existing";
-    };
+    vpc: IVpc;
     description?: string;
 }
 
@@ -36,36 +32,34 @@ export interface ApiLambdaStackProps extends BaseStackProps {
  */
 export class ApiLambdaStack extends BaseStack {
     public readonly apiFunction: NodejsFunction;
+    public readonly targetGroup: ApplicationTargetGroup;
     public readonly executionRole: Role;
     private readonly logGroup: LogGroup;
 
     constructor(scope: Construct, id: string, props: ApiLambdaStackProps) {
         super(scope, id, props);
-
-        // Generate configuration file before creating Lambda
-        this.generateConfigurationFile(props);
-
+        
         this.logGroup = this.createLogGroup();
         this.executionRole = this.createExecutionRole();
         this.addExecutionRolePolicies(props);
+        this.targetGroup = this.createTargetGroup(props);
         this.apiFunction = this.createLambdaFunction(props);
-        this.configureLambdaIntegration(props);
+        this.configureLambdaIntegration();
+
+        // Generate configuration file after creating resources
+        this.generateConfigurationFile(props);
         this.createOutputs();
     }
-
 
     /**
      * Generate configuration file and copy it to api.hypermedia project
      */
     private generateConfigurationFile(props: ApiLambdaStackProps): void {
-        const fs = require("fs");
-        const path = require("path");
-        
-        const { userPoolId, userPoolClientId, queryResultsBucket, targetGroup } = props;
-        
+        const { userPoolId, userPoolClientId, queryResultsBucket } = props;
+
         // Build configuration from dependency stack outputs
         const config = {
-            environment: this.environment,
+            environment: this.appEnvironment,
             cognito: {
                 user_pool_id: userPoolId,
                 user_pool_client_id: userPoolClientId,
@@ -76,31 +70,31 @@ export class ApiLambdaStack extends BaseStack {
                 results_bucket: queryResultsBucket.bucketName,
             },
             alb: {
-                target_group_arn: targetGroup.targetGroupArn,
+                target_group_arn: this.targetGroup.targetGroupArn,
             },
             features: {
-                enable_analytics: this.environment === "production",
-                enable_rate_limiting: this.environment !== "development",
-                enable_advanced_security: this.environment === "production",
+                enable_analytics: this.appEnvironment === "production",
+                enable_rate_limiting: this.appEnvironment !== "development",
+                enable_advanced_security: this.appEnvironment === "production",
             },
             limits: {
-                max_api_keys_per_user: this.environment === "production" ? 3 : 10,
-                session_timeout_hours: this.environment === "production" ? 8 : 24,
-                max_query_timeout_seconds: this.environment === "production" ? 120 : 300,
+                max_api_keys_per_user: this.appEnvironment === "production" ? 3 : 10,
+                session_timeout_hours: this.appEnvironment === "production" ? 8 : 24,
+                max_query_timeout_seconds: this.appEnvironment === "production" ? 120 : 300,
             },
         };
-        
+
         // Write config to api.hypermedia project
         const apiProjectPath = join(__dirname, "../../../api.hypermedia");
         const configDir = join(apiProjectPath, "config");
-        const configFile = join(configDir, `${this.environment}.config.json`);
-        
+        const configFile = join(configDir, `${this.appEnvironment}.config.json`);
+
         try {
             // Create config directory if it doesn't exist
             if (!existsSync(configDir)) {
                 mkdirSync(configDir, { recursive: true });
             }
-            
+
             // Write configuration file
             writeFileSync(configFile, JSON.stringify(config, null, 2));
             console.log(`✅ Generated configuration file: ${configFile}`);
@@ -114,10 +108,26 @@ export class ApiLambdaStack extends BaseStack {
      * Create CloudWatch log group for Lambda logs
      */
     private createLogGroup(): LogGroup {
-        return new LogGroup(this, this.constructId("api_lambda_log_group"), {
+        return new LogGroup(this, this.constructId("api-lambda-log-group"), {
             logGroupName: `/aws/lambda/${this.resourceName("api")}`,
             retention: this.getLogRetention(),
             removalPolicy: this.getRemovalPolicy(),
+        });
+    }
+
+
+    /**
+     * Create ALB target group for Lambda
+     */
+    private createTargetGroup(props: ApiLambdaStackProps): ApplicationTargetGroup {
+        const { vpc } = props;
+
+        return new ApplicationTargetGroup(this, this.constructId("lambda-target-group"), {
+            targetGroupName: this.resourceName("lambda-tg"),
+            targetType: TargetType.LAMBDA,
+            vpc: vpc, // VPC is required for target groups
+            // Lambda target groups don't support custom health check configuration
+            // AWS automatically handles health checks for Lambda targets
         });
     }
 
@@ -125,10 +135,10 @@ export class ApiLambdaStack extends BaseStack {
      * Create IAM execution role for Lambda function
      */
     private createExecutionRole(): Role {
-        return new Role(this, this.constructId("api_lambda_execution_role"), {
-            roleName: this.resourceName("api_lambda_role"),
+        return new Role(this, this.constructId("api-lambda-execution-role"), {
+            roleName: this.resourceName("api-lambda-role"),
             assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
-            description: `Execution role for Serverless Launchpad API Lambda (${this.environment})`,
+            description: `Execution role for Serverless Launchpad API Lambda (${this.appEnvironment})`,
         });
     }
 
@@ -262,7 +272,7 @@ export class ApiLambdaStack extends BaseStack {
         const { api } = this.configuration;
 
         const functionProps = {
-            functionName: this.resourceName(`api_hypermedia`),
+            functionName: this.resourceName(`api-hypermedia`),
             runtime: Runtime.NODEJS_20_X,
             architecture: Architecture.ARM_64,
             entry: "../api.hypermedia/src/index.ts",
@@ -281,7 +291,7 @@ export class ApiLambdaStack extends BaseStack {
                 ],
                 // Define environment variables at build time
                 define: {
-                    "process.env.NODE_ENV": JSON.stringify(this.environment),
+                    "process.env.NODE_ENV": JSON.stringify(this.appEnvironment),
                 },
                 // Use Docker for consistent builds
                 forceDockerBundling: true, // Set to true if you need consistent builds across platforms
@@ -299,7 +309,7 @@ export class ApiLambdaStack extends BaseStack {
 
             // Environment variables
             environment: {
-                NODE_ENV: this.environment,
+                NODE_ENV: this.appEnvironment,
                 AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1", // AWS SDK optimization
             },
 
@@ -311,45 +321,45 @@ export class ApiLambdaStack extends BaseStack {
             deadLetterQueueEnabled: false,
             retryAttempts: 0,
             currentVersionOptions: {
-                removalPolicy: this.environment === "production" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+                removalPolicy: this.appEnvironment === "production" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
             },
         };
 
         // Configure VPC if needed
         this.configureVpc(functionProps, props);
 
-        return new NodejsFunction(this, this.constructId("api_function"), functionProps);
+        return new NodejsFunction(this, this.constructId("api-function"), functionProps);
     }
 
     /**
      * Configure VPC settings if using custom VPC
      */
     private configureVpc(functionProps: Record<string, any>, props: ApiLambdaStackProps): void {
-        if (props.vpc && props.vpcConfig?.type === "custom") {
-            console.log("🔒 Configuring Lambda to run inside custom VPC...");
+        // For development, run Lambda outside VPC for better performance and to avoid circular dependencies
+        if (!this.isDevelopment()) {
+            console.log("🔒 Configuring Lambda to run inside VPC...");
             functionProps.vpc = props.vpc;
             functionProps.vpcSubnets = {
                 subnetType: SubnetType.PRIVATE_WITH_EGRESS,
             };
         } else {
             console.log("🚀 Lambda will run outside VPC for better performance...");
+            // Do not set VPC properties - Lambda will run in AWS managed VPC
         }
     }
 
     /**
-     * Configure Lambda integration with ALB
+     * Configure Lambda integration with ALB target group
      */
-    private configureLambdaIntegration(props: ApiLambdaStackProps): void {
-        const { targetGroup } = props;
-
+    private configureLambdaIntegration(): void {
         // Register Lambda with target group
-        targetGroup.addTarget(new LambdaTarget(this.apiFunction));
+        this.targetGroup.addTarget(new LambdaTarget(this.apiFunction));
 
         // Grant ALB permission to invoke Lambda
         this.apiFunction.addPermission("AlbInvokePermission", {
             principal: new ServicePrincipal("elasticloadbalancing.amazonaws.com"),
             action: "lambda:InvokeFunction",
-            sourceArn: targetGroup.targetGroupArn,
+            sourceArn: this.targetGroup.targetGroupArn,
         });
     }
 
