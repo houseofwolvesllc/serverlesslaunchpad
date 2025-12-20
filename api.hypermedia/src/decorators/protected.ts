@@ -28,6 +28,18 @@ const ProtectedEventSchema = z
     });
 
 /**
+ * Options for the @Protected decorator
+ */
+interface ProtectedOptions {
+    /**
+     * Allow anonymous (unauthenticated) requests.
+     * When true, requests without credentials will continue without authContext.
+     * Requests with invalid credentials will still throw UnauthorizedError.
+     */
+    allowAnonymous?: boolean;
+}
+
+/**
  * Protected decorator that validates credentials (API key or session token).
  * Uses the IoC container to resolve the Authenticator service for authentication.
  * Enriches the event with user context and authentication type information.
@@ -35,14 +47,24 @@ const ProtectedEventSchema = z
  * This decorator ONLY handles authentication. Authorization checks should be
  * done explicitly in the controller methods where you have full context.
  *
- * Example:
+ * @param options - Configuration options
+ * @param options.allowAnonymous - If true, allows requests without credentials (authContext will be undefined)
+ *
+ * Example (required auth):
  * @Protected()
- * async getUser(event: ALBEvent) {
- *     const user = this.getAuthenticatedUser(event);
+ * async getUser(event: AuthenticatedALBEvent) {
+ *     const user = event.authContext.identity;
  *     // Do authorization checks here with full context
  * }
+ *
+ * Example (optional auth):
+ * @Protected({ allowAnonymous: true })
+ * async getSitemap(event: ExtendedALBEvent) {
+ *     const user = event.authContext?.identity; // May be undefined
+ *     // Adapt response based on whether user is authenticated
+ * }
  */
-export function Protected() {
+export function Protected(options: ProtectedOptions = {}) {
     return function (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
 
@@ -64,7 +86,7 @@ export function Protected() {
             }
 
             const headers = validation.data.headers;
-            let authType: string;
+            let authType: string | undefined;
             let token: string | undefined;
 
             // Try Authorization header first
@@ -76,24 +98,30 @@ export function Protected() {
                 if (cookieToken) {
                     authType = "SessionToken";
                     token = cookieToken;
-                } else {
+                } else if (!options.allowAnonymous) {
+                    // No token and anonymous not allowed - throw
                     throw new UnauthorizedError("Authentication required - no token found in header or cookie");
                 }
+                // If no token and allowAnonymous: true, continue without authContext
             }
 
-            const verifyResult = await authenticator.verify({
-                apiKey: authType === "ApiKey" ? token : undefined,
-                sessionToken: authType === "SessionToken" ? token : undefined,
-                ipAddress: headers["x-forwarded-for"],
-                userAgent: headers["user-agent"],
-            });
+            // If we have a token, verify it
+            if (token) {
+                const verifyResult = await authenticator.verify({
+                    apiKey: authType === "ApiKey" ? token : undefined,
+                    sessionToken: authType === "SessionToken" ? token : undefined,
+                    ipAddress: headers["x-forwarded-for"],
+                    userAgent: headers["user-agent"],
+                });
 
-            if (!verifyResult?.authContext?.identity) {
-                throw new UnauthorizedError("Authentication required");
+                if (!verifyResult?.authContext?.identity) {
+                    // Token was provided but invalid - ALWAYS throw (not anonymous)
+                    throw new UnauthorizedError("Invalid authentication credentials");
+                }
+
+                // Valid token - inject into event
+                event.authContext = verifyResult.authContext;
             }
-
-            // Inject the authenticated user and auth context into the event
-            event.authContext = verifyResult.authContext;
 
             // Call the original method with the enriched event
             return originalMethod.apply(this, args);

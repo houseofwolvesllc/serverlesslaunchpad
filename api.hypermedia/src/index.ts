@@ -21,7 +21,7 @@ import { HttpMethod, Router } from "./router";
 // Import controllers
 import { ApiKeysController } from "./api_keys/api_keys_controller";
 import { AuthenticationController } from "./authentication/authentication_controller";
-import { RootController } from "./root_controller";
+import { RootController } from "./root/root_controller";
 import { SessionsController } from "./sessions/sessions_controller";
 import { SitemapController } from "./sitemap/sitemap_controller";
 

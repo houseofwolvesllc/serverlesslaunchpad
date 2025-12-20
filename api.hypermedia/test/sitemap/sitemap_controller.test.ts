@@ -23,14 +23,24 @@ describe("SitemapController", () => {
             path: "/sitemap",
             queryStringParameters: null,
             headers: {
-                accept: "application/json"
+                accept: "application/json",
+                "x-forwarded-for": "127.0.0.1",
+                "user-agent": "test-agent"
             },
             body: null,
             isBase64Encoded: false
         };
 
+        // Set authContext if user is provided (simulates @Protected decorator)
         if (user) {
-            event.user = user;
+            event.authContext = {
+                identity: user,
+                access: {
+                    type: "session",
+                    ipAddress: "127.0.0.1",
+                    userAgent: "test-agent"
+                }
+            };
         }
 
         return event;
@@ -56,7 +66,11 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        expect(body.navigation.items.length).toBe(3);
+        // Admin sees: home, documentation, account, admin
+        expect(body.navigation.items.length).toBe(4);
+        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "account")).toBeDefined();
         expect(body.navigation.items.find((i: any) => i.id === "admin")).toBeDefined();
     });
 
@@ -69,7 +83,11 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        expect(body.navigation.items.length).toBe(2);
+        // Regular user sees: home, documentation, account (no admin)
+        expect(body.navigation.items.length).toBe(3);
+        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "account")).toBeDefined();
         expect(body.navigation.items.find((i: any) => i.id === "admin")).toBeUndefined();
     });
 
@@ -81,8 +99,11 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        expect(body.navigation.items.length).toBe(1);
-        expect(body.navigation.items[0].id).toBe("authentication");
+        // Unauthenticated sees: home, login, documentation
+        expect(body.navigation.items.length).toBe(3);
+        expect(body.navigation.items.find((i: any) => i.id === "home")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "login")).toBeDefined();
+        expect(body.navigation.items.find((i: any) => i.id === "documentation")).toBeDefined();
     });
 
     it("should include proper HAL links", async () => {

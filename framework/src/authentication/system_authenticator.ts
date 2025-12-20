@@ -32,7 +32,7 @@ export class SystemAuthenticator implements Authenticator {
 
             if (!user) {
                 user = await this.userRepository.upsertUser({
-                    userId: crypto.randomUUID(),
+                    userId: crypto.randomUUID().replace(/-/g, "").toLowerCase(),
                     email: message.email,
                     firstName: message.firstName,
                     lastName: message.lastName,
@@ -45,7 +45,7 @@ export class SystemAuthenticator implements Authenticator {
 
             const session = await this.sessionRepository.createSession({
                 userId: user.userId,
-                sessionId: crypto.randomUUID(),
+                sessionId: crypto.randomUUID().replace(/-/g, "").toLowerCase(),
                 sessionSignature: await this.generateSessionSignature(message),
                 ipAddress: message.ipAddress,
                 userAgent: message.userAgent,
@@ -84,6 +84,7 @@ export class SystemAuthenticator implements Authenticator {
         userAgent: string;
     }): Promise<string> {
         const secrets = await this.secretsConfig.get();
+
         return crypto
             .createHash("sha256")
             .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${secrets.session_token_salt}`)

@@ -3,7 +3,7 @@ import * as amplify from 'aws-amplify/auth';
 import { useContext } from 'react';
 import WebConfigurationStore from '../../../configuration/web_config_store';
 import { apiClient } from '../../../services/api.client';
-import { CookieService } from '../../../services/cookie.service';
+import { getEntryPoint, refreshCapabilities } from '../../../services/entry_point_provider';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
 
 // Amplify configuration will be loaded asynchronously
@@ -90,15 +90,24 @@ export const useAuth = function () {
     async function federateSession(authSession: amplify.AuthSession): Promise<User> {
         try {
             const config = await WebConfigurationStore.getConfig();
+            const entryPoint = getEntryPoint();
+
+            // Discover federation endpoint
+            const federateHref = await entryPoint.getLinkHref('auth:federate');
+            if (!federateHref) {
+                throw new Error('Session federation not available from API. Please contact support.');
+            }
+
             if (config.features.debug_mode) {
                 console.log('🔗 Federating Cognito session to hypermedia API', authSession);
+                console.log('🔍 Discovered federation endpoint:', federateHref);
                 console.log('ID Token:', authSession.tokens?.idToken?.toString());
                 console.log('Access Token:', authSession.tokens?.accessToken?.toString());
             }
 
-            const sessionKey = crypto.randomUUID();
+            const sessionKey = crypto.randomUUID().replace(/-/g, "").toLowerCase();
             const cognitoToken = authSession.tokens?.idToken?.toString();
-            
+
             if (!cognitoToken) {
                 throw new Error('No Cognito ID token available');
             }
@@ -112,9 +121,9 @@ export const useAuth = function () {
             };
             console.log('Federation request:', federateRequest);
 
-            // Call the hypermedia API federate endpoint
+            // Call the hypermedia API federate endpoint using discovered URL
             try {
-                const response = await apiClient.request('/auth/federate', {
+                const response = await apiClient.request(federateHref, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${cognitoToken}`,
@@ -122,16 +131,22 @@ export const useAuth = function () {
                     },
                     body: JSON.stringify(federateRequest),
                 });
-                
+
                 if (config.features.debug_mode) {
                     console.log('✅ Session federated with hypermedia API', response);
                     console.log('📦 _embedded.access:', response._embedded?.access);
                     console.log('🎫 sessionToken from API:', response._embedded?.access?.sessionToken);
                 }
 
+                // Refresh capabilities now that we're authenticated
+                await refreshCapabilities();
+
+                if (config.features.debug_mode) {
+                    console.log('🔄 Capabilities refreshed after federation');
+                }
+
                 // HAL response: properties are at root level with _links and _embedded
                 return {
-                    sessionKey,
                     username: response.userId || '',
                     email: response.email,
                     firstName: response.firstName,
@@ -152,30 +167,30 @@ export const useAuth = function () {
 
     async function verifySession(): Promise<User> {
         try {
-            const config = await WebConfigurationStore.getConfig();
+            const entryPoint = getEntryPoint();
 
-            // Check for session cookie first - fail fast if missing
-            if (!CookieService.hasSessionCookie()) {
+            // Discover verification endpoint
+            const verifyHref = await entryPoint.getLinkHref('auth:verify');
+            if (!verifyHref) {
                 throw new AuthError({
-                    name: 'NoSessionCookie',
-                    message: 'No session cookie found - user needs to authenticate'
+                    name: 'VerifyNotAvailable',
+                    message: 'Session verification not available - please sign in again'
                 });
             }
 
-            if (config.features.debug_mode) {
-                console.log('🔍 Verifying existing session cookie');
+            const currentConfig = await WebConfigurationStore.getConfig();
+            if (currentConfig.features.debug_mode) {
+                console.log('🔍 Discovered verification endpoint:', verifyHref);
             }
 
-            // Call hypermedia API verify endpoint
-            // The session cookie will be automatically sent via credentials: 'include'
-            const response = await apiClient.request('/auth/verify', {
+            const response = await apiClient.request(verifyHref, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
             });
 
-            if (config.features.debug_mode) {
+            if (currentConfig.features.debug_mode) {
                 console.log('✅ Session verified with hypermedia API', response);
             }
 
@@ -202,14 +217,11 @@ export const useAuth = function () {
                 console.error('❌ Session verification failed:', error);
             }
 
-            // Clean up any stale cookies on verification failure
-            CookieService.removeSessionCookie();
-
             // Handle API client errors
             if (error instanceof Error && error.name === 'ApiClientError') {
-                throw new AuthError({ 
-                    name: 'SessionVerificationFailed', 
-                    message: 'Session verification failed - please sign in again' 
+                throw new AuthError({
+                    name: 'SessionVerificationFailed',
+                    message: 'Session verification failed - please sign in again'
                 });
             }
 
@@ -219,9 +231,9 @@ export const useAuth = function () {
             }
 
             // Wrap other errors
-            throw new AuthError({ 
-                name: 'SessionVerificationError', 
-                message: `Session verification error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            throw new AuthError({
+                name: 'SessionVerificationError',
+                message: `Session verification error: ${error instanceof Error ? error.message : 'Unknown error'}`
             });
         }
     }
@@ -229,6 +241,8 @@ export const useAuth = function () {
     async function revokeSession(sessionToken: string | undefined): Promise<void> {
         try {
             const config = await WebConfigurationStore.getConfig();
+            const entryPoint = getEntryPoint();
+
             if (config.features.debug_mode) {
                 console.log('🔓 Revoking hypermedia API session');
                 console.log('SessionToken:', sessionToken ? `${sessionToken.substring(0, 10)}...` : 'undefined');
@@ -240,17 +254,26 @@ export const useAuth = function () {
                 if (config.features.debug_mode) {
                     console.warn('⚠️ No session token available for revocation');
                 }
-                // Clean up client-side cookies
-                CookieService.removeSessionCookie();
+
+                return;
+            }
+
+            // Discover revoke endpoint
+            const revokeHref = await entryPoint.getLinkHref('auth:revoke');
+            if (!revokeHref) {
+                if (config.features.debug_mode) {
+                    console.warn('⚠️ Revoke endpoint not available from API - continuing with sign out');
+                }
                 return;
             }
 
             // Call the hypermedia API revoke endpoint with SessionToken
             try {
                 if (config.features.debug_mode) {
-                    console.log('🌐 Calling /auth/revoke with SessionToken');
+                    console.log('🔍 Discovered revoke endpoint:', revokeHref);
+                    console.log('🌐 Calling discovered revoke endpoint with SessionToken');
                 }
-                await apiClient.request('/auth/revoke', {
+                await apiClient.request(revokeHref, {
                     method: 'POST',
                     headers: {
                         'Authorization': `SessionToken ${sessionToken}`,
@@ -260,19 +283,23 @@ export const useAuth = function () {
                 if (config.features.debug_mode) {
                     console.log('✅ Session revoked with hypermedia API');
                 }
+
+                // Refresh capabilities back to unauthenticated state
+                await refreshCapabilities();
+
+                if (config.features.debug_mode) {
+                    console.log('🔄 Capabilities refreshed to unauthenticated state');
+                }
             } catch (error) {
                 if (config.features.debug_mode) {
                     console.warn('⚠️ API revoke failed', error);
                 }
-                // Continue with local signout even if API fails
-                // Clean up any remaining client-side cookie traces
-                CookieService.removeSessionCookie();
+                // Note: We don't rethrow here - revoke is best-effort during sign out
+                // The user will still be signed out locally even if API revoke fails
             }
         } catch (error) {
-            console.error('Unauthorized session failed:', error);
-            // Always clean up any client-side cookie traces
-            CookieService.removeSessionCookie();
-            // Don't throw here, as we still want to complete local signout
+            console.error('Revoke session failed:', error);
+            // Don't throw - sign out should continue even if revoke fails
         }
     }
 

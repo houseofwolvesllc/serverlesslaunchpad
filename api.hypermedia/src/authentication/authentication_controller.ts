@@ -1,10 +1,10 @@
 import { Authenticator, Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller";
+import { MessageAdapter } from "../content_types/message_adapter";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route } from "../router";
-import { MessageAdapter } from "../content_types/message_adapter";
 import { AuthContext, AuthContextAdapter } from "./auth_context_adapter";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
@@ -130,7 +130,7 @@ export class AuthenticationController extends BaseController {
         // Create HAL response for successful revocation
         const adapter = new MessageAdapter({
             selfHref: "/auth/revoke",
-            message: "Session revoked successfully"
+            message: "Session revoked successfully",
         });
 
         const response = this.success(event, adapter);
@@ -147,6 +147,10 @@ export class AuthenticationController extends BaseController {
     private shouldSetAuthCookie(event: ExtendedALBEvent): boolean {
         const accept = event.headers?.accept || event.headers?.Accept || "";
         // Set cookie if client accepts HTML (for hypermedia browsing)
-        return accept.includes("text/html") || accept.includes("application/xhtml+xml");
+        return (
+            accept.includes("text/html") ||
+            accept.includes("application/xhtml+xml") ||
+            accept.includes("application/json")
+        );
     }
 }

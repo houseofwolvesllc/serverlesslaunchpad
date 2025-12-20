@@ -63,29 +63,6 @@ export class ApiClient {
             defaultHeaders['X-Forwarded-For'] = '127.0.0.1';
         }
 
-        // Add authentication token if available and not already set
-        const token = this.getAuthToken();
-        if (token) {
-            // Check if Authorization header is already present in various header formats
-            let hasAuthHeader = false;
-
-            if (options.headers) {
-                if (options.headers instanceof Headers) {
-                    hasAuthHeader = options.headers.has('Authorization') || options.headers.has('authorization');
-                } else if (Array.isArray(options.headers)) {
-                    hasAuthHeader = options.headers.some(([key]) => key.toLowerCase() === 'authorization');
-                } else {
-                    // Record<string, string> format
-                    const headerRecord = options.headers as Record<string, string>;
-                    hasAuthHeader = 'Authorization' in headerRecord || 'authorization' in headerRecord;
-                }
-            }
-
-            if (!hasAuthHeader) {
-                defaultHeaders.Authorization = token;
-            }
-        }
-
         const requestOptions: RequestInit = {
             ...options,
             credentials: 'include', // Include cookies for session management
@@ -166,13 +143,6 @@ export class ApiClient {
         }
 
         throw new ApiClientError(response.status, error, response);
-    }
-
-    private getAuthToken(): string | null {
-        // Session authentication is now handled via secure cookies
-        // The browser automatically sends session cookies with credentials: 'include'
-        // Only return explicit authorization tokens for specific API calls
-        return null;
     }
 
     // Convenience methods
