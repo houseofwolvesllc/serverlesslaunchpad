@@ -1,6 +1,7 @@
 import { Alert, Button, Group, Paper, Stack, Table, Text, ActionIcon, Checkbox } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { useApiKeys } from '../hooks/use_api_keys';
 import { ApiKeyRow } from './api_key_row';
 import { ApiKeysTableSkeleton } from './api_keys_table_skeleton';
@@ -18,7 +19,7 @@ import { confirmDelete } from '../../../utils/confirm_delete';
  * - Visual warnings for keys expiring within 30 days
  * - Server-side pagination with configurable page sizes (10, 25, 50, 100)
  * - Template-driven create operation (button only shows if template exists)
- * - Template-driven delete operations (per-item)
+ * - Template-driven bulk delete operations (checkbox selection)
  * - Loading and error states
  * - Refresh functionality
  *
@@ -30,7 +31,7 @@ import { confirmDelete } from '../../../utils/confirm_delete';
  * All operations are driven by HAL-FORMS templates from the API:
  * - Create button text comes from template.title
  * - Create form fields come from template.properties
- * - Delete operations use templates from each embedded API key
+ * - Bulk delete uses the bulkDelete template from the collection
  *
  * @example
  * ```tsx
@@ -83,7 +84,7 @@ export function ApiKeysList() {
         refresh();
     };
 
-    const createTemplate = data?._templates?.create;
+    const createTemplate = data?._templates?.default; // HAL-FORMS standard: 'default' is the primary create template
     const bulkDeleteTemplate = data?._templates?.bulkDelete;
 
     // Handle bulk delete with confirmation
@@ -95,9 +96,22 @@ export function ApiKeysList() {
             message: 'Are you sure you want to delete the selected API keys?',
             count: selectedCount,
             onConfirm: async () => {
-                await executeBulkDelete(bulkDeleteTemplate, {
-                    apiKeyIds: selected
-                });
+                try {
+                    await executeBulkDelete(bulkDeleteTemplate, {
+                        apiKeyIds: selected
+                    });
+                    notifications.show({
+                        title: 'Success',
+                        message: `Successfully deleted ${selectedCount} API key${selectedCount === 1 ? '' : 's'}`,
+                        color: 'green',
+                    });
+                } catch (err: any) {
+                    notifications.show({
+                        title: 'Error',
+                        message: err.message || 'Failed to delete API keys',
+                        color: 'red',
+                    });
+                }
             }
         });
     };
@@ -179,11 +193,10 @@ export function ApiKeysList() {
                                         </Table.Th>
                                     )}
                                     <Table.Th>Label</Table.Th>
-                                    <Table.Th>Key Prefix</Table.Th>
+                                    <Table.Th>API Key</Table.Th>
                                     <Table.Th>Created</Table.Th>
                                     <Table.Th>Expires</Table.Th>
                                     <Table.Th>Last Used</Table.Th>
-                                    <Table.Th style={{ width: 100 }}>Actions</Table.Th>
                                 </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
@@ -191,7 +204,6 @@ export function ApiKeysList() {
                                     <ApiKeyRow
                                         key={apiKey.apiKeyId}
                                         apiKey={apiKey}
-                                        onDelete={refresh}
                                         showCheckbox={!!bulkDeleteTemplate}
                                         selected={isSelected(apiKey.apiKeyId)}
                                         onToggleSelect={() => toggleSelection(apiKey.apiKeyId)}

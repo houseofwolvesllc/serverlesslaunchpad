@@ -15,6 +15,8 @@ import { AuthenticatedALBEvent, ExtendedALBEvent } from "./extended_alb_event";
 import { getAcceptedContentType, CONTENT_TYPES } from "./content_types/content_negotiation";
 import { HalJsonAdapter } from "./content_types/hal_json_adapter";
 import { HalXhtmlAdapter } from "./content_types/hal_xhtml_adapter";
+import { parseRequestBody } from "./content_types/body_parser";
+import { transformFormData } from "./content_types/form_data_transformer";
 
 /**
  * Response data interface for content adapters
@@ -190,21 +192,28 @@ export abstract class BaseController {
     /**
      * Helper method to parse request data from ALB event.
      * Parses path parameters, query parameters, and body.
+     * Supports JSON and form-urlencoded content types.
      * Validates against the provided Zod schema.
      */
     protected parseRequest<T extends z.ZodSchema>(
-        event: ExtendedALBEvent, 
+        event: ExtendedALBEvent,
         schema: T
     ): z.infer<T> {
-        // Parse body if present
-        let body = {};
-        if (event.body) {
-            try {
-                body = JSON.parse(event.body);
-            } catch {
-                // If not JSON, treat as plain text
-                body = { body: event.body };
-            }
+        // Parse body based on content type
+        const parsedBody = parseRequestBody(event);
+
+        // Transform form data if needed
+        let body = parsedBody.data;
+        if (parsedBody.contentType === 'application/x-www-form-urlencoded') {
+            body = transformFormData(body);
+        }
+
+        // Handle method override (for DELETE/PUT via POST)
+        if (parsedBody.method) {
+            // Store original method for potential use
+            (event as any).originalMethod = event.httpMethod;
+            // Override the HTTP method
+            (event as any).httpMethod = parsedBody.method.toUpperCase();
         }
 
         // Build request object

@@ -75,7 +75,7 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         expect(labelField?.prompt).toBe("API Key Label");
     });
 
-    it("should include delete template on each embedded API key", () => {
+    it("should not include individual delete templates on embedded API keys (bulk delete only)", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingData, mockRouter);
         const json = adapter.toJSON();
 
@@ -83,18 +83,13 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         expect(embeddedKeys).toBeDefined();
         expect(embeddedKeys?.length).toBe(2);
 
+        // Individual items should NOT have _templates - only collection has bulkDelete
         embeddedKeys?.forEach((key: any) => {
-            expect(key._templates).toBeDefined();
-            expect(key._templates.delete).toBeDefined();
-            expect(key._templates.delete.title).toBe("Delete API Key");
-            expect(key._templates.delete.method).toBe("DELETE");
-
-            const properties = key._templates.delete.properties;
-            expect(properties).toBeDefined();
-            expect(properties.length).toBe(1);
-            expect(properties[0].name).toBe("apiKeyIds");
-            expect(properties[0].value).toBe(key.apiKeyId);
+            expect(key._templates).toBeUndefined();
         });
+
+        // Collection should have bulkDelete template instead
+        expect(json._templates?.bulkDelete).toBeDefined();
     });
 
     it("should include create template target URL using router", () => {
@@ -116,5 +111,66 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         expect(json).toHaveProperty("_embedded");
         expect(json).toHaveProperty("count");
         expect(json).toHaveProperty("paging");
+    });
+
+    it("should include bulkDelete template in collection", () => {
+        const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingData, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.bulkDelete).toBeDefined();
+        expect(templates.bulkDelete.title).toBe("Delete Selected API Keys");
+        expect(templates.bulkDelete.method).toBe("DELETE");
+    });
+
+    it("should include next template when pagination has next cursor", () => {
+        const pagingWithNext = {
+            next: { cursor: "next-cursor-123", limit: 10 },
+            previous: undefined
+        };
+        const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingWithNext, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.next).toBeDefined();
+        expect(templates.next.title).toBe("Next Page");
+        expect(templates.next.method).toBe("POST");
+        expect(templates.next.properties).toBeDefined();
+
+        const pagingProperty = templates.next.properties.find((p: any) => p.name === "pagingInstruction");
+        expect(pagingProperty).toBeDefined();
+        expect(pagingProperty.type).toBe("hidden");
+        expect(JSON.parse(pagingProperty.value)).toEqual(pagingWithNext.next);
+    });
+
+    it("should include prev template when pagination has previous cursor", () => {
+        const pagingWithPrev = {
+            next: undefined,
+            previous: { cursor: "prev-cursor-456", limit: 10 }
+        };
+        const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingWithPrev, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.prev).toBeDefined();
+        expect(templates.prev.title).toBe("Previous Page");
+        expect(templates.prev.method).toBe("POST");
+        expect(templates.prev.properties).toBeDefined();
+
+        const pagingProperty = templates.prev.properties.find((p: any) => p.name === "pagingInstruction");
+        expect(pagingProperty).toBeDefined();
+        expect(pagingProperty.type).toBe("hidden");
+        expect(JSON.parse(pagingProperty.value)).toEqual(pagingWithPrev.previous);
+    });
+
+    it("should not include next/prev templates when pagination cursors are undefined", () => {
+        const pagingNoCursors = {
+            next: undefined,
+            previous: undefined
+        };
+        const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingNoCursors, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.next).toBeUndefined();
+        expect(templates.prev).toBeUndefined();
+        expect(templates.default).toBeDefined(); // Should still have create template
+        expect(templates.bulkDelete).toBeDefined(); // Should still have bulkDelete template
     });
 });

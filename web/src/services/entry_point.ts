@@ -140,6 +140,32 @@ export class EntryPoint {
     }
 
     /**
+     * Get a template target URL from the entry point
+     * Convenience method for POST operations
+     *
+     * @param templateName - Template name to find
+     * @returns The template target URL or undefined if not found
+     *
+     * @example
+     * const verifyUrl = await entryPoint.getTemplateTarget('verify');
+     */
+    async getTemplateTarget(templateName: string): Promise<string | undefined> {
+        const root = await this.fetch();
+        return root._templates?.[templateName]?.target;
+    }
+
+    /**
+     * Check if a template exists
+     *
+     * @param templateName - Template name to check
+     * @returns True if the template exists
+     */
+    async hasTemplate(templateName: string): Promise<boolean> {
+        const root = await this.fetch();
+        return !!root._templates?.[templateName];
+    }
+
+    /**
      * Clear the cache
      * Forces next fetch to retrieve fresh data
      */

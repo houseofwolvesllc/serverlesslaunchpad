@@ -3,6 +3,7 @@ import { LoadingContext } from '../../../context/loading_context';
 import { AuthenticationContext, useAuth } from '../../authentication';
 import { AuthError, User } from '../types';
 import { logger } from '../../../logging/logger';
+import { refreshCapabilities } from '../../../services/entry_point_provider';
 
 export const AuthenticationProvider = ({ children }: { children: React.ReactNode }) => {
     const [signedInUser, setSignedInUser] = useState<User | undefined>();
@@ -39,7 +40,13 @@ function AutoLogin({ setHasTriedAutoLogin }: { setHasTriedAutoLogin: (hasTriedAu
                     logger.error('Unexpected error during session verification', { error });
                 }
                 // Verification failures are expected when no valid session exists
-                // The user will be redirected to login by the routing logic
+                // Refresh capabilities to get unauthenticated templates (like federate)
+                try {
+                    await refreshCapabilities();
+                    logger.debug('Capabilities refreshed to unauthenticated state after failed verification');
+                } catch (refreshError) {
+                    logger.error('Failed to refresh capabilities after verification failure', { error: refreshError });
+                }
             } finally {
                 setHasTriedAutoLogin(true);
                 setIsLoading(false);

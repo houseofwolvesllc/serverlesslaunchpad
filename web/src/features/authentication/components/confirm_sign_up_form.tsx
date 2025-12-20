@@ -41,7 +41,7 @@ export const ConfirmSignUpForm = () => {
             message: 'Thank you for confirming your account :)',
         });
 
-        navigate('/dashboard');
+        navigate('/');
     };
 
     const resendSignUpCode = async () => {

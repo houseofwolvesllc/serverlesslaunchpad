@@ -1,47 +1,34 @@
-import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Checkbox, Code, CopyButton, Group, Table, Text, Tooltip } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { useMemo } from 'react';
+import { ActionIcon, Badge, Checkbox, Code, CopyButton, Group, Table, Text, Tooltip } from '@mantine/core';
 import { formatDistanceToNow } from 'date-fns';
-import { IconCheck, IconCopy, IconTrash, IconAlertCircle } from '@tabler/icons-react';
-import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
-import { confirmDelete } from '../../../utils/confirm_delete';
+import { IconCheck, IconCopy, IconAlertCircle } from '@tabler/icons-react';
 
 export interface ApiKeyRowProps {
-    apiKey: any; // HAL object with _templates
-    onDelete?: () => void; // Callback after successful deletion
+    apiKey: any; // HAL object
     showCheckbox?: boolean; // Show selection checkbox
     selected?: boolean; // Is this row selected
     onToggleSelect?: () => void; // Toggle selection callback
 }
 
 /**
- * Individual API key table row with HAL-FORMS template integration
+ * Individual API key table row
  *
  * Displays API key information:
  * - Label for identification
- * - Key prefix with copy functionality
+ * - Full API key with copy functionality
  * - Creation date (relative time)
  * - Expiration date with visual warnings
  * - Last used (relative time)
- * - Delete button (only shows if delete template exists)
+ * - Checkbox for bulk selection (when enabled)
  *
  * Expiration warnings:
  * - Red badge: Already expired
  * - Orange badge with icon: Expiring within 30 days
  * - Normal text: Not expiring soon or no expiration
  *
- * All delete operations use the HAL-FORMS delete template from the embedded resource.
+ * Delete operations are performed via bulk delete only.
  */
-export function ApiKeyRow({ apiKey, onDelete, showCheckbox, selected, onToggleSelect }: ApiKeyRowProps) {
-    const [deleting, setDeleting] = useState(false);
-    const { execute } = useExecuteTemplate(() => {
-        notifications.show({
-            title: 'Success',
-            message: 'API key deleted successfully',
-            color: 'green',
-        });
-        onDelete?.();
-    });
+export function ApiKeyRow({ apiKey, showCheckbox, selected, onToggleSelect }: ApiKeyRowProps) {
 
     // Memoize date formatting
     const createdText = useMemo(
@@ -87,30 +74,6 @@ export function ApiKeyRow({ apiKey, onDelete, showCheckbox, selected, onToggleSe
         }
     }, [apiKey.dateExpires]);
 
-    const handleDelete = async () => {
-        const deleteTemplate = apiKey._templates?.delete;
-        if (!deleteTemplate) return;
-
-        confirmDelete({
-            title: 'Delete API Key',
-            message: `Are you sure you want to delete "${apiKey.label || apiKey.keyPrefix}"?`,
-            onConfirm: async () => {
-                setDeleting(true);
-                try {
-                    await execute(deleteTemplate, {});
-                } catch (err) {
-                    notifications.show({
-                        title: 'Error',
-                        message: 'Failed to delete API key',
-                        color: 'red',
-                    });
-                } finally {
-                    setDeleting(false);
-                }
-            }
-        });
-    };
-
     return (
         <Table.Tr>
             {/* Checkbox column only shows if bulk delete is available */}
@@ -137,11 +100,11 @@ export function ApiKeyRow({ apiKey, onDelete, showCheckbox, selected, onToggleSe
                             wordBreak: 'break-all',
                         }}
                     >
-                        {apiKey.keyPrefix || apiKey.apiKey}
+                        {apiKey.apiKey || apiKey.keyPrefix}
                     </Code>
                     <CopyButton value={apiKey.apiKey || apiKey.keyPrefix} timeout={2000}>
                         {({ copied, copy }) => (
-                            <Tooltip label={copied ? 'Copied!' : 'Copy key prefix'} withArrow>
+                            <Tooltip label={copied ? 'Copied!' : 'Copy full API key'} withArrow>
                                 <ActionIcon
                                     color={copied ? 'teal' : 'gray'}
                                     variant="subtle"
@@ -181,21 +144,6 @@ export function ApiKeyRow({ apiKey, onDelete, showCheckbox, selected, onToggleSe
                 <Text size="sm" c="dimmed">
                     {lastUsedText}
                 </Text>
-            </Table.Td>
-            <Table.Td>
-                {/* Delete button only shows if template exists */}
-                {apiKey._templates?.delete && (
-                    <Button
-                        size="xs"
-                        color="red"
-                        variant="subtle"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={handleDelete}
-                        loading={deleting}
-                    >
-                        Delete
-                    </Button>
-                )}
             </Table.Td>
         </Table.Tr>
     );

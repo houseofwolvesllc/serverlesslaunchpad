@@ -1,8 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { SitemapAdapter } from "../../src/sitemap/sitemap_adapter";
+import { Router } from "../../src/router";
 
 describe("SitemapAdapter", () => {
+    let mockRouter: Router;
+
+    beforeEach(() => {
+        // Create mock router with buildHref method
+        mockRouter = {
+            buildHref: vi.fn((controller: any, method: string, params: any) => {
+                // Simple mock implementation
+                if (method === 'getSitemap') return '/sitemap';
+                if (method === 'getRoot') return '/';
+                if (method === 'getSessions') return `/users/${params.userId}/sessions/list`;
+                if (method === 'getApiKeys') return `/users/${params.userId}/api-keys/list`;
+                if (method === 'revoke') return '/auth/revoke';
+                return '/mock-url';
+            })
+        } as any;
+    });
+
     const createMockUser = (options: { role: Role }) => ({
         userId: "user-123",
         email: "test@example.com",
@@ -16,96 +34,119 @@ describe("SitemapAdapter", () => {
 
     it("should build navigation tree for admin user", () => {
         const user = createMockUser({ role: Role.Admin });
-        const adapter = new SitemapAdapter(user);
+        const adapter = new SitemapAdapter(user, mockRouter);
 
-        const nav = adapter.navigation;
+        const nav = adapter._nav;
 
-        // Admin sees: home, documentation, account, admin
-        expect(nav.items).toHaveLength(4);
-        expect(nav.items.find(i => i.id === "home")).toBeDefined();
-        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
-        expect(nav.items.find(i => i.id === "account")).toBeDefined();
-        expect(nav.items.find(i => i.id === "admin")).toBeDefined();
+        // Admin sees: Main Navigation + Administration + User
+        expect(nav).toHaveLength(3);
+        expect(nav[0].title).toBe("Main Navigation");
+        expect(nav[1].title).toBe("Administration");
+        expect(nav[2].title).toBe("User");
     });
 
     it("should exclude admin menu for regular users", () => {
         const user = createMockUser({ role: Role.User });
-        const adapter = new SitemapAdapter(user);
+        const adapter = new SitemapAdapter(user, mockRouter);
 
-        const nav = adapter.navigation;
+        const nav = adapter._nav;
 
-        // Regular user sees: home, documentation, account (no admin)
-        expect(nav.items).toHaveLength(3);
-        expect(nav.items.find(i => i.id === "home")).toBeDefined();
-        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
-        expect(nav.items.find(i => i.id === "account")).toBeDefined();
-        expect(nav.items.find(i => i.id === "admin")).toBeUndefined();
+        // Regular user sees: Main Navigation + User (no Administration)
+        expect(nav).toHaveLength(2);
+        expect(nav[0].title).toBe("Main Navigation");
+        expect(nav[1].title).toBe("User");
     });
 
     it("should build minimal navigation for unauthenticated users", () => {
-        const adapter = new SitemapAdapter(undefined);
+        const adapter = new SitemapAdapter(undefined, mockRouter);
 
-        const nav = adapter.navigation;
+        const nav = adapter._nav;
 
-        // Unauthenticated sees: home, login, documentation
-        expect(nav.items).toHaveLength(3);
-        expect(nav.items.find(i => i.id === "home")).toBeDefined();
-        expect(nav.items.find(i => i.id === "login")).toBeDefined();
-        expect(nav.items.find(i => i.id === "documentation")).toBeDefined();
+        // Unauthenticated sees: Public navigation only
+        expect(nav).toHaveLength(1);
+        expect(nav[0].title).toBe("Public");
+        expect(nav[0].items).toHaveLength(1);
+        expect(nav[0].items[0].rel).toBe("home");
     });
 
-    it("should create structure with nested items under account", () => {
+    it("should create structure with sessions and api-keys as templates", () => {
         const user = createMockUser({ role: Role.User });
-        const adapter = new SitemapAdapter(user);
+        const adapter = new SitemapAdapter(user, mockRouter);
 
-        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
+        const mainNav = adapter._nav[0];
 
-        expect(accountMenu?.items).toBeDefined();
-        expect(accountMenu?.items?.length).toBe(3); // sessions, api-keys, logout
-        expect(accountMenu?.items?.find(i => i.id === "sessions")).toBeDefined();
-        expect(accountMenu?.items?.find(i => i.id === "api-keys")).toBeDefined();
-        expect(accountMenu?.items?.find(i => i.id === "logout")).toBeDefined();
+        expect(mainNav.items).toHaveLength(3); // home, sessions, api-keys
+        expect(mainNav.items[0]).toEqual({ rel: "home", type: "link" });
+        expect(mainNav.items[1]).toEqual({ rel: "sessions", type: "template" });
+        expect(mainNav.items[2]).toEqual({ rel: "api-keys", type: "template" });
     });
 
     it("should serialize to valid HAL JSON", () => {
-        const adapter = new SitemapAdapter();
-        const json = JSON.parse(JSON.stringify(adapter));
+        const adapter = new SitemapAdapter(undefined, mockRouter);
+        const json = adapter.toJSON();
 
         expect(json._links.self.href).toBe("/sitemap");
         expect(json._links.home.href).toBe("/");
-        expect(json.navigation.items).toBeDefined();
+        expect(json._nav).toBeDefined();
         expect(json.title).toBe("API Sitemap");
     });
 
     it("should not include base links (overrides getBaseLinks)", () => {
-        const adapter = new SitemapAdapter();
-        const json = JSON.parse(JSON.stringify(adapter));
+        const adapter = new SitemapAdapter(undefined, mockRouter);
+        const json = adapter.toJSON();
 
         // Sitemap should NOT have sitemap link to itself
         expect(json._links.sitemap).toBeUndefined();
-        // Only has self and home
+        // Only has self and home for unauthenticated
         expect(Object.keys(json._links).sort()).toEqual(["home", "self"]);
     });
 
-    it("should include logout in account menu for authenticated users", () => {
+    it("should include logout in user menu for authenticated users", () => {
         const user = createMockUser({ role: Role.User });
-        const adapter = new SitemapAdapter(user);
+        const adapter = new SitemapAdapter(user, mockRouter);
 
-        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
-        const logoutItem = accountMenu?.items?.find(i => i.id === "logout");
+        const userMenu = adapter._nav.find(group => group.title === "User");
 
-        expect(logoutItem).toBeDefined();
-        expect(logoutItem?.href).toBe("/auth/revoke");
+        expect(userMenu).toBeDefined();
+        expect(userMenu?.items).toHaveLength(1);
+        expect(userMenu?.items[0]).toEqual({ rel: "logout", type: "template" });
     });
 
-    it("should mark templated URIs correctly", () => {
+    it("should include sessions and api-keys in templates", () => {
         const user = createMockUser({ role: Role.User });
-        const adapter = new SitemapAdapter(user);
+        const adapter = new SitemapAdapter(user, mockRouter);
 
-        const accountMenu = adapter.navigation.items.find(i => i.id === "account");
-        const sessionsItem = accountMenu?.items?.find(i => i.id === "sessions");
+        const templates = adapter._templates;
 
-        expect(sessionsItem?.templated).toBe(true);
-        expect(sessionsItem?.href).toContain("{userId}");
+        expect(templates).toBeDefined();
+        expect(templates?.sessions).toBeDefined();
+        expect(templates?.sessions.title).toBe("Sessions");
+        expect(templates?.sessions.method).toBe("POST");
+        expect(templates?.sessions.target).toBe("/users/user-123/sessions/list");
+
+        expect(templates?.["api-keys"]).toBeDefined();
+        expect(templates?.["api-keys"].title).toBe("API Keys");
+        expect(templates?.["api-keys"].method).toBe("POST");
+        expect(templates?.["api-keys"].target).toBe("/users/user-123/api-keys/list");
+    });
+
+    it("should include logout in templates for authenticated users", () => {
+        const user = createMockUser({ role: Role.User });
+        const adapter = new SitemapAdapter(user, mockRouter);
+
+        const templates = adapter._templates;
+
+        expect(templates?.logout).toBeDefined();
+        expect(templates?.logout.title).toBe("Logout");
+        expect(templates?.logout.method).toBe("POST");
+        expect(templates?.logout.target).toBe("/auth/revoke");
+    });
+
+    it("should not include templates for unauthenticated users", () => {
+        const adapter = new SitemapAdapter(undefined, mockRouter);
+
+        const templates = adapter._templates;
+
+        expect(templates).toBeUndefined();
     });
 });

@@ -49,22 +49,26 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
         };
     });
 
-    it("should return undefined for collection _templates (read-only)", () => {
+    it("should include bulkDelete template in collection _templates", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const templates = adapter._templates;
 
-        expect(templates).toBeUndefined();
+        expect(templates).toBeDefined();
+        expect(templates.bulkDelete).toBeDefined();
+        expect(templates.bulkDelete.title).toBe("Delete Selected Sessions");
+        expect(templates.bulkDelete.method).toBe("DELETE");
     });
 
-    it("should include undefined _templates in toJSON output", () => {
+    it("should include _templates with bulkDelete in toJSON output", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const json = adapter.toJSON();
 
         expect(json).toHaveProperty("_templates");
-        expect(json._templates).toBeUndefined();
+        expect(json._templates).toBeDefined();
+        expect(json._templates.bulkDelete).toBeDefined();
     });
 
-    it("should include delete template on each embedded session", () => {
+    it("should not include individual delete templates on embedded sessions (bulk delete only)", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const json = adapter.toJSON();
 
@@ -72,34 +76,25 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
         expect(embeddedSessions).toBeDefined();
         expect(embeddedSessions?.length).toBe(2);
 
+        // Individual items should NOT have _templates - only collection has bulkDelete
         embeddedSessions?.forEach((session: any) => {
-            expect(session._templates).toBeDefined();
-            expect(session._templates.delete).toBeDefined();
-            expect(session._templates.delete.title).toBe("Delete Session");
-            expect(session._templates.delete.method).toBe("DELETE");
-            expect(session._templates.delete.contentType).toBe("application/json");
-
-            const properties = session._templates.delete.properties;
-            expect(properties).toBeDefined();
-            expect(properties.length).toBe(1);
-            expect(properties[0].name).toBe("sessionIds");
-            expect(properties[0].required).toBe(true);
-            expect(properties[0].type).toBe("text");
-            expect(properties[0].value).toBe(session.sessionId);
+            expect(session._templates).toBeUndefined();
         });
+
+        // Collection should have bulkDelete template instead
+        expect(json._templates?.bulkDelete).toBeDefined();
     });
 
-    it("should include delete template target URL using mockRouter", () => {
+    it("should include bulkDelete template target URL using mockRouter", () => {
         const adapter = new SessionCollectionAdapter(userId, sessions, pagingData, mockRouter);
         const json = adapter.toJSON();
 
-        const firstSession = json._embedded?.sessions?.[0];
-        const deleteTemplate = firstSession?._templates?.delete;
+        const bulkDeleteTemplate = json._templates?.bulkDelete;
 
-        expect(deleteTemplate?.target).toBeDefined();
-        expect(deleteTemplate?.target).toContain(userId);
-        expect(deleteTemplate?.target).toContain("/users/");
-        expect(deleteTemplate?.target).toContain("/sessions");
+        expect(bulkDeleteTemplate?.target).toBeDefined();
+        expect(bulkDeleteTemplate?.target).toContain(userId);
+        expect(bulkDeleteTemplate?.target).toContain("/users/");
+        expect(bulkDeleteTemplate?.target).toContain("/sessions");
     });
 
     it("should serialize complete structure with _templates", () => {
@@ -112,10 +107,62 @@ describe("SessionCollectionAdapter - HAL-FORMS Templates", () => {
         expect(json).toHaveProperty("count");
         expect(json).toHaveProperty("paging");
 
-        // Verify sessions collection has no create template (read-only)
-        expect(json._templates).toBeUndefined();
+        // Verify sessions collection has bulkDelete template
+        expect(json._templates).toBeDefined();
+        expect(json._templates.bulkDelete).toBeDefined();
 
-        // But embedded items have delete templates
-        expect(json._embedded?.sessions?.[0]._templates?.delete).toBeDefined();
+        // Embedded items should NOT have individual delete templates (bulk delete only)
+        expect(json._embedded?.sessions?.[0]._templates).toBeUndefined();
+    });
+
+    it("should include next template when pagination has next cursor", () => {
+        const pagingWithNext = {
+            next: { cursor: "next-cursor-123", limit: 10 },
+            previous: undefined
+        };
+        const adapter = new SessionCollectionAdapter(userId, sessions, pagingWithNext, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.next).toBeDefined();
+        expect(templates.next.title).toBe("Next Page");
+        expect(templates.next.method).toBe("POST");
+        expect(templates.next.properties).toBeDefined();
+
+        const pagingProperty = templates.next.properties.find((p: any) => p.name === "pagingInstruction");
+        expect(pagingProperty).toBeDefined();
+        expect(pagingProperty.type).toBe("hidden");
+        expect(JSON.parse(pagingProperty.value)).toEqual(pagingWithNext.next);
+    });
+
+    it("should include prev template when pagination has previous cursor", () => {
+        const pagingWithPrev = {
+            next: undefined,
+            previous: { cursor: "prev-cursor-456", limit: 10 }
+        };
+        const adapter = new SessionCollectionAdapter(userId, sessions, pagingWithPrev, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.prev).toBeDefined();
+        expect(templates.prev.title).toBe("Previous Page");
+        expect(templates.prev.method).toBe("POST");
+        expect(templates.prev.properties).toBeDefined();
+
+        const pagingProperty = templates.prev.properties.find((p: any) => p.name === "pagingInstruction");
+        expect(pagingProperty).toBeDefined();
+        expect(pagingProperty.type).toBe("hidden");
+        expect(JSON.parse(pagingProperty.value)).toEqual(pagingWithPrev.previous);
+    });
+
+    it("should not include next/prev templates when pagination cursors are undefined", () => {
+        const pagingNoCursors = {
+            next: undefined,
+            previous: undefined
+        };
+        const adapter = new SessionCollectionAdapter(userId, sessions, pagingNoCursors, mockRouter);
+        const templates = adapter._templates;
+
+        expect(templates.next).toBeUndefined();
+        expect(templates.prev).toBeUndefined();
+        expect(templates.bulkDelete).toBeDefined(); // Should still have bulkDelete
     });
 });

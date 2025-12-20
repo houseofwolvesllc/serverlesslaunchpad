@@ -9,6 +9,7 @@ import { useState, useCallback, useMemo } from 'react';
  *
  * @param items - Array of items that can be selected
  * @param idKey - Key to use for item IDs (default: 'id')
+ * @param filterFn - Optional function to filter which items can be selected (e.g., exclude current session)
  * @returns Selection state and management functions
  *
  * @example
@@ -42,11 +43,23 @@ import { useState, useCallback, useMemo } from 'react';
  *     Delete Selected ({selected.length})
  *   </Button>
  * )}
+ *
+ * // Example with filter (exclude current session)
+ * const sessions = [
+ *   { sessionId: '1', isCurrent: true },
+ *   { sessionId: '2', isCurrent: false }
+ * ];
+ * const { selected } = useSelection(
+ *   sessions,
+ *   'sessionId',
+ *   (session) => !session.isCurrent
+ * );
  * ```
  */
 export function useSelection<T extends Record<string, any>>(
     items: T[],
-    idKey: string = 'id'
+    idKey: string = 'id',
+    filterFn?: (item: T) => boolean
 ) {
     const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
 
@@ -66,17 +79,25 @@ export function useSelection<T extends Record<string, any>>(
     }, []);
 
     /**
+     * Get selectable items (items that pass the filter function)
+     */
+    const selectableItems = useMemo(() => {
+        return filterFn ? items.filter(filterFn) : items;
+    }, [items, filterFn]);
+
+    /**
      * Toggle all items (select all if not all selected, deselect all otherwise)
+     * Only selects items that pass the filter function (if provided)
      */
     const toggleAll = useCallback(() => {
-        if (selectedSet.size === items.length && items.length > 0) {
+        if (selectedSet.size === selectableItems.length && selectableItems.length > 0) {
             // All selected -> deselect all
             setSelectedSet(new Set());
         } else {
-            // Not all selected -> select all
-            setSelectedSet(new Set(items.map(item => item[idKey])));
+            // Not all selected -> select all selectable items only
+            setSelectedSet(new Set(selectableItems.map(item => item[idKey])));
         }
-    }, [items, selectedSet.size, idKey]);
+    }, [selectableItems, selectedSet.size, idKey]);
 
     /**
      * Clear all selections
@@ -94,10 +115,11 @@ export function useSelection<T extends Record<string, any>>(
 
     /**
      * Computed selection state flags
+     * Uses selectableItems to properly handle filtered items (e.g., disabled items)
      */
     const selectionState = useMemo(() => {
-        const allSelected = items.length > 0 && selectedSet.size === items.length;
-        const someSelected = selectedSet.size > 0 && selectedSet.size < items.length;
+        const allSelected = selectableItems.length > 0 && selectedSet.size === selectableItems.length;
+        const someSelected = selectedSet.size > 0 && selectedSet.size < selectableItems.length;
         const hasSelection = selectedSet.size > 0;
 
         return {
@@ -105,7 +127,7 @@ export function useSelection<T extends Record<string, any>>(
             someSelected,
             hasSelection
         };
-    }, [items.length, selectedSet.size]);
+    }, [selectableItems.length, selectedSet.size]);
 
     /**
      * Array of selected IDs

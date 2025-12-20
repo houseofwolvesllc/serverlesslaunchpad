@@ -14,6 +14,7 @@ vi.mock("../../src/decorators/index.js", () => ({
 describe("SessionsController", () => {
     let controller: SessionsController;
     let mockSessionRepository: any;
+    let mockRouter: any;
 
     const createMockUser = (overrides?: Partial<User>): User => ({
         userId: "user-123",
@@ -62,7 +63,19 @@ describe("SessionsController", () => {
             deleteSessions: vi.fn(),
         };
 
-        controller = new SessionsController(mockSessionRepository);
+        mockRouter = {
+            buildHref: vi.fn((controller: any, method: string, params: any) => {
+                if (method === 'getSessions') {
+                    return `/users/${params.userId}/sessions/list`;
+                }
+                if (method === 'deleteSessions') {
+                    return `/users/${params.userId}/sessions/delete`;
+                }
+                return '/';
+            })
+        };
+
+        controller = new SessionsController(mockSessionRepository, mockRouter);
     });
 
     describe("getSessions", () => {

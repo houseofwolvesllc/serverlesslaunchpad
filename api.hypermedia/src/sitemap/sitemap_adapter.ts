@@ -46,8 +46,8 @@ export class SitemapAdapter extends HalResourceAdapter {
             title: "Main Navigation",
             items: [
                 { rel: "home", type: "link" },
-                { rel: "sessions", type: "link" },
-                { rel: "api-keys", type: "link" }
+                { rel: "sessions", type: "template" },
+                { rel: "api-keys", type: "template" }
             ]
         });
 
@@ -87,22 +87,7 @@ export class SitemapAdapter extends HalResourceAdapter {
 
         // Add user-specific links for authenticated users
         if (this.user) {
-            const userId = this.user.userId;
-
-            links['sessions'] = this.createLink(
-                this.router.buildHref(SessionsController, 'getSessions', { userId }),
-                { title: "Sessions" }
-            );
-
-            links['api-keys'] = this.createLink(
-                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
-                { title: "API Keys" }
-            );
-
-            links['logout'] = this.createLink(
-                this.router.buildHref(AuthenticationController, 'revoke', {}),
-                { title: "Logout" }
-            );
+            // Sessions, API Keys, and Logout are POST operations, handled in _templates
 
             // Admin links
             if (this.hasRole(this.user, Role.Admin)) {
@@ -114,12 +99,6 @@ export class SitemapAdapter extends HalResourceAdapter {
                     title: "Settings"
                 });
             }
-        } else {
-            // Add federate link for unauthenticated users
-            links['auth:federate'] = this.createLink(
-                this.router.buildHref(AuthenticationController, 'federate', {}),
-                { title: 'Federate Session' }
-            );
         }
 
         return links;
@@ -130,8 +109,42 @@ export class SitemapAdapter extends HalResourceAdapter {
             return undefined;
         }
 
+        const userId = this.user.userId;
+
         // POST operations become templates
         return {
+            sessions: this.createTemplate(
+                "Sessions",
+                "POST",
+                this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
+                }
+            ),
+            "api-keys": this.createTemplate(
+                "API Keys",
+                "POST",
+                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        }
+                    ]
+                }
+            ),
             logout: this.createTemplate(
                 "Logout",
                 "POST",

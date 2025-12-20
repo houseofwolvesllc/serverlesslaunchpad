@@ -10,12 +10,14 @@ vi.mock("../../src/authentication/authentication_cookie_repository", () => ({
         set: vi.fn(),
         remove: vi.fn(),
         get: vi.fn(),
+        isSet: vi.fn().mockReturnValue(false),
     },
 }));
 
 describe("AuthenticationController", () => {
     let controller: AuthenticationController;
     let mockAuthenticator: any;
+    let mockRouter: any;
 
     const createMockUser = (): User => ({
         userId: "user-123",
@@ -76,7 +78,19 @@ describe("AuthenticationController", () => {
             revoke: vi.fn(),
         } as any;
 
-        controller = new AuthenticationController(mockAuthenticator);
+        mockRouter = {
+            buildHref: vi.fn((controller, method, params) => {
+                // Mock simple URL building for tests
+                if (method === 'federate') return '/auth/federate';
+                if (method === 'verify') return '/auth/verify';
+                if (method === 'revoke') return '/auth/revoke';
+                if (method === 'getSessions') return `/users/${params.userId}/sessions/`;
+                if (method === 'getApiKeys') return `/users/${params.userId}/api-keys/`;
+                return '/';
+            }),
+        } as any;
+
+        controller = new AuthenticationController(mockAuthenticator, mockRouter);
 
         // Clear mock calls from previous tests
         vi.clearAllMocks();
@@ -203,10 +217,10 @@ describe("AuthenticationController", () => {
             // Act
             await controller.federate(event);
 
-            // Assert
+            // Assert - sessionToken is sessionKey + userId
             expect(AuthenticationCookieRepository.set).toHaveBeenCalledWith(
                 expect.any(Object),
-                "session-token-123",
+                "test-session-keyuser-123", // sessionKey + userId
                 expect.any(Number)
             );
         });
@@ -239,7 +253,7 @@ describe("AuthenticationController", () => {
             // Assert - Web SPAs using JSON need cookies for secure session management
             expect(AuthenticationCookieRepository.set).toHaveBeenCalledWith(
                 expect.any(Object), // response object
-                "session-token-123", // session token
+                "test-session-keyuser-123", // sessionKey + userId
                 expect.any(Number) // expiry timestamp
             );
         });

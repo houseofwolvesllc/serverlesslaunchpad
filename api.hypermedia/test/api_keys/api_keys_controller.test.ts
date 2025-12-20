@@ -14,6 +14,7 @@ vi.mock("../../src/decorators/index.js", () => ({
 describe("ApiKeysController", () => {
     let controller: ApiKeysController;
     let mockApiKeyRepository: any;
+    let mockRouter: any;
 
     const createMockUser = (overrides?: Partial<User>): User => ({
         userId: "user-123",
@@ -62,7 +63,22 @@ describe("ApiKeysController", () => {
             deleteApiKeys: vi.fn(),
         };
 
-        controller = new ApiKeysController(mockApiKeyRepository);
+        mockRouter = {
+            buildHref: vi.fn((controller: any, method: string, params: any) => {
+                if (method === 'getApiKeys') {
+                    return `/users/${params.userId}/api-keys/list`;
+                }
+                if (method === 'createApiKey') {
+                    return `/users/${params.userId}/api-keys/create`;
+                }
+                if (method === 'deleteApiKeys') {
+                    return `/users/${params.userId}/api-keys/delete`;
+                }
+                return '/';
+            })
+        };
+
+        controller = new ApiKeysController(mockApiKeyRepository, mockRouter);
         vi.clearAllMocks();
     });
 
@@ -280,7 +296,7 @@ describe("ApiKeysController", () => {
             // Assert
             expect(mockApiKeyRepository.deleteApiKeys).toHaveBeenCalledWith({
                 userId: "user-123",
-                apiKeys: ["key-1", "key-2", "key-3"],
+                apiKeyIds: ["key-1", "key-2", "key-3"],
             });
 
             expect(result.statusCode).toBe(200);
@@ -319,7 +335,7 @@ describe("ApiKeysController", () => {
             expect(result.statusCode).toBe(200);
             expect(mockApiKeyRepository.deleteApiKeys).toHaveBeenCalledWith({
                 userId: "user-123",
-                apiKeys: ["key-1"],
+                apiKeyIds: ["key-1"],
             });
         });
 
@@ -399,7 +415,7 @@ describe("ApiKeysController", () => {
             expect(result.statusCode).toBe(200);
             expect(mockApiKeyRepository.deleteApiKeys).toHaveBeenCalledWith({
                 userId: "user-456",
-                apiKeys: ["key-1", "key-2"],
+                apiKeyIds: ["key-1", "key-2"],
             });
         });
 

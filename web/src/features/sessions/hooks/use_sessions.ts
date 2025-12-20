@@ -121,8 +121,8 @@ export function useSessions(): UseSessionsResult {
 
         try {
             const entryPoint = getEntryPoint();
-            // Get sessions link directly from root - no need to fetch user resource
-            const sessionsHref = await entryPoint.getLinkHref('sessions');
+            // Get sessions template target (now in templates for POST operations)
+            const sessionsHref = await entryPoint.getTemplateTarget('listSessions');
 
             if (!sessionsHref) {
                 throw new Error('Sessions endpoint not found');

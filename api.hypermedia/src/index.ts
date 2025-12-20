@@ -18,7 +18,7 @@ import { ExtendedALBEvent } from "./extended_alb_event";
 import { ApiLogger } from "./logging";
 import { HttpMethod, Router } from "./router";
 
-// Import controllers
+// Import controllers for route registration
 import { ApiKeysController } from "./api_keys/api_keys_controller";
 import { AuthenticationController } from "./authentication/authentication_controller";
 import { RootController } from "./root/root_controller";
@@ -28,11 +28,24 @@ import { SitemapController } from "./sitemap/sitemap_controller";
 const container = getContainer();
 const router = new Router();
 
-// Register all controllers
-router.registerRoutes([RootController, AuthenticationController, SessionsController, ApiKeysController, SitemapController]);
+// Register all application routes
+router.registerRoutes([
+    RootController,
+    AuthenticationController,
+    SessionsController,
+    ApiKeysController,
+    SitemapController
+]);
 
 // Register router as singleton in container so it can be injected into controllers
-container.bind(Router).toFactory(() => router).asSingleton();
+try {
+    container.bind(Router).toFactory(() => router).asSingleton();
+} catch (error: any) {
+    // Router already registered (e.g., from test setup) - that's fine
+    if (!error.message?.includes('already registered')) {
+        throw error;
+    }
+}
 
 /**
  * Main ALB handler for the Hypermedia API.
