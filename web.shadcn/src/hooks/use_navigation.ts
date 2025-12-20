@@ -1,4 +1,5 @@
 import { useHalResource } from './use_hal_resource';
+import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Navigation item referencing a link or template
@@ -15,25 +16,6 @@ export interface NavItem {
 export interface NavGroup {
     title: string;
     items: (NavItem | NavGroup)[];
-}
-
-/**
- * HAL link structure
- */
-interface HalLink {
-    href: string;
-    title?: string;
-    [key: string]: any;
-}
-
-/**
- * HAL template structure
- */
-interface HalTemplate {
-    title: string;
-    method: string;
-    target: string;
-    [key: string]: any;
 }
 
 /**

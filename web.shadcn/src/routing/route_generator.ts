@@ -19,6 +19,7 @@ import { createElement } from 'react';
 import type { NavItem, NavGroup, ResolvedNavItem } from '../hooks/use_navigation';
 import { getComponentForId } from './component_registry';
 import { logger } from '../logging/logger';
+import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Breadcrumb metadata for a route
@@ -36,25 +37,6 @@ export interface BreadcrumbMeta {
     resourceType?: 'link' | 'template';
     /** Template definition if this is a template-based route */
     template?: HalTemplate;
-}
-
-/**
- * HAL link structure
- */
-interface HalLink {
-    href: string;
-    title?: string;
-    [key: string]: any;
-}
-
-/**
- * HAL template structure
- */
-interface HalTemplate {
-    title: string;
-    method: string;
-    target: string;
-    [key: string]: any;
 }
 
 /**

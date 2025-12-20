@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { HalObject, HalLink } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { useNavigationHistory } from '@/context/navigation_history_context';
+import { useSitemap } from '@/features/sitemap/hooks/use_sitemap';
+import type { NavItem, NavGroup } from '@/hooks/use_navigation';
 
 /**
  * Helper to get href from a HalLink (handles both single link and array)
@@ -52,6 +54,61 @@ function extractTitleFromResource(resource: HalObject, fallbackHref: string): st
 }
 
 /**
+ * Find parent groups for a given href by searching the sitemap navigation structure
+ */
+function findParentGroups(
+  href: string,
+  navStructure: (NavItem | NavGroup)[] | undefined,
+  links: Record<string, any> | undefined,
+  templates: Record<string, any> | undefined,
+  parentGroups: NavGroup[] = []
+): NavGroup[] | undefined {
+  if (!navStructure || !links || !templates) {
+    return undefined;
+  }
+
+  for (const item of navStructure) {
+    if ('rel' in item) {
+      // NavItem - check if it matches
+      const navItem = item as NavItem;
+      const itemHref = navItem.type === 'link'
+        ? links[navItem.rel]?.href
+        : templates[navItem.rel]?.target;
+
+      if (itemHref && matchesPath(itemHref, href)) {
+        return parentGroups;
+      }
+    } else {
+      // NavGroup - recurse with this group added to parent chain
+      const group = item as NavGroup;
+      const result = findParentGroups(
+        href,
+        group.items,
+        links,
+        templates,
+        [...parentGroups, group]
+      );
+
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if href matches pathname (supporting template parameters)
+ */
+function matchesPath(templateHref: string, actualHref: string): boolean {
+  // Convert template variables {userId} to regex patterns
+  const pattern = templateHref.replace(/\{[^}]+\}/g, '[^/]+');
+  const regex = new RegExp(`^${pattern}$`);
+  return regex.test(actualHref);
+}
+
+/**
  * Automatically track HAL resource in navigation history
  *
  * This hook should be called whenever a HAL resource is loaded.
@@ -65,6 +122,7 @@ function extractTitleFromResource(resource: HalObject, fallbackHref: string): st
 export function useHalResourceTracking(resource: HalObject | null | undefined) {
   const location = useLocation();
   const { history, pushResource, resetHistory, shouldSkipNextNavigation } = useNavigationHistory();
+  const { navStructure, links, templates } = useSitemap();
   const previousHref = useRef<string | null>(null);
   const isInitialMount = useRef(true);
 
@@ -87,14 +145,19 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
       return;
     }
 
-    // Try to get href from self link, otherwise use current pathname
+    // Try to get href from self reference (links take precedence over templates)
     let currentHref = getHref(resource._links?.self);
 
+    if (!currentHref && resource._templates?.self) {
+      // Template-based resources use _templates.self.target
+      currentHref = resource._templates.self.target;
+      console.log('[HAL Tracking] Using template self target:', currentHref);
+    }
+
     if (!currentHref) {
-      // Collections and template responses might not have self link
-      // Use the current pathname instead
+      // No self link or template - use current pathname as fallback
       currentHref = location.pathname;
-      console.log('[HAL Tracking] No self link, using pathname:', currentHref);
+      console.log('[HAL Tracking] No self link or template, using pathname:', currentHref);
     }
 
     console.log('[HAL Tracking] Processing resource:', currentHref);
@@ -128,13 +191,22 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
     const isMenuNavigation = (location.state as any)?.navigationSource === 'menu';
     console.log('[HAL Tracking] Is menu navigation:', isMenuNavigation, 'from location.state');
 
+    // Lookup parent groups for menu navigation
+    const parentGroups = isMenuNavigation
+      ? findParentGroups(currentHref, navStructure, links, templates)
+      : undefined;
+
+    if (parentGroups) {
+      console.log('[HAL Tracking] Found parent groups:', parentGroups.map(g => g.title));
+    }
+
     // Determine navigation source
     const isDashboard = currentHref === '/' || currentHref === '/dashboard';
 
     if (isMenuNavigation) {
       // Explicitly marked as menu navigation - always reset
       console.log('[HAL Tracking] ACTION: Reset history (menu navigation)');
-      resetHistory(resourceToStore, 'menu');
+      resetHistory(resourceToStore, 'menu', parentGroups);
     } else if (history.length === 0 || (isDashboard && isInitialMount.current)) {
       // First navigation or initial dashboard load - reset history
       console.log('[HAL Tracking] ACTION: Reset history (first load or dashboard)');
@@ -160,5 +232,5 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
 
     previousHref.current = currentHref;
     isInitialMount.current = false;
-  }, [resource, history, pushResource, resetHistory, shouldSkipNextNavigation, location.pathname, location.state]);
+  }, [resource, history, pushResource, resetHistory, shouldSkipNextNavigation, location.pathname, location.state, navStructure, links, templates]);
 }
