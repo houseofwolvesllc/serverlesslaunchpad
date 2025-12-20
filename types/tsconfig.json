@@ -1,0 +1,14 @@
+// https://www.typescriptlang.org/tsconfig
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+  },
+  "extends": "../tsconfig.json",
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.d.*"
+  ]  
+}
