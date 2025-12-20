@@ -1,27 +1,27 @@
-import "reflect-metadata"; // Must be imported first for decorators to work
 import { ALBEvent, ALBResult } from "aws-lambda";
-import { ExtendedALBEvent } from "./common/extended_alb_event";
-import { getContainer } from "./container";
-import { Router, HttpMethod } from "./router";
+import "reflect-metadata"; // Must be imported first for decorators to work
 import { getAcceptedContentType } from "./common/content_negotiation";
-import { ResponseBuilder } from "./common/response_builder";
-import { ApiLogger } from "./logging";
-import { 
-    HttpError, 
-    ValidationError, 
-    UnauthorizedError, 
-    ForbiddenError, 
-    NotFoundError, 
-    ConflictError, 
+import {
+    ConflictError,
+    ForbiddenError,
+    HttpError,
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
     UnprocessableEntityError,
-    InternalServerError 
+    ValidationError
 } from "./common/errors";
+import { ExtendedALBEvent } from "./common/extended_alb_event";
+import { ResponseBuilder } from "./common/response_builder";
+import { getContainer } from "./container";
+import { ApiLogger } from "./logging";
+import { HttpMethod, Router } from "./router";
 
 // Import controllers
-import { RootController } from "./root_controller";
-import { AuthenticationController } from "./authentication/authentication_controller";
-import { SessionsController } from "./sessions/sessions_controller";
 import { ApiKeysController } from "./api_keys/api_keys_controller";
+import { AuthenticationController } from "./authentication/authentication_controller";
+import { RootController } from "./root_controller";
+import { SessionsController } from "./sessions/sessions_controller";
 
 // Initialize the container once at module load time
 const container = getContainer();
@@ -96,8 +96,6 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
 
         // Log minimal info on success (just status and duration for monitoring)
         const totalDuration = Date.now() - startTime;
-        const extendedEvent = event as ExtendedALBEvent;
-        extendedEvent.traceId = traceId;
         
         logger.logRequestSuccess(
             "Request completed successfully",
