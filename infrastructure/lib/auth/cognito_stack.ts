@@ -22,8 +22,8 @@ export class CognitoStack extends BaseStack {
      * Create Cognito User Pool with authentication settings
      */
     private createUserPool(): UserPool {
-        return new UserPool(this, this.constructId("user_pool"), {
-            userPoolName: this.resourceName("user_pool"),
+        return new UserPool(this, this.constructId("user-pool"), {
+            userPoolName: this.resourceName("user-pool"),
 
             // Sign-in configuration
             signInAliases: this.getSignInAliases(),
@@ -120,9 +120,9 @@ export class CognitoStack extends BaseStack {
      * Create User Pool Client for web/API access
      */
     private createUserPoolClient(): UserPoolClient {
-        return new UserPoolClient(this, this.constructId("user_pool_client"), {
+        return new UserPoolClient(this, this.constructId("user-pool-client"), {
             userPool: this.userPool,
-            userPoolClientName: this.resourceName("web_client"),
+            userPoolClientName: this.resourceName("web-client"),
 
             // Authentication flows
             authFlows: this.getAuthFlows(),
@@ -151,7 +151,6 @@ export class CognitoStack extends BaseStack {
             adminUserPassword: false,
         };
     }
-
 
     /**
      * Create stack outputs

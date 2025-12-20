@@ -1,5 +1,5 @@
 import { Duration, SecretValue } from "aws-cdk-lib";
-import { Alias, Key } from "aws-cdk-lib/aws-kms";
+import { Key } from "aws-cdk-lib/aws-kms";
 import { RotationSchedule, Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { randomBytes } from "crypto";
@@ -11,8 +11,6 @@ import { BaseStack, BaseStackProps } from "../base/base_stack";
 export class SecretsStack extends BaseStack {
     public readonly configurationSecret: Secret;
     public readonly encryptionKey?: Key;
-    private keyAlias?: Alias;
-    private rotationSchedule?: RotationSchedule;
 
     constructor(scope: Construct, id: string, props: BaseStackProps) {
         super(scope, id, props);
@@ -33,26 +31,13 @@ export class SecretsStack extends BaseStack {
             return undefined;
         }
 
-        const key = new Key(this, this.constructId("secrets_encryption_key"), {
+        const key = new Key(this, this.constructId("secrets-encryption-key"), {
             description: `Encryption key for ${this.stackName} secrets`,
             enableKeyRotation: true,
             removalPolicy: this.getRemovalPolicy(),
         });
 
-        this.createKeyAlias(key);
         return key;
-    }
-
-    /**
-     * Create KMS key alias for easier reference
-     */
-    private createKeyAlias(key: Key): void {
-        const { secrets } = this.configuration;
-
-        this.keyAlias = new Alias(this, this.constructId("secrets_encryption_key_alias"), {
-            aliasName: secrets.kmsKeyAlias!,
-            targetKey: key,
-        });
     }
 
     /**
@@ -61,7 +46,7 @@ export class SecretsStack extends BaseStack {
     private createConfigurationSecret(): Secret {
         const { secrets } = this.configuration;
 
-        return new Secret(this, this.constructId("configuration_secret"), {
+        return new Secret(this, this.constructId("configuration-secret"), {
             secretName: secrets.secretName,
             description: `Secrets for Serverless Launchpad ${this.appEnvironment} environment`,
             encryptionKey: this.encryptionKey,
@@ -100,7 +85,6 @@ export class SecretsStack extends BaseStack {
      * Generate a cryptographically secure token salt
      */
     private generateSecureTokenSalt(): string {
-
         // Generate 64 bytes (128 hex characters) of random data
         // This provides excellent entropy for session token signing
         return randomBytes(64).toString("hex");
@@ -116,7 +100,7 @@ export class SecretsStack extends BaseStack {
             return;
         }
 
-        this.rotationSchedule = new RotationSchedule(this, this.constructId("configuration_secret_rotation"), {
+        new RotationSchedule(this, this.constructId("configuration-secret-rotation"), {
             secret: this.configurationSecret,
             rotationLambda: undefined, // Will use default rotation function
             automaticallyAfter: Duration.days(secrets.rotationDays),

@@ -47,7 +47,7 @@ export class NetworkStack extends BaseStack {
      */
     private importDefaultVpc(): IVpc {
         console.log("🔍 Looking up default VPC...");
-        return Vpc.fromLookup(this, this.constructId("default_vpc"), {
+        return Vpc.fromLookup(this, this.constructId("default-vpc"), {
             isDefault: true,
         });
     }
@@ -59,7 +59,7 @@ export class NetworkStack extends BaseStack {
         if (!vpcId) {
             throw new Error("VPC ID is required when using existing VPC");
         }
-        return Vpc.fromLookup(this, this.constructId("existing_vpc"), {
+        return Vpc.fromLookup(this, this.constructId("existing-vpc"), {
             vpcId: vpcId,
         });
     }
@@ -69,7 +69,7 @@ export class NetworkStack extends BaseStack {
      */
     private createCustomVpc(): IVpc {
         console.log("🏗️  Creating custom VPC with NAT Gateway (~$65/month)...");
-        return new Vpc(this, this.constructId("custom_vpc"), {
+        return new Vpc(this, this.constructId("custom-vpc"), {
             vpcName: this.resourceName("vpc"),
             maxAzs: 2,
             natGateways: this.isProduction() ? 2 : 1,
@@ -92,9 +92,9 @@ export class NetworkStack extends BaseStack {
      * Create security group for ALB
      */
     private createAlbSecurityGroup(): SecurityGroup {
-        const securityGroup = new SecurityGroup(this, this.constructId("alb_security_group"), {
+        const securityGroup = new SecurityGroup(this, this.constructId("alb-security-group"), {
             vpc: this.vpc,
-            securityGroupName: this.resourceName("alb_sg"),
+            securityGroupName: this.resourceName("alb-sg"),
             description: "Security group for Serverless Launchpad ALB",
             allowAllOutbound: true,
         });
@@ -107,7 +107,6 @@ export class NetworkStack extends BaseStack {
 
         return securityGroup;
     }
-
 
     /**
      * Create stack outputs

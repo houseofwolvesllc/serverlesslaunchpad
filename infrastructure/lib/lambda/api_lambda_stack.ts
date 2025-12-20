@@ -1,6 +1,6 @@
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
-import { ApplicationTargetGroup, Protocol, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { ApplicationTargetGroup, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LambdaTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { Effect, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
@@ -38,7 +38,7 @@ export class ApiLambdaStack extends BaseStack {
 
     constructor(scope: Construct, id: string, props: ApiLambdaStackProps) {
         super(scope, id, props);
-        
+
         this.logGroup = this.createLogGroup();
         this.executionRole = this.createExecutionRole();
         this.addExecutionRolePolicies(props);
@@ -114,7 +114,6 @@ export class ApiLambdaStack extends BaseStack {
             removalPolicy: this.getRemovalPolicy(),
         });
     }
-
 
     /**
      * Create ALB target group for Lambda
