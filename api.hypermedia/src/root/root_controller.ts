@@ -3,7 +3,10 @@ import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller";
 import { Protected } from "../decorators/protected";
 import { ExtendedALBEvent } from "../extended_alb_event";
-import { Route } from "../router";
+import { Route, Router } from "../router";
+import { SessionsController } from "../sessions/sessions_controller";
+import { ApiKeysController } from "../api_keys/api_keys_controller";
+import { AuthenticationController } from "../authentication/authentication_controller";
 
 /**
  * Root API Response Structure
@@ -36,6 +39,10 @@ interface RootResponse {
  */
 @Injectable()
 export class RootController extends BaseController {
+    constructor(private router: Router) {
+        super();
+    }
+
     @Route("GET", "/")
     @Protected({ allowAnonymous: true })
     async getRoot(event: ExtendedALBEvent): Promise<ALBResult> {
@@ -57,7 +64,7 @@ export class RootController extends BaseController {
         // Unauthenticated links - available to all users
         if (!isAuthenticated) {
             response._links["auth:federate"] = {
-                href: "/auth/federate",
+                href: this.router.buildHref(AuthenticationController, 'federate', {}),
                 title: "Federate Identity Provider Token",
                 method: "POST",
             };
@@ -70,22 +77,22 @@ export class RootController extends BaseController {
         // Authenticated links - only available after sign-in
         if (isAuthenticated && userId) {
             response._links["auth:verify"] = {
-                href: "/auth/verify",
+                href: this.router.buildHref(AuthenticationController, 'verify', {}),
                 title: "Verify Session",
                 method: "POST",
             };
             response._links["auth:revoke"] = {
-                href: "/auth/revoke",
+                href: this.router.buildHref(AuthenticationController, 'revoke', {}),
                 title: "Revoke Session",
                 method: "POST",
             };
             response._links["sessions"] = {
-                href: `/users/${userId}/sessions/list`,
+                href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
                 title: "User Sessions",
                 method: "POST"
             };
             response._links["api-keys"] = {
-                href: `/users/${userId}/api_keys/list`,
+                href: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
                 title: "User API Keys",
                 method: "POST"
             };

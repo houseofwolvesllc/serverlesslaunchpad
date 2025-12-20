@@ -194,4 +194,62 @@ export class Router {
         this.sortRoutes();
         return [...this.routes];
     }
+
+    /**
+     * Build href from route metadata by controller class and method name
+     *
+     * This enables reverse routing - generating URLs from route definitions
+     * rather than hard-coding paths throughout the codebase.
+     *
+     * @param controllerClass Controller class with @Route decorators
+     * @param methodName Method name with @Route decorator
+     * @param parameters Path parameters to interpolate (e.g., { userId: "abc123" })
+     * @returns URL path with parameters interpolated
+     * @throws Error if route not found or if required parameters are missing
+     *
+     * @example
+     * ```typescript
+     * // Given: @Route('GET', '/users/{userId}/sessions/{sessionId}')
+     * const href = router.buildHref(SessionsController, 'get', {
+     *   userId: 'abc123',
+     *   sessionId: 'xyz789'
+     * });
+     * // Returns: '/users/abc123/sessions/xyz789'
+     * ```
+     */
+    buildHref(
+        controllerClass: new (...args: any[]) => any,
+        methodName: string,
+        parameters: Record<string, string> = {}
+    ): string {
+        const route = this.routes.find(
+            (r) => r.controllerClass === controllerClass && r.methodName === methodName
+        );
+
+        if (!route) {
+            throw new Error(`Route not found: ${controllerClass.name}.${methodName}`);
+        }
+
+        // Interpolate parameters into path template
+        let href = route.path;
+        for (const [key, value] of Object.entries(parameters)) {
+            const placeholder = `{${key}}`;
+            if (!href.includes(placeholder)) {
+                throw new Error(
+                    `Parameter '${key}' not found in route path '${route.path}' for ${controllerClass.name}.${methodName}`
+                );
+            }
+            href = href.replace(placeholder, encodeURIComponent(value));
+        }
+
+        // Check for any remaining unfilled parameters
+        const remainingParams = href.match(/\{[^}]+\}/g);
+        if (remainingParams) {
+            throw new Error(
+                `Missing required parameters ${remainingParams.join(', ')} for route ${controllerClass.name}.${methodName}`
+            );
+        }
+
+        return href;
+    }
 }

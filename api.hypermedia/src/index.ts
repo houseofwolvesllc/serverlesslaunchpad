@@ -31,6 +31,9 @@ const router = new Router();
 // Register all controllers
 router.registerRoutes([RootController, AuthenticationController, SessionsController, ApiKeysController, SitemapController]);
 
+// Register router as singleton in container so it can be injected into controllers
+container.bind(Router).toFactory(() => router).asSingleton();
+
 /**
  * Main ALB handler for the Hypermedia API.
  * This handler implements the complete request/response flow:

@@ -10,13 +10,40 @@
 import { NavigateFunction } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { apiClient, ApiClientError } from '../../../services/api.client';
-import { mapEndpointToRoute, extractResourceName } from './endpoint_route_mapper';
+
+/**
+ * Extract resource name from href for display purposes
+ *
+ * @param href - API endpoint
+ * @returns Human-readable resource name
+ *
+ * @example
+ * ```typescript
+ * extractResourceName('/users/abc123/api-keys/list')
+ * // Returns: 'Api Keys'
+ * ```
+ */
+function extractResourceName(href: string): string {
+    // Extract the resource part (e.g., 'api-keys', 'sessions')
+    const match = href.match(/\/([^/]+)\/list$/);
+    if (match) {
+        const resource = match[1];
+        // Convert kebab-case to Title Case
+        return resource
+            .split('-')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
+    // Fallback: use href
+    return href;
+}
 
 /**
  * Execute POST navigation action and handle navigation
  *
- * Makes a POST request to the specified href, displays notifications
- * for user feedback, and navigates to the mapped route on success.
+ * Makes a POST request to the specified href and navigates to the
+ * self link from the response (HATEOAS principle).
  *
  * @param href - API endpoint from sitemap
  * @param title - Display name for notifications
@@ -43,15 +70,35 @@ export async function executePostAction(
         // Execute POST request
         const response = await apiClient.post(href);
 
-        // Find destination route
-        const route = mapEndpointToRoute(href, 'POST');
+        // Use the self link from the response for navigation (HATEOAS)
+        const selfHref = response._links?.self?.href;
 
-        if (!route) {
-            throw new Error(`No route mapping found for ${href}`);
+        if (!selfHref) {
+            // If no self link, check for other navigation hints
+            const federateHref = response._links?.federate?.href;
+            const collectionHref = response._links?.collection?.href;
+
+            // If response includes a federate link, it means session was revoked
+            // and we need to return to unauthenticated state (e.g., logout)
+            // Use full page reload to clear all React state and auth context
+            if (federateHref) {
+                window.location.href = '/auth/signin';
+                return;
+            }
+
+            // Otherwise, navigate to collection if available
+            if (collectionHref) {
+                navigate(collectionHref, {
+                    state: { data: response },
+                });
+                return;
+            }
+
+            throw new Error('Response missing _links.self.href or alternative navigation link');
         }
 
-        // Navigate to destination route (success is implicit by navigation)
-        navigate(route, {
+        // Navigate to the self link (success is implicit by navigation)
+        navigate(selfHref, {
             state: { data: response }, // Pass response data if needed by destination
         });
     } catch (error) {

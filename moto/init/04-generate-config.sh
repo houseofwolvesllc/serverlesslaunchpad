@@ -38,12 +38,6 @@ generate_infrastructure_config() {
 
     local static_bucket=$(get_ssm_parameter "${SSM_S3_STATIC_BUCKET}" "${S3_STATIC_BUCKET}")
 
-    local athena_bucket=$(get_ssm_parameter "${SSM_S3_ATHENA_BUCKET}" "${S3_ATHENA_RESULTS_BUCKET}")
-
-    local athena_workgroup=$(get_ssm_parameter "${SSM_ATHENA_WORKGROUP}" "${ATHENA_WORKGROUP}")
-
-    local glue_database=$(get_ssm_parameter "${SSM_GLUE_DATABASE}" "${GLUE_DATABASE}")
-
     # Generate timestamp
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
@@ -65,13 +59,6 @@ generate_infrastructure_config() {
     "identity_pool_id": "$identity_pool_id",
     "user_pool_provider_url": "$cognito_endpoint",
     "endpoint_url": "$cognito_endpoint"
-  },
-
-  "athena": {
-    "database_name": "$glue_database",
-    "workgroup": "$athena_workgroup",
-    "data_bucket": "$static_bucket",
-    "results_bucket": "$athena_bucket"
   },
 
   "api": {

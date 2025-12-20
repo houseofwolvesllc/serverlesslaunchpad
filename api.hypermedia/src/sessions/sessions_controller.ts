@@ -3,7 +3,7 @@ import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
-import { Route } from "../router.js";
+import { Route, Router } from "../router.js";
 import { MessageAdapter } from "../content_types/message_adapter.js";
 import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
 import { SessionCollectionAdapter } from "./session_collection_adapter.js";
@@ -14,7 +14,8 @@ import { SessionCollectionAdapter } from "./session_collection_adapter.js";
 @Injectable()
 export class SessionsController extends BaseController {
     constructor(
-        private sessionRepository: SessionRepository
+        private sessionRepository: SessionRepository,
+        private router: Router
     ) {
         super();
     }
@@ -58,7 +59,8 @@ export class SessionsController extends BaseController {
         const adapter = new SessionCollectionAdapter(
             userId,
             sessions.items,
-            sessions.pagingInstructions
+            sessions.pagingInstructions,
+            this.router
         );
 
         return this.success(event, adapter);
@@ -94,13 +96,13 @@ export class SessionsController extends BaseController {
             sessionIds
         });
 
+        // Action response - no self link, use collection link with title
         const adapter = new MessageAdapter({
-            selfHref: `/users/${userId}/sessions/delete`,
             message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
             links: {
-                sessions: {
-                    href: `/users/${userId}/sessions/list`,
-                    title: "View remaining sessions"
+                collection: {
+                    href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                    title: "Sessions"
                 }
             },
             properties: {

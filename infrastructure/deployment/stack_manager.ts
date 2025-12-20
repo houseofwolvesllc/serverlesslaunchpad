@@ -153,9 +153,8 @@ export abstract class StackManager {
     getAvailableStacks(): StackInfo[] {
         return [
             { name: "secrets", displayName: "Secrets Manager" },
-            { name: "data", displayName: "Athena Data Infrastructure" },
             { name: "auth", displayName: "Cognito Authentication" },
-            { name: "alb", displayName: "Application Load Balancer", dependencies: ["auth", "data"] },
+            { name: "alb", displayName: "Application Load Balancer", dependencies: ["auth"] },
             { name: "lambda", displayName: "Lambda Functions", dependencies: ["alb", "secrets"] },
         ];
     }

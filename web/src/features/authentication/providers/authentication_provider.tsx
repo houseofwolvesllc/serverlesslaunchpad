@@ -1,7 +1,7 @@
-import { AuthenticationContext, useAuth } from '../../authentication';
 import { useContext, useEffect, useState } from 'react';
 import { LoadingContext } from '../../../context/loading_context';
-import { User, AuthError } from '../types';
+import { AuthenticationContext, useAuth } from '../../authentication';
+import { AuthError, User } from '../types';
 
 export const AuthenticationProvider = ({ children }: { children: React.ReactNode }) => {
     const [signedInUser, setSignedInUser] = useState<User | undefined>();
@@ -30,7 +30,6 @@ function AutoLogin({ setHasTriedAutoLogin }: { setHasTriedAutoLogin: (hasTriedAu
 
         async function autoLogin() {
             setIsLoading(true);
-            await new Promise((resolve) => setTimeout(resolve, 3000));
 
             try {
                 await auth.verifySession();
