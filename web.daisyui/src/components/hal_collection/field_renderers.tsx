@@ -10,26 +10,57 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Copy, Check } from 'lucide-react';
-import { FieldType, type InferredColumn } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { FieldType, type InferredColumn, getEnumLabel } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import {
     determineBadgeVariant,
     formatDateValue,
     evaluateBooleanValue,
     shortenUrl,
     getNullValuePlaceholder,
+    getEnumPropertyFromTemplates,
 } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { cn } from '@/lib/utils';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 
 /**
- * Text field renderer - Simple text display
+ * Text field renderer - Simple text display with array support
+ *
+ * Automatically detects arrays and renders them as badges with enum label lookup.
+ * This follows HATEOAS principles by using server-provided labels from HAL templates.
  */
-export const TextRenderer: FieldRenderer = (value, column) => {
+export const TextRenderer: FieldRenderer = (value, column, item) => {
     if (value === null || value === undefined || value === '') {
         const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
         return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
+
+    // Handle arrays (like features) - render as badges with enum lookup
+    if (Array.isArray(value)) {
+        if (value.length === 0) {
+            return <span className="text-base-content/50 text-sm">{column.nullText || 'None'}</span>;
+        }
+
+        // Try to get enum property for label lookup
+        const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+        const labels = value.map(val => {
+            if (enumProperty) {
+                return getEnumLabel(val, enumProperty, String(val));
+            }
+            return String(val);
+        });
+
+        return (
+            <div className="flex flex-wrap gap-1">
+                {labels.map((label, index) => (
+                    <span key={index} className="badge badge-sm badge-ghost">
+                        {label}
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
     return <span className="text-sm">{String(value)}</span>;
 };
 
@@ -110,16 +141,26 @@ export const DateRenderer: FieldRenderer = (value, column) => {
 };
 
 /**
- * Badge field renderer - Status/type badges
+ * Badge field renderer - Status/type badges with enum support
+ *
+ * This renderer checks for enum metadata in HAL templates and uses
+ * the display label when available, falling back to the raw value.
+ * This follows HATEOAS principles by using server-provided labels.
  */
-export const BadgeRenderer: FieldRenderer = (value, column) => {
-    if (!value) {
+export const BadgeRenderer: FieldRenderer = (value, column, item) => {
+    if (value === null || value === undefined || value === '') {
         const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
         return <span className="text-base-content/50 text-sm">{placeholder}</span>;
     }
 
-    // Determine badge variant from value and map to DaisyUI classes
-    const variant = determineBadgeVariant(String(value));
+    // Try to get enum property from HAL templates
+    const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+    const displayValue = enumProperty
+        ? getEnumLabel(value, enumProperty, String(value))
+        : String(value);
+
+    // Determine badge variant from display value and map to DaisyUI classes
+    const variant = determineBadgeVariant(displayValue);
     const badgeClassMap: Record<string, string> = {
         'default': 'badge-success',
         'destructive': 'badge-error',
@@ -134,7 +175,7 @@ export const BadgeRenderer: FieldRenderer = (value, column) => {
 
     return (
         <span className={cn('badge badge-sm', badgeClass)}>
-            {String(value)}
+            {displayValue}
         </span>
     );
 };
@@ -153,12 +194,26 @@ export const BooleanRenderer: FieldRenderer = (value) => {
 };
 
 /**
- * Number field renderer - Formatted numbers
+ * Number field renderer - Formatted numbers with enum support
+ *
+ * Checks for enum metadata first (for numeric enums like Role), then formats as number.
+ * This follows HATEOAS principles by using server-provided labels from HAL templates.
  */
-export const NumberRenderer: FieldRenderer = (value, column) => {
+export const NumberRenderer: FieldRenderer = (value, column, item) => {
     if (value === null || value === undefined) {
         const placeholder = getNullValuePlaceholder(column.key, column.nullText || '—');
         return <span className="text-base-content/50 text-sm">{placeholder}</span>;
+    }
+
+    // Check if this is an enum field (numeric enums like Role)
+    const enumProperty = getEnumPropertyFromTemplates(item, column.key);
+    if (enumProperty) {
+        const displayValue = getEnumLabel(value, enumProperty, String(value));
+        return (
+            <span className="badge badge-sm badge-ghost">
+                {displayValue}
+            </span>
+        );
     }
 
     const num = Number(value);

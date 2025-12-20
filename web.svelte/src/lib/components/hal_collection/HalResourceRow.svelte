@@ -9,7 +9,8 @@
 	import { Copy, Check } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import type { InferredColumn, HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
-	import { FieldType } from '@houseofwolves/serverlesslaunchpad.web.commons';
+	import { FieldType, getEnumLabel } from '@houseofwolves/serverlesslaunchpad.web.commons';
+	import { getEnumPropertyFromTemplates } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 	import type { FieldRenderer } from './field_renderers';
 	import { getFieldRenderer } from './field_renderers';
 	import { cn } from '$lib/utils';
@@ -125,9 +126,11 @@
 					<span class="text-muted-foreground text-xs">{column.nullText || 'Never'}</span>
 				{/if}
 			{:else if column.type === FieldType.BADGE}
-				<!-- Badge field -->
-				{#if value}
-					{@const lower = String(value).toLowerCase()}
+				<!-- Badge field with enum support (HATEOAS-compliant) -->
+				{#if value !== null && value !== undefined && value !== ''}
+					{@const enumProperty = getEnumPropertyFromTemplates(item, column.key)}
+					{@const displayValue = enumProperty ? getEnumLabel(value, enumProperty, String(value)) : String(value)}
+					{@const lower = displayValue.toLowerCase()}
 					{@const badgeClass =
 						lower.includes('active') || lower.includes('success') || lower.includes('enabled')
 							? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
@@ -137,7 +140,7 @@
 									? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
 									: 'bg-secondary text-secondary-foreground'}
 					<span class={cn('inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors', badgeClass)}>
-						{value}
+						{displayValue}
 					</span>
 				{:else}
 					<span class="text-muted-foreground text-sm">{column.nullText || '—'}</span>
@@ -149,13 +152,22 @@
 					{isTrue ? 'Yes' : 'No'}
 				</span>
 			{:else if column.type === FieldType.NUMBER}
-				<!-- Number field -->
+				<!-- Number field with enum support (HATEOAS-compliant) -->
 				{#if value !== null && value !== undefined}
-					{@const num = Number(value)}
-					{#if !isNaN(num)}
-						<span class="text-sm font-mono tabular-nums">{num.toLocaleString()}</span>
+					{@const enumProperty = getEnumPropertyFromTemplates(item, column.key)}
+					{#if enumProperty}
+						<!-- Numeric enum (like Role) - display as badge with label from HAL templates -->
+						{@const displayValue = getEnumLabel(value, enumProperty, String(value))}
+						<span class={cn('inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors', 'bg-secondary text-secondary-foreground')}>
+							{displayValue}
+						</span>
 					{:else}
-						<span class="text-sm">{value}</span>
+						{@const num = Number(value)}
+						{#if !isNaN(num)}
+							<span class="text-sm font-mono tabular-nums">{num.toLocaleString()}</span>
+						{:else}
+							<span class="text-sm">{value}</span>
+						{/if}
 					{/if}
 				{:else}
 					<span class="text-muted-foreground text-sm">{column.nullText || '—'}</span>
@@ -194,9 +206,25 @@
 			{:else if column.type === FieldType.HIDDEN}
 				<!-- Hidden field - render nothing -->
 			{:else}
-				<!-- Text field (default) -->
+				<!-- Text field (default) with array support -->
 				{#if value !== null && value !== undefined && value !== ''}
-					<span class="text-sm">{value}</span>
+					{#if Array.isArray(value)}
+						{#if value.length === 0}
+							<span class="text-muted-foreground text-sm">{column.nullText || 'None'}</span>
+						{:else}
+							{@const enumProperty = getEnumPropertyFromTemplates(item, column.key)}
+							<div class="flex flex-wrap gap-1">
+								{#each value as val}
+									{@const displayVal = enumProperty ? getEnumLabel(val, enumProperty, String(val)) : String(val)}
+									<span class={cn('inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors', 'bg-secondary text-secondary-foreground')}>
+										{displayVal}
+									</span>
+								{/each}
+							</div>
+						{/if}
+					{:else}
+						<span class="text-sm">{value}</span>
+					{/if}
 				{:else}
 					<span class="text-muted-foreground text-sm">{column.nullText || '—'}</span>
 				{/if}
