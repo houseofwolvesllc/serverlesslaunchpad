@@ -1,4 +1,4 @@
-import WebConfigurationLoader from './web_config_loader';
+import WebConfigurationStore from './web_config_store';
 
 /**
  * AWS Amplify v6 + Moto Compatibility Shims
@@ -43,7 +43,7 @@ export async function applyShims(): Promise<void> {
  * Production impact: NONE - only applies when custom endpoint is configured
  */
 async function addSupportForCustomEndpoints(): Promise<void> {
-    const config = await WebConfigurationLoader.load();
+    const config = await WebConfigurationStore.getConfig();
 
     // Only apply shims if we have a custom endpoint (Moto/LocalStack)
     if (!config.development?.moto_url) {
@@ -129,7 +129,7 @@ async function addSupportForCustomEndpoints(): Promise<void> {
  * Production impact: NONE - only applies when using Moto endpoints
  */
 async function addSupportForRevokeToken(): Promise<void> {
-    const config = await WebConfigurationLoader.load();
+    const config = await WebConfigurationStore.getConfig();
 
     // Only apply polyfill when using Moto
     if (!config.development?.moto_url) {
