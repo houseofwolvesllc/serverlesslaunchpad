@@ -3,13 +3,20 @@
 	 * GenericResourceView - Catch-all route for HAL resources
 	 *
 	 * This component acts as a catch-all route handler that:
-	 * - Fetches HAL resources from any path
+	 * - Checks the component registry for dedicated feature components
+	 * - Falls back to generic HAL rendering for unknown resource types
 	 * - Auto-detects collections vs single resources
 	 * - Renders HalCollectionList for collections
 	 * - Renders HalResourceDetail for single resources
 	 * - Handles template execution with HATEOAS response-based navigation
 	 * - Lets server response guide navigation (self links, collection detection)
 	 * - Form and action templates are handled by child components
+	 *
+	 * Component Registry Pattern:
+	 * - Menu navigation passes `navigationRel` in page state
+	 * - Registry lookup uses rel first, then URL pattern matching
+	 * - Dedicated components get full bulk operation support
+	 * - Generic view handles unknown resources without bulk ops
 	 *
 	 * URL Convention for GET vs POST:
 	 * - URLs ending in `/list` are collection endpoints → POST
@@ -30,17 +37,58 @@
 	import { createHalResource } from '$lib/hooks/use_hal_resource';
 	import { executeTemplate } from '$lib/hooks/use_template';
 	import { trackHalResource } from '$lib/utils/hal_resource_tracking';
-	import { toastStore } from '$lib/stores/toast_store';
 	import { logger } from '$lib/logging';
+	import { getComponentForResource } from '$lib/routing/component_registry';
 	import HalCollectionList from '$lib/components/hal_collection/HalCollectionList.svelte';
 	import HalResourceDetail from '$lib/components/hal_resource/HalResourceDetail.svelte';
 	import NoMatch from '$lib/components/ui/no_match.svelte';
+
+	// Import dedicated components from lib
+	import SessionsPage from '$lib/components/sessions/SessionsPage.svelte';
+	import ApiKeysPage from '$lib/components/api-keys/ApiKeysPage.svelte';
 
 	export let data: PageData;
 
 	// Extract resource path from page data
 	$: resourcePath = data.resourcePath;
 	$: fullPath = `/${resourcePath}`;
+
+	// Get navigation rel from page state (passed by menu navigation)
+	$: navigationRel = ($page.state as { navigationRel?: string })?.navigationRel;
+
+	// Check component registry for dedicated component
+	$: registryEntry = getComponentForResource(navigationRel, fullPath);
+
+	// Map rel to actual component (since we can't dynamically import in Svelte easily)
+	$: DedicatedComponent = registryEntry
+		? getDedicatedComponent(navigationRel, fullPath)
+		: null;
+
+	/**
+	 * Get the dedicated component for a resource
+	 * This maps the registry entry to actual Svelte components
+	 */
+	function getDedicatedComponent(rel: string | undefined, url: string) {
+		// Try rel match first
+		if (rel === 'sessions') return SessionsPage;
+		if (rel === 'api-keys') return ApiKeysPage;
+
+		// Try URL pattern matching
+		if (/\/sessions\/list$/.test(url) || /^\/sessions$/.test(url)) return SessionsPage;
+		if (/\/api-keys\/list$/.test(url) || /^\/api-keys$/.test(url)) return ApiKeysPage;
+
+		return null;
+	}
+
+	// Log component resolution for debugging
+	$: {
+		logger.info('Generic route component resolution', {
+			fullPath,
+			navigationRel,
+			hasDedicatedComponent: !!DedicatedComponent,
+			componentName: DedicatedComponent?.name || 'GenericView'
+		});
+	}
 
 	// Create HAL resource store - will auto-fetch when path changes
 	let resourceStore: ReturnType<typeof createHalResource> | null = null;
@@ -52,6 +100,7 @@
 	let resourceError: Error | null = null;
 
 	// Reactive: Create new resource store when path changes
+	// Always fetch the resource - dedicated components need it passed as a prop
 	// createHalResource uses URL convention to determine GET vs POST:
 	// - /list suffix → POST
 	// - /users/{id}/xxx paths → discover from user resource
@@ -159,8 +208,7 @@
 				await resourceStore.refresh();
 			}
 
-			// Show success toast
-			toastStore.success(template.title || 'Operation completed successfully');
+			// Note: Success toast is already shown by HalResourceDetail component
 		} catch (err) {
 			logger.error('Template execution failed', { error: err });
 			// Error toast is already shown by executeTemplate
@@ -206,23 +254,31 @@
 	<title>{resourcePath || 'Resource'}</title>
 </svelte:head>
 
-{#if resourceError}
+{#if DedicatedComponent && resourceData}
+	<!-- Dedicated component from registry - receives resource prop for HATEOAS compliance -->
+	<svelte:component this={DedicatedComponent} resource={resourceData} onRefresh={handleRefresh} />
+{:else if DedicatedComponent && resourceLoading}
+	<!-- Loading state for dedicated component -->
+	<div class="container mx-auto p-6">
+		<div class="animate-pulse space-y-4">
+			<div class="h-8 bg-muted rounded w-1/4"></div>
+			<div class="h-4 bg-muted rounded w-1/2"></div>
+			<div class="h-64 bg-muted rounded"></div>
+		</div>
+	</div>
+{:else if resourceError}
 	<!-- Error state - show NoMatch for errors -->
 	<NoMatch title="Resource Not Found" message="The requested resource could not be found or you do not have permission to access it." />
 {:else if isCollectionView}
 	<!-- Collection view -->
+	<!-- Note: No bulkOperations passed - generic view doesn't support bulk ops -->
+	<!-- For bulk operations, use dedicated feature pages (e.g., /sessions, /api-keys) -->
 	<div class="container mx-auto p-6">
 		<HalCollectionList
 			resource={resourceData}
 			onRefresh={handleRefresh}
 			onCreate={handleCreate}
 			onRowClick={handleRowClick}
-			onBulkDelete={(ids) => {
-				const bulkDeleteTemplate = resourceData?._templates?.['bulk-delete'] || resourceData?._templates?.bulkDelete;
-				if (bulkDeleteTemplate) {
-					handleTemplateExecute(bulkDeleteTemplate, { [bulkDeleteTemplate.properties?.[0]?.name || 'ids']: ids });
-				}
-			}}
 		/>
 	</div>
 {:else}

@@ -10,7 +10,7 @@ import { page } from '$app/stores';
 import { navigationHistoryStore } from './navigation_history_store';
 import { sitemapStore } from './sitemap_store';
 import type { BreadcrumbItem } from '$lib/types/navigation';
-import { getHref, getTitle } from '$lib/utils/hal_helpers';
+import { getHref, extractTitleFromResource } from '$lib/utils/hal_helpers';
 import { logger } from '$lib/logging';
 
 /**
@@ -98,8 +98,8 @@ export const breadcrumbsStore = derived(
 				const isCurrentPage = selfHref === $page.url.pathname;
 				const isLast = currentPathInHistory ? isCurrentPage : false;
 
-				// Get label from self link title
-				const label = getTitle(resource._links?.self) || 'Resource';
+				// Get label from resource (HATEOAS-compliant extraction)
+				const label = extractTitleFromResource(resource, selfHref);
 
 				crumbs.push({
 					label,

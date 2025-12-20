@@ -24,7 +24,9 @@ describe('Template Execution', () => {
                 expect(source).toBe('value');
             });
 
-            it('should detect value source for field with explicit value', () => {
+            it('should detect form source for non-hidden field with explicit value', () => {
+                // Non-hidden fields with values should use form source
+                // so user edits take precedence over pre-filled values
                 const property: HalTemplateProperty = {
                     name: 'userId',
                     type: 'text',
@@ -32,10 +34,11 @@ describe('Template Execution', () => {
                 };
 
                 const source = getPropertySource(property);
-                expect(source).toBe('value');
+                expect(source).toBe('form');
             });
 
-            it('should detect value source for boolean with value false', () => {
+            it('should detect form source for checkbox with value false', () => {
+                // Checkbox fields should use form source even with pre-filled values
                 const property: HalTemplateProperty = {
                     name: 'enabled',
                     type: 'checkbox',
@@ -43,7 +46,7 @@ describe('Template Execution', () => {
                 };
 
                 const source = getPropertySource(property);
-                expect(source).toBe('value');
+                expect(source).toBe('form');
             });
         });
 
@@ -419,11 +422,11 @@ describe('Template Execution', () => {
                 expect(data).toEqual({ status: 'active' });
             });
 
-            it('should handle property value of 0', () => {
+            it('should handle hidden property value of 0', () => {
                 const template: HalTemplate = {
                     method: 'POST',
                     properties: [
-                        { name: 'count', type: 'number', value: 0 },
+                        { name: 'count', type: 'hidden', value: 0 },
                     ],
                 };
 
@@ -433,11 +436,11 @@ describe('Template Execution', () => {
                 expect(data).toEqual({ count: 0 });
             });
 
-            it('should handle property value of empty string', () => {
+            it('should handle hidden property value of empty string', () => {
                 const template: HalTemplate = {
                     method: 'POST',
                     properties: [
-                        { name: 'filter', type: 'text', value: '' },
+                        { name: 'filter', type: 'hidden', value: '' },
                     ],
                 };
 

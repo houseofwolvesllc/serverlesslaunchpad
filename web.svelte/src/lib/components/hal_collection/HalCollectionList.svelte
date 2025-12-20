@@ -206,7 +206,8 @@
 							class={operation.variant === 'destructive' ? 'text-destructive hover:text-destructive' : ''}
 						>
 							{#if operation.icon}
-								<svelte:component this={operation.icon} class="w-4 h-4 mr-2" />
+								{@const IconComponent = operation.icon as import('svelte').Component<{ class?: string }>}
+								<svelte:component this={IconComponent} class="w-4 h-4 mr-2" />
 							{/if}
 							{operation.label}
 						</Button>
