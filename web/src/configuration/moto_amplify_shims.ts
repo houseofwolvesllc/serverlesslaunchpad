@@ -1,5 +1,91 @@
 import WebConfigurationStore from './web_config_store';
 
+// RFC 7517 JSON Web Key (JWK) interfaces
+// Base JWK interface with common properties
+interface JWKBase {
+    kty: string;        // Key Type (required)
+    use?: string;       // Public Key Use
+    key_ops?: string[]; // Key Operations
+    alg?: string;       // Algorithm
+    kid?: string;       // Key ID
+    x5u?: string;       // X.509 URL
+    x5c?: string[];     // X.509 Certificate Chain
+    x5t?: string;       // X.509 Certificate SHA-1 Thumbprint
+    'x5t#S256'?: string; // X.509 Certificate SHA-256 Thumbprint
+}
+
+// RSA Key parameters
+interface RSAKey extends JWKBase {
+    kty: 'RSA';
+    n: string;          // Modulus
+    e: string;          // Exponent
+    d?: string;         // Private Exponent
+    p?: string;         // First Prime Factor
+    q?: string;         // Second Prime Factor
+    dp?: string;        // First Factor CRT Exponent
+    dq?: string;        // Second Factor CRT Exponent
+    qi?: string;        // First CRT Coefficient
+    oth?: Array<{       // Other Primes Info
+        r: string;
+        d: string;
+        t: string;
+    }>;
+}
+
+// Elliptic Curve Key parameters
+interface ECKey extends JWKBase {
+    kty: 'EC';
+    crv: string;        // Curve
+    x: string;          // X Coordinate
+    y: string;          // Y Coordinate
+    d?: string;         // ECC Private Key
+}
+
+// Symmetric Key parameters
+interface SymmetricKey extends JWKBase {
+    kty: 'oct';
+    k: string;          // Key Value
+}
+
+// Octet string key pairs (EdDSA, X25519, X448)
+interface OKPKey extends JWKBase {
+    kty: 'OKP';
+    crv: string;        // Subtype of the key
+    x: string;          // Public key
+    d?: string;         // Private key
+}
+
+// Union type for all possible JWK types
+type JWK = RSAKey | ECKey | SymmetricKey | OKPKey | (JWKBase & {
+    [key: string]: any; // Allow additional parameters for custom/future JWK types
+});
+
+// JWKS Response structure
+interface JWKSResponse {
+    keys: JWK[];
+}
+
+// JWKS cache interface
+interface JWKSCache {
+    jwks: JWKSResponse;
+    fetchTimestamp: Date;
+    ttlHours: number;
+    userPoolId: string;
+}
+
+// Type for JWKS cache status pool entry
+interface JWKSCachePoolStatus {
+    userPoolId: string;
+    isValid: boolean;
+    ageMinutes: number;
+}
+
+// Return type for getJWKSCacheStatus
+interface JWKSCacheStatus {
+    installed: boolean;
+    cachedPools: JWKSCachePoolStatus[];
+}
+
 // Debug state tracking
 const shimState = {
     initialized: false,
@@ -8,11 +94,14 @@ const shimState = {
     fetchShimInstalled: false,
     awsEnvConfigured: false,
     revokeTokenShimInstalled: false,
-    interceptedRequests: [] as Array<{ url: string; method: string; timestamp: Date; redirected: boolean }>
+    jwksShimInstalled: false,
+    interceptedRequests: [] as Array<{ url: string; method: string; timestamp: Date; redirected: boolean }>,
+    jwksCache: new Map<string, JWKSCache>(), // Cache JWKS by user pool ID
+    jwksRequests: [] as Array<{ url: string; timestamp: Date; cacheHit: boolean; fetchSuccess: boolean }>
 };
 
 // Debug logging helper
-function debugLog(level: 'info' | 'warn' | 'error' | 'success', message: string, ...args: any[]) {
+function debugLog(level: 'info' | 'warn' | 'error' | 'success', message: string, ...args: unknown[]) {
     const timestamp = new Date().toISOString();
     const prefix = {
         info: '🔧 [SHIM]',
@@ -22,6 +111,140 @@ function debugLog(level: 'info' | 'warn' | 'error' | 'success', message: string,
     }[level];
 
     console.log(`${prefix} ${timestamp} ${message}`, ...args);
+}
+
+// JWKS cache management functions
+function isJWKSCacheValid(cache: JWKSCache): boolean {
+    const now = new Date();
+    const cacheAge = now.getTime() - cache.fetchTimestamp.getTime();
+    const ttlMs = cache.ttlHours * 60 * 60 * 1000; // Convert hours to milliseconds
+    return cacheAge < ttlMs;
+}
+
+function getCachedJWKS(userPoolId: string): JWKSResponse | null {
+    const cache = shimState.jwksCache.get(userPoolId);
+    if (cache && isJWKSCacheValid(cache)) {
+        debugLog('success', `🎯 JWKS cache HIT for pool ${userPoolId}`);
+        return cache.jwks;
+    }
+
+    if (cache) {
+        debugLog('warn', `⏰ JWKS cache EXPIRED for pool ${userPoolId}, age: ${Math.round((new Date().getTime() - cache.fetchTimestamp.getTime()) / (60 * 60 * 1000))} hours`);
+        shimState.jwksCache.delete(userPoolId);
+    } else {
+        debugLog('info', `💾 JWKS cache MISS for pool ${userPoolId}`);
+    }
+
+    return null;
+}
+
+function cacheJWKS(userPoolId: string, jwks: JWKSResponse, ttlHours: number = 24): void {
+    const cache: JWKSCache = {
+        jwks,
+        fetchTimestamp: new Date(),
+        ttlHours,
+        userPoolId
+    };
+
+    shimState.jwksCache.set(userPoolId, cache);
+    debugLog('success', `💾 JWKS cached for pool ${userPoolId}, TTL: ${ttlHours} hours`);
+}
+
+async function fetchJWKSFromAWS(userPoolId: string, region: string, retryCount: number = 0): Promise<JWKSResponse> {
+    const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
+    const maxRetries = 2;
+
+    debugLog('info', `🌐 Fetching JWKS from real AWS: ${jwksUrl}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+
+    try {
+        const startTime = Date.now();
+        const response = await fetch(jwksUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Moto-JWKS-Shim/1.0'
+            },
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+
+        const fetchTime = Date.now() - startTime;
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const jwks = await response.json();
+
+        // Validate JWKS format
+        if (!jwks.keys || !Array.isArray(jwks.keys)) {
+            throw new Error('Invalid JWKS format: missing or invalid keys array');
+        }
+
+        debugLog('success', `🎉 JWKS fetched successfully in ${fetchTime}ms, ${jwks.keys.length} keys found`);
+
+        // Record successful request
+        shimState.jwksRequests.push({
+            url: jwksUrl,
+            timestamp: new Date(),
+            cacheHit: false,
+            fetchSuccess: true
+        });
+
+        return jwks;
+
+    } catch (error) {
+        debugLog('error', `🚨 JWKS fetch failed: ${error}`);
+
+        // Retry logic for transient failures
+        if (retryCount < maxRetries && (
+            error instanceof TypeError || // Network errors
+            (error as any).name === 'AbortError' || // Timeout errors
+            (error as any).message?.includes('fetch failed') // General fetch failures
+        )) {
+            const backoffMs = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s
+            debugLog('warn', `⏳ Retrying JWKS fetch in ${backoffMs}ms...`);
+
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            return fetchJWKSFromAWS(userPoolId, region, retryCount + 1);
+        }
+
+        // Record failed request
+        shimState.jwksRequests.push({
+            url: jwksUrl,
+            timestamp: new Date(),
+            cacheHit: false,
+            fetchSuccess: false
+        });
+
+        throw error;
+    }
+}
+
+// Function to get JWKS cache status
+function getJWKSCacheStatus(): JWKSCacheStatus {
+    const cachedPools = Array.from(shimState.jwksCache.entries()).map(([userPoolId, cache]) => {
+        const now = new Date();
+        const ageMs = now.getTime() - cache.fetchTimestamp.getTime();
+        const ageMinutes = Math.round(ageMs / (60 * 1000));
+
+        return {
+            userPoolId,
+            isValid: isJWKSCacheValid(cache),
+            ageMinutes
+        };
+    });
+
+    return {
+        installed: shimState.jwksShimInstalled,
+        cachedPools
+    };
+}
+
+// Function to clear JWKS cache
+function clearJWKSCache(): void {
+    const cacheSize = shimState.jwksCache.size;
+    shimState.jwksCache.clear();
+    debugLog('success', `🧹 JWKS cache cleared (${cacheSize} entries removed)`);
 }
 
 // Diagnostic function to test shim status
@@ -46,12 +269,22 @@ function runShimDiagnostics() {
     debugLog('info', `Fetch Shim: ${diagnostics.fetchShimInstalled}`);
     debugLog('info', `AWS Env: ${diagnostics.awsEnvConfigured}`);
     debugLog('info', `Revoke Token Shim: ${diagnostics.revokeTokenShimInstalled}`);
+    debugLog('info', `JWKS Shim: ${diagnostics.jwksShimInstalled}`);
     debugLog('info', `Intercepted Requests: ${diagnostics.interceptedRequests.length}`);
+    debugLog('info', `JWKS Cache Size: ${diagnostics.jwksCache.size}`);
+    debugLog('info', `JWKS Requests: ${diagnostics.jwksRequests.length}`);
 
     if (diagnostics.interceptedRequests.length > 0) {
         debugLog('info', 'Recent Intercepted Requests:');
         diagnostics.interceptedRequests.slice(-5).forEach((req, i) => {
             debugLog('info', `  ${i + 1}. ${req.method} ${req.url} (${req.redirected ? 'REDIRECTED' : 'BYPASSED'}) at ${req.timestamp.toISOString()}`);
+        });
+    }
+
+    if (diagnostics.jwksRequests.length > 0) {
+        debugLog('info', 'Recent JWKS Requests:');
+        diagnostics.jwksRequests.slice(-3).forEach((req, i) => {
+            debugLog('info', `  ${i + 1}. ${req.url} (${req.cacheHit ? 'CACHE_HIT' : req.fetchSuccess ? 'FETCH_SUCCESS' : 'FETCH_FAILED'}) at ${req.timestamp.toISOString()}`);
         });
     }
 
@@ -89,7 +322,7 @@ async function testCognitoRedirection(): Promise<boolean> {
         const testUrl = 'https://cognito-idp.us-west-2.amazonaws.com/';
 
         try {
-            const response = await fetch(testUrl, {
+            await fetch(testUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-amz-json-1.1',
@@ -128,7 +361,16 @@ async function runFullDiagnostics(): Promise<void> {
     const motoConnected = await testMotoConnectivity();
     const cognitoRedirected = await testCognitoRedirection();
 
-    const allGood = basic.initialized && basic.xhrShimInstalled && basic.fetchShimInstalled && motoConnected;
+    // Check JWKS cache status
+    const jwksStatus = getJWKSCacheStatus();
+    debugLog('info', `JWKS Cache Status: ${jwksStatus.installed ? 'ENABLED' : 'DISABLED'} | Cached pools: ${jwksStatus.cachedPools.length}`);
+    if (jwksStatus.cachedPools.length > 0) {
+        jwksStatus.cachedPools.forEach((pool: JWKSCachePoolStatus) => {
+            debugLog('info', `  - Pool ${pool.userPoolId}: ${pool.isValid ? 'VALID' : 'EXPIRED'} (age: ${pool.ageMinutes}min)`);
+        });
+    }
+
+    const allGood = basic.initialized && basic.xhrShimInstalled && basic.fetchShimInstalled && basic.jwksShimInstalled && motoConnected && cognitoRedirected;
 
     debugLog(allGood ? 'success' : 'error',
             `=== DIAGNOSTICS COMPLETE: ${allGood ? 'ALL SYSTEMS GO' : 'ISSUES DETECTED'} ===`);
@@ -138,7 +380,9 @@ async function runFullDiagnostics(): Promise<void> {
         if (!basic.initialized) debugLog('error', '- Shims not initialized: Check import order in main.tsx');
         if (!basic.xhrShimInstalled) debugLog('error', '- XHR shim failed: Check for XMLHttpRequest conflicts');
         if (!basic.fetchShimInstalled) debugLog('error', '- Fetch shim failed: Check for fetch API conflicts');
+        if (!basic.jwksShimInstalled) debugLog('error', '- JWKS shim failed: Check for JWKS interception issues');
         if (!motoConnected) debugLog('error', '- Moto not accessible: Ensure Moto is running on localhost:5555');
+        if (!cognitoRedirected) debugLog('error', '- Cognito redirection failed: Check shim interceptors are working');
     }
 }
 
@@ -148,6 +392,8 @@ async function runFullDiagnostics(): Promise<void> {
 (globalThis as any).__MOTO_SHIM_TEST_CONNECTIVITY__ = testMotoConnectivity;
 (globalThis as any).__MOTO_SHIM_TEST_REDIRECTION__ = testCognitoRedirection;
 (globalThis as any).__MOTO_SHIM_FULL_TEST__ = runFullDiagnostics;
+(globalThis as any).__MOTO_SHIM_JWKS_CACHE__ = getJWKSCacheStatus;
+(globalThis as any).__MOTO_SHIM_JWKS_CLEAR__ = clearJWKSCache;
 
 /**
  * AWS Amplify v6 + Moto Compatibility Shims
@@ -186,6 +432,10 @@ export async function applyShims(): Promise<void> {
 
         await addSupportForCustomEndpoints();
         await addSupportForRevokeToken();
+
+        // Enable JWKS interception for JWT verification
+        shimState.jwksShimInstalled = true;
+        debugLog('success', 'JWKS shim enabled for JWT verification');
 
         shimState.initialized = true;
         debugLog('success', 'All shims applied successfully', getShimDiagnostics());
@@ -457,7 +707,69 @@ async function addAwsSdkV3Support(customEndpoint: string): Promise<void> {
             const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
             const method = init?.method || 'GET';
 
-            // Detect AWS service calls by URL patterns
+            // Check for JWKS requests first (special handling)
+            const jwksPattern = /https:\/\/cognito-idp\.([^.]+)\.amazonaws\.com\/([^\/]+)\/\.well-known\/jwks\.json/;
+            const jwksMatch = url.match(jwksPattern);
+
+            if (jwksMatch) {
+                const region = jwksMatch[1];
+                const userPoolId = jwksMatch[2];
+
+                debugLog('info', `🔑 JWKS request intercepted: ${url}`);
+
+                // Check cache first
+                const cachedJWKS = getCachedJWKS(userPoolId);
+                if (cachedJWKS) {
+                    shimState.jwksRequests.push({
+                        url: url,
+                        timestamp: new Date(),
+                        cacheHit: true,
+                        fetchSuccess: true
+                    });
+
+                    return Promise.resolve(new Response(JSON.stringify(cachedJWKS), {
+                        status: 200,
+                        statusText: 'OK',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'public, max-age=86400', // 24 hours
+                            'X-JWKS-Source': 'Moto-Shim-Cache'
+                        }
+                    }));
+                }
+
+                // Fetch from real AWS and cache
+                return fetchJWKSFromAWS(userPoolId, region)
+                    .then(jwks => {
+                        cacheJWKS(userPoolId, jwks, 24); // Cache for 24 hours
+                        return new Response(JSON.stringify(jwks), {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'public, max-age=86400', // 24 hours
+                                'X-JWKS-Source': 'Moto-Shim-Fetch'
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        debugLog('error', `🚨 JWKS fetch failed, returning 503: ${error}`);
+                        return new Response(JSON.stringify({
+                            error: 'JWKS_FETCH_FAILED',
+                            message: 'Unable to fetch JWKS from AWS',
+                            details: error.message
+                        }), {
+                            status: 503,
+                            statusText: 'Service Unavailable',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-JWKS-Source': 'Moto-Shim-Error'
+                            }
+                        });
+                    });
+            }
+
+            // Detect AWS service calls by URL patterns (existing logic)
             const awsServicePatterns = [
                 /https:\/\/cognito-idp\.[^.]+\.amazonaws\.com/,
                 /https:\/\/cognito-identity\.[^.]+\.amazonaws\.com/,
