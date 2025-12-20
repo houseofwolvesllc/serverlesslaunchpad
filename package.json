@@ -6,7 +6,7 @@
     "private": true,
     "workspaces": [
         "./core",
-        "./web",
+        "./mantine.web",
         "./types",
         "./framework",
         "./infrastructure",
@@ -19,7 +19,7 @@
     "scripts": {
         "dev:clean": "echo '🧹 Cleaning up stale development processes...' && (pkill -f 'vite.*moto' 2>/dev/null || true) && (pkill -f 'tsx.*dev_server' 2>/dev/null || true) && echo '✅ Cleanup complete'",
         "dev:check": "echo '🔍 Checking for port conflicts...' && (lsof -i :5173-5176,3001 2>/dev/null || echo '✅ No port conflicts detected')",
-        "dev:web": "cd web && npm run local:watch",
+        "dev:web": "cd mantine.web && npm run local:watch",
         "dev:api": "cd api.hypermedia && npm run local:watch",
         "dev:watch:types": "cd types && npm run build:watch",
         "dev:watch:core": "cd core && npm run build:watch",
