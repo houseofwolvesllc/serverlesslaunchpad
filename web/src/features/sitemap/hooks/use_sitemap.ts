@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { apiClient, type ApiResponse } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import {
-    transformNavigationItems,
+    transformNavStructure,
     createFallbackNavigation,
     type NavigationItem,
     type LinksGroupProps,
@@ -23,13 +23,37 @@ import {
 } from '../utils/transform_navigation';
 import { AuthenticationContext } from '../../authentication';
 import { logger } from '../../../logging/logger';
+import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
 
 /**
- * Sitemap API response structure
+ * HAL link structure
+ */
+interface HalLink {
+    href: string;
+    title?: string;
+    [key: string]: any;
+}
+
+/**
+ * HAL template structure
+ */
+interface HalTemplate {
+    title: string;
+    method: string;
+    target: string;
+    [key: string]: any;
+}
+
+/**
+ * Sitemap API response structure (HAL format with _nav)
  */
 interface SitemapResponse extends ApiResponse {
     title: string;
-    navigation: {
+    _nav?: NavGroup[];
+    _links?: Record<string, HalLink>;
+    _templates?: Record<string, HalTemplate>;
+    // Backward compatibility: old navigation structure
+    navigation?: {
         items: NavigationItem[];
     };
 }
@@ -40,6 +64,9 @@ interface SitemapResponse extends ApiResponse {
 interface CachedSitemap {
     data: NavigationItem[];
     timestamp: number;
+    _nav?: NavGroup[];
+    _links?: Record<string, HalLink>;
+    _templates?: Record<string, HalTemplate>;
 }
 
 /**
@@ -72,6 +99,68 @@ const MAX_RETRIES = 3;
  * Delay between retries in milliseconds
  */
 const RETRY_DELAY = 1000;
+
+/**
+ * Convert NavGroup structure to old NavigationItem structure
+ * for backward compatibility with route generation
+ */
+function convertNavToNavigationItems(
+    navGroups: NavGroup[],
+    links: Record<string, HalLink>
+): NavigationItem[] {
+    const items: NavigationItem[] = [];
+
+    for (const group of navGroups) {
+        for (const item of group.items) {
+            if ('rel' in item) {
+                const navItem = item as NavItem;
+                const link = links[navItem.rel];
+
+                if (link) {
+                    items.push({
+                        id: navItem.rel,
+                        title: navItem.title || link.title || navItem.rel,
+                        href: link.href,
+                        method: 'GET',
+                    });
+                }
+            }
+        }
+    }
+
+    return items;
+}
+
+/**
+ * Resolve a navigation item to its actual link or template
+ */
+function resolveNavItem(
+    item: NavItem,
+    links: Record<string, HalLink>,
+    templates: Record<string, HalTemplate>
+): ResolvedNavItem | null {
+    if (item.type === 'link') {
+        const link = links[item.rel];
+        if (!link) return null;
+
+        return {
+            href: link.href,
+            title: item.title || link.title || item.rel,
+            type: 'link'
+        };
+    } else {
+        const template = templates[item.rel];
+        if (!template) return null;
+
+        return {
+            href: template.target,
+            title: item.title || template.title || item.rel,
+            type: 'template',
+            method: template.method,
+            template
+        };
+    }
+}
 
 /**
  * Custom hook to fetch and manage sitemap data
@@ -150,17 +239,29 @@ export function useSitemap(): UseSitemapResult {
 
                 const response = await apiClient.get<SitemapResponse>(sitemapHref);
 
-                if (!response.navigation?.items) {
+                // Support both new and old API structure for backward compatibility
+                let items: NavigationItem[] = [];
+
+                if (response._nav) {
+                    // New structure: Convert _nav to old NavigationItem[] for route generation
+                    items = convertNavToNavigationItems(response._nav, response._links || {});
+                } else if (response.navigation?.items) {
+                    // Old structure: Use directly
+                    items = response.navigation.items;
+                } else {
                     throw new Error('Invalid sitemap response structure');
                 }
 
-                // Update cache
+                // Update cache with the full response for new structure support
                 cacheRef.current = {
-                    data: response.navigation.items,
+                    data: items,
                     timestamp: Date.now(),
+                    _nav: response._nav,
+                    _links: response._links,
+                    _templates: response._templates,
                 };
 
-                return response.navigation.items;
+                return items;
             } catch (err) {
                 // Don't retry if request was aborted
                 if (err instanceof Error && err.name === 'AbortError') {
@@ -209,7 +310,23 @@ export function useSitemap(): UseSitemapResult {
                 setRawItems(items);
 
                 // Transform navigation items
-                const transformed = transformNavigationItems(items, userContext);
+                let transformed: LinksGroupProps[];
+
+                // Use new _nav structure if available, otherwise fall back to old structure
+                if (cacheRef.current?._nav && cacheRef.current?._links) {
+                    const navGroups = cacheRef.current._nav;
+                    const links = cacheRef.current._links;
+                    const templates = cacheRef.current._templates || {};
+
+                    // Create resolver function
+                    const resolver = (item: NavItem) => resolveNavItem(item, links, templates);
+
+                    // Transform new structure
+                    transformed = transformNavStructure(navGroups, resolver);
+                } else {
+                    // Fallback: old transformation (should not happen with updated API)
+                    transformed = createFallbackNavigation(userContext);
+                }
 
                 setNavigation(transformed);
             } catch (err) {

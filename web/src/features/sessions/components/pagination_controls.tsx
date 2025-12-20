@@ -8,7 +8,6 @@ interface PaginationControlsProps {
     onPreviousPage: () => void;
     onPageSizeChange: (size: PageSize) => void;
     disabled?: boolean;
-    itemLabel?: string;
 }
 
 /**
@@ -23,7 +22,6 @@ export function PaginationControls({
     onPreviousPage,
     onPageSizeChange,
     disabled = false,
-    itemLabel = 'items',
 }: PaginationControlsProps) {
     const { hasNext, hasPrevious, pageSize } = pagination;
 

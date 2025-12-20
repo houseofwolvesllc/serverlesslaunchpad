@@ -4,8 +4,10 @@ import type { ALBEvent } from "aws-lambda";
  * Supported content types for responses
  */
 export const CONTENT_TYPES = {
-    XHTML: "application/xhtml+xml",
+    HAL_JSON: "application/hal+json",
     JSON: "application/json",
+    XHTML: "application/xhtml+xml",
+    HTML: "text/html",
 } as const;
 
 export type ContentType = typeof CONTENT_TYPES[keyof typeof CONTENT_TYPES];

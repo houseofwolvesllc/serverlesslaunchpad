@@ -49,6 +49,8 @@ export const iconMapper: Record<string, Icon> = {
     settings: IconSettings,
     cog: IconSettings,
     admin: IconShield,
+    'admin-reports': IconChartBar,
+    'admin-settings': IconSettings,
 
     // Navigation
     home: IconHome,
@@ -66,9 +68,13 @@ export const iconMapper: Record<string, Icon> = {
     calendar: IconCalendarStats,
     'calendar-stats': IconCalendarStats,
 
-    // Time
+    // Time & Sessions
     clock: IconClock,
     time: IconClock,
+    sessions: IconClock,
+
+    // API Keys
+    'api-keys': IconKey,
 
     // Default/Unknown
     default: IconCircle,

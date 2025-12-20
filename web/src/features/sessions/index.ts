@@ -2,7 +2,6 @@
 export { SessionsList } from './components/sessions_list';
 export { SessionRow } from './components/session_row';
 export { SessionsTableSkeleton } from './components/sessions_table_skeleton';
-export { DeleteSessionsModal } from './components/delete_sessions_modal';
 export { PaginationControls } from './components/pagination_controls';
 
 // Hooks

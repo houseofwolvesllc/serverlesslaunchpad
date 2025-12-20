@@ -58,6 +58,12 @@ export interface HalTemplateProperty {
     min?: number | string;
     /** Maximum value (for numbers/dates) */
     max?: number | string;
+    /** Options for select/dropdown fields */
+    options?: Array<{ value: string; prompt: string }>;
+    /** Minimum length (for strings) */
+    minLength?: number;
+    /** Maximum length (for strings) */
+    maxLength?: number;
 }
 
 /**

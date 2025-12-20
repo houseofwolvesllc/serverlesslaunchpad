@@ -1,7 +1,7 @@
 import { User, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
 import { Router } from "../router";
-import { NavigationItem } from "./types";
+import { Navigation } from "./navigation_types";
 import { AuthenticationController } from "../authentication/authentication_controller";
 import { SessionsController } from "../sessions/sessions_controller";
 import { ApiKeysController } from "../api_keys/api_keys_controller";
@@ -23,95 +23,54 @@ export class SitemapAdapter extends HalResourceAdapter {
         return "API Sitemap";
     }
 
-    get navigation() {
-        return {
-            items: this.buildNavigationTree()
-        };
-    }
+    /**
+     * Navigation structure using _nav pattern
+     * References _links and _templates by key for true HATEOAS
+     */
+    get _nav(): Navigation {
+        const nav: Navigation = [];
 
-    private buildNavigationTree(): NavigationItem[] {
-        const items: NavigationItem[] = [
-            this.buildHomeLink(),
-        ];
-
-        // Add account menu for authenticated users
-        if (this.user) {
-            items.push(this.buildAccountMenu());
+        if (!this.user) {
+            // Unauthenticated users see limited navigation
+            nav.push({
+                title: "Public",
+                items: [
+                    { rel: "home", type: "link" }
+                ]
+            });
+            return nav;
         }
 
-        // Add admin menu for admin users
-        if (this.user && this.hasRole(this.user, Role.Admin)) {
-            items.push(this.buildAdminMenu());
+        // Main navigation for authenticated users
+        nav.push({
+            title: "Main Navigation",
+            items: [
+                { rel: "home", type: "link" },
+                { rel: "sessions", type: "link" },
+                { rel: "api-keys", type: "link" }
+            ]
+        });
+
+        // Admin section (nested group example)
+        if (this.hasRole(this.user, Role.Admin)) {
+            nav.push({
+                title: "Administration",
+                items: [
+                    { rel: "admin-reports", type: "link" },
+                    { rel: "admin-settings", type: "link" }
+                ]
+            });
         }
 
-        return items;
-    }
-
-    private buildHomeLink(): NavigationItem {
-        return {
-            id: "home",
-            title: "Home",
-            href: "/",  // Dashboard home route
-            icon: "home"
-        };
-    }
-
-    private buildAccountMenu(): NavigationItem {
-        // At this point, this.user is guaranteed to exist (checked by caller)
-        const userId = this.user!.userId;
-
-        return {
-            id: "account",
-            title: "My Account",
-            icon: "user-circle",
+        // User menu
+        nav.push({
+            title: "User",
             items: [
-                {
-                    id: "sessions",
-                    title: "Sessions",
-                    href: this.router.buildHref(SessionsController, 'getSessions', { userId }),
-                    method: "POST",
-                    icon: "clock"
-                },
-                {
-                    id: "api-keys",
-                    title: "API Keys",
-                    href: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
-                    method: "POST",
-                    icon: "key"
-                },
-                {
-                    id: "logout",
-                    title: "Logout",
-                    href: this.router.buildHref(AuthenticationController, 'revoke', {}),
-                    method: "POST",
-                    icon: "logout"
-                }
+                { rel: "logout", type: "template" }
             ]
-        };
-    }
+        });
 
-    private buildAdminMenu(): NavigationItem {
-        return {
-            id: "admin",
-            title: "Administration",
-            href: "/admin",
-            icon: "shield",
-            requiresRole: "Admin",
-            items: [
-                {
-                    id: "reports",
-                    title: "Reports",
-                    href: "/admin/reports",
-                    icon: "chart"
-                },
-                {
-                    id: "settings",
-                    title: "Settings",
-                    href: "/admin/settings",
-                    icon: "cog"
-                }
-            ]
-        };
+        return nav;
     }
 
     private hasRole(user: User, role: Role): boolean {
@@ -121,11 +80,42 @@ export class SitemapAdapter extends HalResourceAdapter {
     get _links(): HalObject["_links"] {
         const links: HalObject["_links"] = {
             self: this.createLink(this.router.buildHref(SitemapController, 'getSitemap', {})),
-            home: this.createLink(this.router.buildHref(RootController, 'getRoot', {}))
+            home: this.createLink(this.router.buildHref(RootController, 'getRoot', {}), {
+                title: "Home"
+            })
         };
 
-        // Add federate link for unauthenticated users
-        if (!this.user) {
+        // Add user-specific links for authenticated users
+        if (this.user) {
+            const userId = this.user.userId;
+
+            links['sessions'] = this.createLink(
+                this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                { title: "Sessions" }
+            );
+
+            links['api-keys'] = this.createLink(
+                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
+                { title: "API Keys" }
+            );
+
+            links['logout'] = this.createLink(
+                this.router.buildHref(AuthenticationController, 'revoke', {}),
+                { title: "Logout" }
+            );
+
+            // Admin links
+            if (this.hasRole(this.user, Role.Admin)) {
+                links['admin-reports'] = this.createLink('/admin/reports', {
+                    title: "Reports"
+                });
+
+                links['admin-settings'] = this.createLink('/admin/settings', {
+                    title: "Settings"
+                });
+            }
+        } else {
+            // Add federate link for unauthenticated users
             links['auth:federate'] = this.createLink(
                 this.router.buildHref(AuthenticationController, 'federate', {}),
                 { title: 'Federate Session' }
@@ -135,6 +125,21 @@ export class SitemapAdapter extends HalResourceAdapter {
         return links;
     }
 
+    get _templates(): HalObject["_templates"] {
+        if (!this.user) {
+            return undefined;
+        }
+
+        // POST operations become templates
+        return {
+            logout: this.createTemplate(
+                "Logout",
+                "POST",
+                this.router.buildHref(AuthenticationController, 'revoke', {})
+            )
+        };
+    }
+
     protected getBaseLinks(): Record<string, import("../content_types/hal_adapter").HalLink> | undefined {
         return undefined;
     }
@@ -142,8 +147,9 @@ export class SitemapAdapter extends HalResourceAdapter {
     toJSON(): HalObject {
         return {
             title: this.title,
-            navigation: this.navigation,
+            _nav: this._nav,
             _links: this._links,
+            _templates: this._templates
         };
     }
 }

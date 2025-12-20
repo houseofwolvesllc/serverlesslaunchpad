@@ -18,8 +18,8 @@ export const SignInForm = () => {
             password: '',
         },
         validate: {
-            email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Please provide a valid email'),
-            password: (val) => (val ? null : 'Please provide a password'),
+            email: (val: string) => (/^\S+@\S+$/.test(val) ? null : 'Please provide a valid email'),
+            password: (val: string) => (val ? null : 'Please provide a password'),
         },
     });
 

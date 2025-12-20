@@ -430,16 +430,16 @@ export const useAuth = function () {
                 hasAuthContext: !!signedInUser?.authContext
             });
 
-            // Get sessionToken from current user context
-            const sessionToken = signedInUser?.authContext?.sessionToken;
-            logger.debug('Extracted sessionToken', {
-                hasSessionToken: !!sessionToken
+            // Get sessionId from current user context
+            const sessionId = signedInUser?.authContext?.sessionId;
+            logger.debug('Extracted sessionId', {
+                hasSessionId: !!sessionId
             });
 
-            if (sessionToken) {
-                await revokeSession(sessionToken);
+            if (sessionId) {
+                await revokeSession(sessionId);
             } else {
-                logger.warn('No sessionToken found in user context, skipping revoke');
+                logger.warn('No sessionId found in user context, skipping revoke');
             }
         } catch (error) {
             // User might not be signed in, continue with signout

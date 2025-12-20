@@ -59,6 +59,14 @@ export interface SessionsResponse {
         next?: { href: string };
         previous?: { href: string };
     };
+    _templates?: {
+        [key: string]: {
+            title: string;
+            method: string;
+            target: string;
+            properties?: any[];
+        };
+    };
     paging: PagingInstructions;
     count: number; // Items in current response
 }
@@ -76,7 +84,8 @@ export interface DeviceInfo {
  * Hook return type
  */
 export interface UseSessionsResult {
-    sessions: Session[];
+    data: SessionsResponse | null; // Full HAL object with _templates
+    sessions: Session[]; // Extracted array for convenience
     loading: boolean;
     error: string | null;
     selectedIds: Set<string>;
@@ -87,6 +96,5 @@ export interface UseSessionsResult {
     handleNextPage: () => void;
     handlePreviousPage: () => void;
     handlePageSizeChange: (newSize: PageSize) => void;
-    deleteSessions: (sessionTokens: string[]) => Promise<{ success: boolean; error?: string }>;
     refresh: () => void;
 }
