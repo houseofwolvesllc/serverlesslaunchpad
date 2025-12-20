@@ -27,6 +27,7 @@
 	let createModalOpen = false;
 	let deleteModalOpen = false;
 	let selectedIds: string[] = [];
+	let clearSelectionFn: (() => void) | null = null;
 
 	// Use the passed resource directly
 	$: data = resource;
@@ -48,8 +49,9 @@
 		}
 	}
 
-	function handleBulkDelete(ids: string[]) {
+	function handleBulkDelete(ids: string[], clearSelection: () => void) {
 		selectedIds = ids;
+		clearSelectionFn = clearSelection;
 		deleteModalOpen = true;
 	}
 
@@ -60,6 +62,7 @@
 
 		try {
 			await executeTemplate(bulkDeleteTemplate, { apiKeyIds: selectedIds });
+			clearSelectionFn?.();
 			toastStore.success(`Deleted ${selectedIds.length} API key(s)`);
 			deleteModalOpen = false;
 			onRefresh?.();

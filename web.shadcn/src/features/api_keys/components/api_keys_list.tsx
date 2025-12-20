@@ -39,7 +39,7 @@ export function ApiKeysList() {
     const create_template = data?._templates?.create || data?._templates?.default;
 
     // Handle bulk delete with confirmation
-    const handle_bulk_delete = async (selected_ids: string[]) => {
+    const handle_bulk_delete = async (selected_ids: string[], clearSelection: () => void) => {
         const bulk_delete_template = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulk_delete_template) return;
 
@@ -54,6 +54,7 @@ export function ApiKeysList() {
                     await execute_bulk_delete(bulk_delete_template, {
                         apiKeyIds: selected_ids,
                     });
+                    clearSelection();
                     toast.success(`Deleted ${count} API key(s)`);
                 } catch (err: any) {
                     toast.error(err.message || 'Failed to delete API keys');

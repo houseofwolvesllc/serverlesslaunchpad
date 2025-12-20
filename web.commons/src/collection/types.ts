@@ -165,8 +165,8 @@ export interface BulkOperation {
     /** Visual variant for styling (default: 'default') */
     variant?: BulkOperationVariant;
 
-    /** Handler called with selected item IDs */
-    handler: (selectedIds: string[]) => void | Promise<void>;
+    /** Handler called with selected item IDs and a function to clear selection */
+    handler: (selectedIds: string[], clearSelection: () => void) => void | Promise<void>;
 
     /** Optional: disable this operation based on selection */
     disabled?: (selectedIds: string[]) => boolean;

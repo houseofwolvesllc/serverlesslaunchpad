@@ -103,7 +103,7 @@
 
 	function handleBulkOperation(operation: BulkOperation) {
 		if (hasSelection) {
-			operation.handler(selected);
+			operation.handler(selected, clearSelection);
 		}
 	}
 

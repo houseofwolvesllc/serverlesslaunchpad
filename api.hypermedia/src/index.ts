@@ -53,15 +53,31 @@ try {
 }
 
 // Initialize cookie repository with domain from config for cross-subdomain sharing
-(async () => {
-    try {
-        const configStore = container.resolve(InfrastructureConfigurationStore);
-        const config = await configStore.get();
-        AuthenticationCookieRepository.initialize(config.cors?.cookie_domain);
-    } catch {
-        // Config not available yet - will use default (same-host cookies)
+// This promise must be awaited before processing requests to avoid race conditions
+let cookieInitPromise: Promise<void> | null = null;
+
+async function ensureCookieDomainInitialized(): Promise<void> {
+    if (!cookieInitPromise) {
+        cookieInitPromise = (async () => {
+            try {
+                const configStore = container.resolve(InfrastructureConfigurationStore);
+                const config = await configStore.get();
+                const cookieDomain = config.cors?.cookie_domain;
+
+                if (!cookieDomain) {
+                    console.warn('[COOKIE] cookie_domain not configured - cookies will only work for same-host requests');
+                }
+
+                AuthenticationCookieRepository.initialize(cookieDomain);
+            } catch (error) {
+                console.error('[COOKIE] Failed to load cookie domain config - cross-subdomain auth will fail:', error);
+                // Initialize with undefined - cookies will be same-host only
+                AuthenticationCookieRepository.initialize(undefined);
+            }
+        })();
     }
-})();
+    return cookieInitPromise;
+}
 
 /**
  * Main ALB handler for the Hypermedia API.
@@ -79,6 +95,10 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
     const traceId = generateTraceId();
 
     const logger = container.resolve(ApiLogger);
+
+    // Ensure cookie domain is initialized before processing requests
+    // This prevents a race condition where cookies are set without the domain
+    await ensureCookieDomainInitialized();
 
     // Handle OPTIONS preflight requests
     if (event.httpMethod === "OPTIONS") {

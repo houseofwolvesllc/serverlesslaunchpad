@@ -52,7 +52,7 @@ export function ApiKeysList() {
     const createTemplate = data?._templates?.create || data?._templates?.default; // Try 'create' first, fallback to 'default'
 
     // Handle bulk delete with confirmation
-    const handleBulkDelete = async (selectedIds: string[]) => {
+    const handleBulkDelete = async (selectedIds: string[], clearSelection: () => void) => {
         const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulkDeleteTemplate) return;
 
@@ -65,6 +65,7 @@ export function ApiKeysList() {
                 await executeBulkDelete(bulkDeleteTemplate, {
                     apiKeyIds: selectedIds,
                 });
+                clearSelection();
                 toast.success(`Successfully deleted ${count} API key${count === 1 ? '' : 's'}`);
             },
         });

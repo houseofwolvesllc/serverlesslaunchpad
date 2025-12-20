@@ -29,7 +29,7 @@ export class CompositeConfigurationStore<T extends z.ZodType> implements Configu
                 return validated;
             } catch (error) {
                 // Log error but continue to next store
-                console.warn(`Configuration store failed:`, error);
+                console.warn(`Configuration store failed:`, error instanceof Error ? error.message : String(error));
                 continue;
             }
         }
