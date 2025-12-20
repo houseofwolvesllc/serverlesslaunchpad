@@ -5,11 +5,36 @@
 	import { refreshCapabilities, getEntryPoint } from '$lib/services/entry_point_provider';
 	import { getInitializationPromise } from '$lib/init';
 	import { logger } from '$lib/logging';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import AppSidebar from '$lib/components/dashboard/app-sidebar.svelte';
 	import AppHeader from '$lib/components/dashboard/app-header.svelte';
 	import { Root as SheetRoot } from '$lib/components/ui/sheet.svelte';
 	import SheetContent from '$lib/components/ui/sheet-content.svelte';
+
+	// Close mobile sheet when resizing to desktop to prevent state conflicts
+	const DESKTOP_BREAKPOINT = 1024; // lg breakpoint
+	let resizeCleanup: (() => void) | null = null;
+
+	function handleResize() {
+		if (browser && window.innerWidth >= DESKTOP_BREAKPOINT) {
+			// Ensure mobile sheet is closed when on desktop
+			sidebarStore.setMobileOpen(false);
+		}
+	}
+
+	onMount(() => {
+		if (browser) {
+			window.addEventListener('resize', handleResize);
+			resizeCleanup = () => window.removeEventListener('resize', handleResize);
+			// Check initial size
+			handleResize();
+		}
+	});
+
+	onDestroy(() => {
+		if (resizeCleanup) resizeCleanup();
+	});
 
 	// Initialize auth session on mount
 	onMount(async () => {
