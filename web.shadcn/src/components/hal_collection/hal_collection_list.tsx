@@ -329,7 +329,7 @@ export function HalCollectionList({
                             key={op.id}
                             variant={op.variant === 'destructive' ? 'destructive' : (op.variant || 'outline')}
                             size="sm"
-                            onClick={() => op.handler(Array.from(selected))}
+                            onClick={() => op.handler(Array.from(selected), clearSelection)}
                             disabled={op.disabled?.(Array.from(selected))}
                         >
                             {op.icon ? <span className="mr-2">{op.icon as ReactNode}</span> : null}

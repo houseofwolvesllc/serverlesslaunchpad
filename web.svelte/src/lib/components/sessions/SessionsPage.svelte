@@ -30,6 +30,7 @@
 
 	let deleteModalOpen = false;
 	let selectedIds: string[] = [];
+	let clearSelectionFn: (() => void) | null = null;
 
 	$: currentSessionId = $authStore.user?.authContext?.sessionId || null;
 	$: currentUserId = $authStore.user?.username || null;
@@ -60,8 +61,9 @@
 	// Reactive data that depends on resource, currentSessionId, and isViewingOwnSessions
 	$: data = enhanceSessionsData(resource, currentSessionId, isViewingOwnSessions);
 
-	function handleBulkDelete(ids: string[]) {
+	function handleBulkDelete(ids: string[], clearSelection: () => void) {
 		selectedIds = ids;
+		clearSelectionFn = clearSelection;
 		deleteModalOpen = true;
 	}
 
@@ -72,6 +74,7 @@
 
 		try {
 			await executeTemplate(bulkDeleteTemplate, { sessionIds: selectedIds });
+			clearSelectionFn?.();
 			toastStore.success(`Deleted ${selectedIds.length} session(s)`);
 			deleteModalOpen = false;
 			onRefresh?.();

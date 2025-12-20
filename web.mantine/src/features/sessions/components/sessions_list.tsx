@@ -49,7 +49,7 @@ export function SessionsList() {
     });
 
     // Handle bulk delete with confirmation
-    const handle_bulk_delete = async (selected_ids: string[]) => {
+    const handle_bulk_delete = async (selected_ids: string[], clearSelection: () => void) => {
         const bulk_delete_template = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulk_delete_template) return;
 
@@ -64,6 +64,7 @@ export function SessionsList() {
                     await execute_bulk_delete(bulk_delete_template, {
                         sessionIds: selected_ids,
                     });
+                    clearSelection();
                     notifications.show({
                         title: 'Success',
                         message: `${count} session(s) deleted successfully`,

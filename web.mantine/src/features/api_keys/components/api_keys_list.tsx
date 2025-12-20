@@ -42,7 +42,7 @@ export function ApiKeysList() {
     const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 
     // Handle bulk delete with confirmation
-    const handleBulkDelete = async (selectedIds: string[]) => {
+    const handleBulkDelete = async (selectedIds: string[], clearSelection: () => void) => {
         if (!bulkDeleteTemplate) return;
 
         const count = selectedIds.length;
@@ -56,6 +56,7 @@ export function ApiKeysList() {
                     await executeBulkDelete(bulkDeleteTemplate, {
                         apiKeyIds: selectedIds
                     });
+                    clearSelection();
                     notifications.show({
                         title: 'Success',
                         message: `Successfully deleted ${count} API key${count === 1 ? '' : 's'}`,

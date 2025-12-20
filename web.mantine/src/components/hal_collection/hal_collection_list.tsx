@@ -223,7 +223,7 @@ export function HalCollectionList({
                             key={op.id}
                             variant={op.variant === 'destructive' ? 'default' : (op.variant || 'default')}
                             size="sm"
-                            onClick={() => op.handler(Array.from(selected))}
+                            onClick={() => op.handler(Array.from(selected), clearSelection)}
                             disabled={op.disabled?.(Array.from(selected))}
                             leftSection={op.icon as React.ReactNode}
                         >

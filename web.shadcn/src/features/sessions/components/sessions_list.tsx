@@ -42,7 +42,7 @@ export function SessionsList() {
     const { confirmDelete } = useConfirmDelete();
 
     // Handle bulk delete with confirmation
-    const handle_bulk_delete = async (selected_ids: string[]) => {
+    const handle_bulk_delete = async (selected_ids: string[], clearSelection: () => void) => {
         const bulk_delete_template = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulk_delete_template) return;
 
@@ -57,6 +57,7 @@ export function SessionsList() {
                     await execute_bulk_delete(bulk_delete_template, {
                         sessionIds: selected_ids,
                     });
+                    clearSelection();
                     toast.success(`${count} session(s) deleted successfully`);
                 } catch (err: any) {
                     toast.error(err.message || 'Failed to delete sessions');
