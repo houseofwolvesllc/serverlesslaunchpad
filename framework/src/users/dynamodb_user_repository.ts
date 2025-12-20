@@ -5,6 +5,8 @@ import {
     GetUserByEmailMessage,
     GetUserByIdMessage,
     UpsertUserMessage,
+    GetAllUsersMessage,
+    GetAllUsersResult,
 } from "@houseofwolves/serverlesslaunchpad.core";
 import { DynamoDbClientFactory } from "../data/dynamodb/dynamodb_client_factory";
 import { DynamoDbClient } from "../data/dynamodb/dynamodb_client";
@@ -86,5 +88,31 @@ export class DynamoDbUserRepository extends UserRepository {
 
         // Return the user object we just created
         return this.mapToUser(item, client);
+    }
+
+    /**
+     * Get all users with pagination support
+     * Uses DynamoDB scan to retrieve all users (for admin user management)
+     */
+    async getAllUsers(message: GetAllUsersMessage): Promise<GetAllUsersResult> {
+        const client = await this.clientFactory.getClient();
+        const limit = message.limit || 50;
+
+        const result = await client.scan<Record<string, any>>({
+            TableName: this.tableName,
+            Limit: limit,
+            ...(message.lastEvaluatedKey
+                ? { ExclusiveStartKey: JSON.parse(message.lastEvaluatedKey) }
+                : {}),
+        });
+
+        const users = result.items.map((item) => this.mapToUser(item, client));
+
+        return {
+            users,
+            lastEvaluatedKey: result.lastEvaluatedKey
+                ? JSON.stringify(result.lastEvaluatedKey)
+                : undefined,
+        };
     }
 }

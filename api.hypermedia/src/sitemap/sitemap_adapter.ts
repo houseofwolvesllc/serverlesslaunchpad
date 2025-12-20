@@ -42,10 +42,9 @@ export class SitemapAdapter extends HalResourceAdapter {
         // Admin section (if user has admin role)
         if (this.hasRole(this.user, Role.Admin)) {
             nav.push({
-                title: "Administration",
+                title: "Admin",
                 items: [
-                    { rel: "admin-reports", type: "link" },
-                    { rel: "admin-settings", type: "link" },
+                    { rel: "users", type: "template", title: "Users" },
                 ],
             });
         }
@@ -85,16 +84,7 @@ export class SitemapAdapter extends HalResourceAdapter {
                 }
             );
 
-            // Admin links
-            if (this.hasRole(this.user, Role.Admin)) {
-                links["admin-reports"] = this.createLink("/admin/reports", {
-                    title: "Reports",
-                });
-
-                links["admin-settings"] = this.createLink("/admin/settings", {
-                    title: "Settings",
-                });
-            }
+            // No admin links needed - admin templates are in _templates
         }
 
         return links;
@@ -108,7 +98,7 @@ export class SitemapAdapter extends HalResourceAdapter {
         const userId = this.user.userId;
 
         // POST operations become templates
-        return {
+        const templates: Record<string, any> = {
             sessions: this.createTemplate(
                 "Sessions",
                 "POST",
@@ -147,6 +137,28 @@ export class SitemapAdapter extends HalResourceAdapter {
                 this.router.buildHref(AuthenticationController, "revoke", {})
             ),
         };
+
+        // Admin templates
+        if (this.hasRole(this.user, Role.Admin)) {
+            templates.users = this.createTemplate(
+                "Users",
+                "POST",
+                this.router.buildHref(UsersController, "getUsers", {}),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        {
+                            name: "pagingInstruction",
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden",
+                        },
+                    ],
+                }
+            );
+        }
+
+        return templates;
     }
 
     protected getBaseLinks(): Record<string, import("../content_types/hal_adapter").HalLink> | undefined {
