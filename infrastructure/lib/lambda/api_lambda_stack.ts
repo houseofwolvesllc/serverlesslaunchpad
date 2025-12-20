@@ -335,17 +335,12 @@ export class ApiLambdaStack extends BaseStack {
      * Configure VPC settings if using custom VPC
      */
     private configureVpc(functionProps: Record<string, any>, props: ApiLambdaStackProps): void {
-        // For development, run Lambda outside VPC for better performance and to avoid circular dependencies
-        if (!this.isDevelopment()) {
-            console.log("🔒 Configuring Lambda to run inside VPC...");
-            functionProps.vpc = props.vpc;
-            functionProps.vpcSubnets = {
-                subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-            };
-        } else {
-            console.log("🚀 Lambda will run outside VPC for better performance...");
-            // Do not set VPC properties - Lambda will run in AWS managed VPC
-        }
+        // Always run Lambda inside VPC for consistent architecture and future resource compatibility
+        console.log("🔒 Configuring Lambda to run inside VPC...");
+        functionProps.vpc = props.vpc;
+        functionProps.vpcSubnets = {
+            subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        };
     }
 
     /**
