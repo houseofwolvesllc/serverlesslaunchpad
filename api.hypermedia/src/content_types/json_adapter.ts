@@ -1,4 +1,4 @@
-import { ResponseData } from "../common/response_builder";
+import { ResponseData } from "../base_controller";
 
 /**
  * JSON/Siren format adapter for hypermedia responses
@@ -11,21 +11,21 @@ export class JsonAdapter {
         if (response.error) {
             return this.formatError(response);
         }
-        
+
         return this.formatSuccess(response);
     }
-    
+
     /**
      * Format successful response as Siren
      */
     private formatSuccess(response: ResponseData): string {
         const siren: any = {};
-        
+
         // Handle different data types
         if (Array.isArray(response.data)) {
             // Collection response
             siren.class = ["collection"];
-            siren.entities = response.data.map(item => this.formatEntity(item));
+            siren.entities = response.data.map((item) => this.formatEntity(item));
         } else if (response.data && typeof response.data === "object") {
             // Single entity response
             const formatted = this.formatEntity(response.data);
@@ -34,20 +34,20 @@ export class JsonAdapter {
             // Simple value response
             siren.properties = { value: response.data };
         }
-        
+
         // Add links if present
         if (response.links?.length) {
             siren.links = response.links;
         }
-        
+
         // Add actions if present
         if (response.actions?.length) {
             siren.actions = response.actions;
         }
-        
+
         return JSON.stringify(siren, null, 2);
     }
-    
+
     /**
      * Format error response as Siren
      */
@@ -61,23 +61,23 @@ export class JsonAdapter {
                 detail: error.detail,
                 instance: error.instance,
                 timestamp: error.timestamp || new Date().toISOString(),
-                traceId: error.traceId || this.generateTraceId()
-            }
+                traceId: error.traceId || this.generateTraceId(),
+            },
         };
-        
+
         // Add violations if present
         if (error.violations?.length) {
             siren.properties.violations = error.violations;
         }
-        
+
         // Add links
         if (response.links?.length) {
             siren.links = response.links;
         }
-        
+
         return JSON.stringify(siren, null, 2);
     }
-    
+
     /**
      * Format an individual entity for Siren
      */
@@ -86,52 +86,59 @@ export class JsonAdapter {
         if (entity.class || entity.properties || entity.entities) {
             return entity;
         }
-        
+
         // Extract special fields
         const { _links, _actions, _class, _rel, ...properties } = entity;
-        
+
         const siren: any = {
-            properties
+            properties,
         };
-        
+
         // Add class if specified
         if (_class) {
             siren.class = Array.isArray(_class) ? _class : [_class];
         }
-        
+
         // Add rel if specified (for sub-entities)
         if (_rel) {
             siren.rel = Array.isArray(_rel) ? _rel : [_rel];
         }
-        
+
         // Add links if specified
         if (_links) {
             siren.links = Array.isArray(_links) ? _links : [_links];
         }
-        
+
         // Add actions if specified
         if (_actions) {
             siren.actions = Array.isArray(_actions) ? _actions : [_actions];
         }
-        
+
         return siren;
     }
-    
+
     /**
      * Get error class name based on status code
      */
     private getErrorClass(status: number): string {
         switch (status) {
-            case 400: return "validation-error";
-            case 401: return "authentication-error";
-            case 403: return "authorization-error";
-            case 404: return "not-found-error";
-            case 409: return "conflict-error";
-            case 422: return "business-rule-error";
-            default: return "server-error";
+            case 400:
+                return "validation-error";
+            case 401:
+                return "authentication-error";
+            case 403:
+                return "authorization-error";
+            case 404:
+                return "not-found-error";
+            case 409:
+                return "conflict-error";
+            case 422:
+                return "business-rule-error";
+            default:
+                return "server-error";
         }
     }
-    
+
     /**
      * Generate a trace ID for error tracking
      */
