@@ -23,6 +23,7 @@ export const ApiConfigSchema = z.object({
 
     // Athena configuration - API needs full access for queries
     athena: z.object({
+        database_name: z.string(),
         workgroup: z.string(),
         data_bucket: z.string(),
         results_bucket: z.string(),

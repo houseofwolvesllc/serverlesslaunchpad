@@ -61,8 +61,11 @@ dev-start:
 	@./moto/init/01-cognito-local.sh >> logs/moto.log 2>&1
 	@./moto/init/02-s3.sh >> logs/moto.log 2>&1
 	@./moto/init/03-secrets.sh >> logs/moto.log 2>&1
-	@./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
+	# Athena/Glue disabled - not needed for core API/web development
+	# Uncomment if you need Athena query capabilities:
+	# @./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
 	@./moto/init/05-generate-config.sh >> logs/moto.log 2>&1
+	@./moto/init/06-dynamodb-tables.sh >> logs/moto.log 2>&1
 	@echo ""
 	@echo "🔧 Building workspace packages..."
 	@cd core && npm run build >/dev/null 2>&1

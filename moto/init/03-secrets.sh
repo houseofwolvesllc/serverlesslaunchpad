@@ -1,36 +1,39 @@
 #!/bin/bash
 # Initialize Secrets Manager and SSM Parameter Store for local development with Moto
+# Creates secrets and parameters idempotently (safe to run multiple times)
 
 set -e
 
-AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localhost:5555}
-AWS_REGION=${AWS_DEFAULT_REGION:-us-west-2}
-
-# Set dummy AWS credentials for Moto
-export AWS_ACCESS_KEY_ID=testing
-export AWS_SECRET_ACCESS_KEY=testing
-export AWS_SECURITY_TOKEN=testing
-export AWS_SESSION_TOKEN=testing
+# Source centralized configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 
 echo "========================================="
-echo "Initializing Secrets & Parameters for Moto"
+echo "Initializing Secrets & Parameters"
 echo "========================================="
+echo "Environment: ${ENVIRONMENT}"
+echo ""
 
-# Get Cognito client secret from SSM (set by 01-cognito.sh)
+# Wait for Moto to be ready
+wait_for_moto || exit 1
+
+echo ""
+
+# Get Cognito client secret from SSM (set by 01-cognito-local.sh)
 echo "Retrieving Cognito client secret..."
-CLIENT_SECRET=$(aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameter \
-  --name "/serverlesslaunchpad/local/cognito/client-secret" \
-  --region $AWS_REGION \
+CLIENT_SECRET=$(aws --endpoint-url=${AWS_ENDPOINT_URL} ssm get-parameter \
+  --name "${SSM_COGNITO_CLIENT_SECRET}" \
+  --region ${AWS_REGION} \
   --with-decryption \
   --query 'Parameter.Value' \
   --output text 2>/dev/null || echo "local-dev-client-secret")
 
 # Create unified secrets for API configuration schema
 echo "Creating unified API secrets..."
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   secretsmanager create-secret \
-  --name local.serverlesslaunchpad.secrets \
-  --region $AWS_REGION \
+  --name ${ENVIRONMENT}.serverlesslaunchpad.secrets \
+  --region ${AWS_REGION} \
   --secret-string '{
     "cognito": {
       "client_secret": "'$CLIENT_SECRET'"
@@ -41,14 +44,14 @@ aws --endpoint-url=$AWS_ENDPOINT_URL \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified secret: local.serverlesslaunchpad.secrets"
+echo "✓ Created/verified secret: ${ENVIRONMENT}.serverlesslaunchpad.secrets"
 
 # Legacy API secrets for backward compatibility during migration
 echo "Creating legacy API secrets..."
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   secretsmanager create-secret \
-  --name serverlesslaunchpad/local/api \
-  --region $AWS_REGION \
+  --name serverlesslaunchpad/${ENVIRONMENT}/api \
+  --region ${AWS_REGION} \
   --secret-string '{
     "jwtSecret": "local-dev-jwt-secret-key-min-32-characters-long!!",
     "encryptionKey": "local-encryption-key-32-characters!!",
@@ -57,14 +60,14 @@ aws --endpoint-url=$AWS_ENDPOINT_URL \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified legacy secret: serverlesslaunchpad/local/api"
+echo "✓ Created/verified legacy secret: serverlesslaunchpad/${ENVIRONMENT}/api"
 
 # Create database credentials (for future use)
 echo "Creating database credentials..."
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   secretsmanager create-secret \
-  --name serverlesslaunchpad/local/database \
-  --region $AWS_REGION \
+  --name serverlesslaunchpad/${ENVIRONMENT}/database \
+  --region ${AWS_REGION} \
   --secret-string '{
     "host": "localhost",
     "port": 5432,
@@ -75,14 +78,14 @@ aws --endpoint-url=$AWS_ENDPOINT_URL \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified secret: serverlesslaunchpad/local/database"
+echo "✓ Created/verified secret: serverlesslaunchpad/${ENVIRONMENT}/database"
 
 # Create third-party API credentials
 echo "Creating third-party API credentials..."
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   secretsmanager create-secret \
-  --name serverlesslaunchpad/local/third-party \
-  --region $AWS_REGION \
+  --name serverlesslaunchpad/${ENVIRONMENT}/third-party \
+  --region ${AWS_REGION} \
   --secret-string '{
     "stripeApiKey": "sk_test_local_stripe_key",
     "sendgridApiKey": "SG.local_sendgrid_key",
@@ -91,115 +94,115 @@ aws --endpoint-url=$AWS_ENDPOINT_URL \
   }' >/dev/null 2>&1 || \
   echo "   (Secret already exists)"
 
-echo "✓ Created/verified secret: serverlesslaunchpad/local/third-party"
+echo "✓ Created/verified secret: serverlesslaunchpad/${ENVIRONMENT}/third-party"
 
 # Create SSM parameters for non-sensitive configuration
 echo "Creating SSM parameters..."
 
 # Application configuration
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/app/environment" \
+  --name "${SSM_PREFIX}/app/environment" \
   --value "development" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/app/log-level" \
+  --name "${SSM_PREFIX}/app/log-level" \
   --value "debug" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/app/api-url" \
+  --name "${SSM_PREFIX}/app/api-url" \
   --value "http://localhost:3000" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/app/frontend-url" \
+  --name "${SSM_PREFIX}/app/frontend-url" \
   --value "http://localhost:5173" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
 echo "✓ Created application parameters"
 
 # Feature flags
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/features/enable-mfa" \
+  --name "${SSM_PREFIX}/features/enable-mfa" \
   --value "false" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/features/enable-api-keys" \
+  --name "${SSM_PREFIX}/features/enable-api-keys" \
   --value "true" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/features/enable-rate-limiting" \
+  --name "${SSM_PREFIX}/features/enable-rate-limiting" \
   --value "false" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/features/maintenance-mode" \
+  --name "${SSM_PREFIX}/features/maintenance-mode" \
   --value "false" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
 echo "✓ Created feature flags"
 
 # Rate limiting configuration
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/rate-limit/requests-per-minute" \
+  --name "${SSM_PREFIX}/rate-limit/requests-per-minute" \
   --value "100" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/rate-limit/burst-limit" \
+  --name "${SSM_PREFIX}/rate-limit/burst-limit" \
   --value "200" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
 echo "✓ Created rate limiting parameters"
 
 # Session configuration
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/session/ttl-seconds" \
+  --name "${SSM_PREFIX}/session/ttl-seconds" \
   --value "3600" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=$AWS_ENDPOINT_URL \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/session/refresh-threshold" \
+  --name "${SSM_PREFIX}/session/refresh-threshold" \
   --value "300" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
 echo "✓ Created session parameters"
@@ -210,17 +213,18 @@ echo "Secrets & Parameters Configuration Complete!"
 echo "========================================="
 echo ""
 echo "Secrets created in Secrets Manager:"
-echo "  - serverlesslaunchpad/local/api"
-echo "  - serverlesslaunchpad/local/database"
-echo "  - serverlesslaunchpad/local/third-party"
+echo "  - ${ENVIRONMENT}.serverlesslaunchpad.secrets"
+echo "  - serverlesslaunchpad/${ENVIRONMENT}/api (legacy)"
+echo "  - serverlesslaunchpad/${ENVIRONMENT}/database"
+echo "  - serverlesslaunchpad/${ENVIRONMENT}/third-party"
 echo ""
 echo "Parameters created in SSM:"
-echo "  - Application config: /serverlesslaunchpad/local/app/*"
-echo "  - Feature flags: /serverlesslaunchpad/local/features/*"
-echo "  - Rate limiting: /serverlesslaunchpad/local/rate-limit/*"
-echo "  - Session config: /serverlesslaunchpad/local/session/*"
+echo "  - Application config: ${SSM_PREFIX}/app/*"
+echo "  - Feature flags: ${SSM_PREFIX}/features/*"
+echo "  - Rate limiting: ${SSM_PREFIX}/rate-limit/*"
+echo "  - Session config: ${SSM_PREFIX}/session/*"
 echo ""
 echo "Test with:"
-echo "  aws --endpoint-url=$AWS_ENDPOINT_URL secretsmanager list-secrets"
-echo "  aws --endpoint-url=$AWS_ENDPOINT_URL ssm get-parameters-by-path --path /serverlesslaunchpad"
+echo "  aws --endpoint-url=${AWS_ENDPOINT_URL} secretsmanager list-secrets --region ${AWS_REGION}"
+echo "  aws --endpoint-url=${AWS_ENDPOINT_URL} ssm get-parameters-by-path --path ${SSM_PREFIX} --region ${AWS_REGION}"
 echo "========================================"
