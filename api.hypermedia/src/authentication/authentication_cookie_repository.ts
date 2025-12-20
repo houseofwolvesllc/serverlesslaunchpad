@@ -1,5 +1,4 @@
-import { ALBEvent } from "aws-lambda";
-import { HypermediaResponse } from "../base_controller";
+import { ALBEvent, ALBResult } from "aws-lambda";
 
 /**
  * Repository for managing authentication session cookies.
@@ -30,7 +29,7 @@ export class AuthenticationCookieRepository {
      * Set session token cookie
      */
     static set(
-        response: HypermediaResponse, 
+        response: ALBResult, 
         token: string, 
         expiresIn: number
     ): void {
@@ -48,7 +47,7 @@ export class AuthenticationCookieRepository {
     /**
      * Remove session token cookie
      */
-    static remove(response: HypermediaResponse): void {
+    static remove(response: ALBResult): void {
         // Ensure headers object exists
         if (!response.headers) {
             response.headers = {};

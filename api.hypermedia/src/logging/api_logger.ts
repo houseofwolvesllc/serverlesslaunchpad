@@ -1,5 +1,5 @@
 import { ConsoleLogger, LogContext, LogLevel } from "@houseofwolves/serverlesslaunchpad.core";
-import { ExtendedALBEvent } from '../common/extended_alb_event';
+import { ExtendedALBEvent } from "../extended_alb_event";
 
 /**
  * API-specific logger that automatically extracts HTTP context from ALB events.
@@ -15,11 +15,11 @@ export class ApiLogger extends ConsoleLogger {
      */
     private extractHttpContext(event: ExtendedALBEvent): LogContext {
         return {
-            traceId: event.traceId || event.headers?.['x-amzn-trace-id'] || 'unknown',
+            traceId: event.traceId || event.headers?.["x-amzn-trace-id"] || "unknown",
             httpMethod: event.httpMethod,
             path: event.path,
-            userAgent: event.headers?.['user-agent'],
-            ipAddress: event.headers?.['x-forwarded-for']
+            userAgent: event.headers?.["user-agent"],
+            ipAddress: event.headers?.["x-forwarded-for"],
         };
     }
 
@@ -35,14 +35,20 @@ export class ApiLogger extends ConsoleLogger {
     /**
      * Log a successful request completion
      */
-    logRequestSuccess(message: string, event: ExtendedALBEvent, statusCode: number, duration: number, context?: LogContext): void {
+    logRequestSuccess(
+        message: string,
+        event: ExtendedALBEvent,
+        statusCode: number,
+        duration: number,
+        context?: LogContext
+    ): void {
         const httpContext = this.extractHttpContext(event);
-        const combinedContext = { 
-            ...httpContext, 
-            statusCode, 
-            duration, 
-            success: true, 
-            ...context 
+        const combinedContext = {
+            ...httpContext,
+            statusCode,
+            duration,
+            success: true,
+            ...context,
         };
         this.info(message, combinedContext);
     }
@@ -50,18 +56,24 @@ export class ApiLogger extends ConsoleLogger {
     /**
      * Log a failed request
      */
-    logRequestError(message: string, event: ExtendedALBEvent, error: Error, duration: number, context?: LogContext): void {
+    logRequestError(
+        message: string,
+        event: ExtendedALBEvent,
+        error: Error,
+        duration: number,
+        context?: LogContext
+    ): void {
         const httpContext = this.extractHttpContext(event);
-        const combinedContext = { 
-            ...httpContext, 
-            duration, 
+        const combinedContext = {
+            ...httpContext,
+            duration,
             success: false,
             error: {
                 name: error.name,
                 message: error.message,
-                stack: error.stack
+                stack: error.stack,
             },
-            ...context 
+            ...context,
         };
         this.error(message, combinedContext);
     }
@@ -69,7 +81,12 @@ export class ApiLogger extends ConsoleLogger {
     /**
      * Log with automatic HTTP context extraction (convenience method)
      */
-    logWithHttpContext(level: 'debug' | 'info' | 'warn' | 'error', message: string, event: ExtendedALBEvent, context?: LogContext): void {
+    logWithHttpContext(
+        level: "debug" | "info" | "warn" | "error",
+        message: string,
+        event: ExtendedALBEvent,
+        context?: LogContext
+    ): void {
         const httpContext = this.extractHttpContext(event);
         const combinedContext = { ...httpContext, ...context };
         this[level](message, combinedContext);

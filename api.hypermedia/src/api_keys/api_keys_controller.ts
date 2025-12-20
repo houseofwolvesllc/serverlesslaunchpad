@@ -1,5 +1,6 @@
 import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
-import { BaseController, HypermediaResponse } from "../base_controller.js";
+import { ALBResult } from "aws-lambda";
+import { BaseController } from "../base_controller.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
@@ -26,7 +27,7 @@ export class ApiKeysController extends BaseController {
     @Protected()
     @Cache({ ttl: 600, vary: ['Authorization'] })
     @Route('POST', '/users/{userId}/api_keys/list')
-    async getApiKeys(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
+    async getApiKeys(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
         const { params, body } = this.parseRequest(event, GetApiKeysSchema);
         const { userId } = params;
@@ -45,8 +46,7 @@ export class ApiKeysController extends BaseController {
             pagingInstruction
         });
         
-        // Return the result with plain pagination instructions
-        return this.success({
+        return this.success(event, {
             apiKeys: result.items,
             paging: {
                 next: result.pagingInstructions.next,
@@ -64,7 +64,7 @@ export class ApiKeysController extends BaseController {
     @Log()
     @Protected()
     @Route('POST', '/users/{userId}/api_keys/delete')
-    async deleteApiKeys(event: AuthenticatedALBEvent): Promise<HypermediaResponse> {
+    async deleteApiKeys(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
         const { params, body } = this.parseRequest(event, DeleteApiKeysSchema);
         const { userId } = params;
@@ -85,7 +85,7 @@ export class ApiKeysController extends BaseController {
             apiKeys: apiKeyIds
         });
         
-        return this.success({ 
+        return this.success(event, { 
             message: `Deleted ${apiKeyIds.length} API keys for user ${userId}`,
             deletedCount: apiKeyIds.length
         });
