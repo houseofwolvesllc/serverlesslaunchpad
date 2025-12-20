@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { LinkNavigator } from './link_navigator';
-import type { HalObject, HalLink } from '../types/hal';
+import { LinkNavigator } from '../../src/services/link_navigator';
+import type { HalObject, HalLink } from '../../src/types/hal';
 
 describe('LinkNavigator', () => {
     let navigator: LinkNavigator;

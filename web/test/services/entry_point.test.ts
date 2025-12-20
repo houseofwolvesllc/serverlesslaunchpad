@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EntryPoint, createEntryPoint } from './entry_point';
-import type { HalObject } from '../types/hal';
+import { EntryPoint, createEntryPoint } from '../../src/services/entry_point';
+import type { HalObject } from '../../src/types/hal';
 
 describe('EntryPoint', () => {
     let entryPoint: EntryPoint;

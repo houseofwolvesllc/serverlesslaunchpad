@@ -211,7 +211,7 @@ describe("AuthenticationController", () => {
             );
         });
 
-        it("should not set authentication cookie for JSON clients", async () => {
+        it("should set authentication cookie for JSON clients (supports web SPAs)", async () => {
             // Arrange
             const user = createMockUser();
             const event = createSigninEvent(); // Default has accept: application/json
@@ -235,9 +235,13 @@ describe("AuthenticationController", () => {
 
             // Act
             await controller.federate(event);
-            console.log("HEADERS", event.headers);
-            // Assert
-            expect(AuthenticationCookieRepository.set).not.toHaveBeenCalled();
+
+            // Assert - Web SPAs using JSON need cookies for secure session management
+            expect(AuthenticationCookieRepository.set).toHaveBeenCalledWith(
+                expect.any(Object), // response object
+                "session-token-123", // session token
+                expect.any(Number) // expiry timestamp
+            );
         });
 
         it("should build user links with sessions and api-keys", async () => {
