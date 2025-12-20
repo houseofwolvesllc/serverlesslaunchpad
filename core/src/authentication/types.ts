@@ -30,6 +30,7 @@ const sessionSchema = z.object({
     ipAddress: z.string().ip(),
     userAgent: z.string(),
     dateCreated: z.date(),
+    dateModified: z.date(),
     dateExpires: z.date(),
 });
 
@@ -41,3 +42,12 @@ export class InvalidAccessTokenError extends Error {
         Object.setPrototypeOf(this, new.target.prototype);
     }
 }
+
+const apiKeySchema = z.object({
+    apiKeyId: z.string(),
+    apiKey: z.string(),
+    userId: z.string(),
+    dateCreated: z.date(),
+});
+
+export type ApiKey = z.infer<typeof apiKeySchema>;
