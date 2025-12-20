@@ -8,6 +8,7 @@ import { CognitoStack } from "../lib/auth/cognito_stack";
 import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
 import { NetworkStack } from "../lib/network/network_stack";
 import { SecretsStack } from "../lib/secrets/secrets_stack";
+import { WebStaticHostingStack, WebPackageName } from "../lib/web/web_static_hosting_stack";
 
 // Get environment variables - use NODE_ENV as single source of truth
 const environment = (process.env.NODE_ENV || "development") as Environment;
@@ -104,6 +105,19 @@ apiLambdaStack.addDependency(cognitoStack);
 apiLambdaStack.addDependency(networkStack);
 albStack.addDependency(networkStack);
 albStack.addDependency(apiLambdaStack); // ALB needs Lambda's target group
+
+// Create Web Static Hosting Stacks for each frontend
+const webPackages: WebPackageName[] = ["mantine", "shadcn", "daisyui", "svelte"];
+
+webPackages.forEach((pkg) => {
+    const stack = new WebStaticHostingStack(app, `slp-web-${pkg}-stack-${environment}`, {
+        ...commonProps,
+        description: `Static web hosting for web.${pkg} - ${environment}`,
+        webPackageName: pkg,
+    });
+    // Web stacks depend on secrets for potential future config needs
+    stack.addDependency(secretsStack);
+});
 
 // Add tags to all stacks
 const tags = configuration.tags;
