@@ -33,6 +33,7 @@
         "prettier": "~2.8",
         "rimraf": "~3.0",
         "tsc-alias": "^1.8.16",
+        "unplugin-swc": "^1.5.7",
         "vitest": "^3.2.4"
     },
     "dependencies": {
