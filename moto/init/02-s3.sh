@@ -52,41 +52,6 @@ aws --endpoint-url=${AWS_ENDPOINT_URL} \
 
 echo "✓ Created/verified bucket: ${S3_ATHENA_RESULTS_BUCKET}"
 
-# Create CORS configuration file
-cat > /tmp/cors.json <<EOF
-{
-  "CORSRules": [
-    {
-      "AllowedHeaders": ["*"],
-      "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-      "AllowedOrigins": ["http://localhost:5173", "http://localhost:3000"],
-      "ExposeHeaders": ["ETag", "x-amz-request-id"],
-      "MaxAgeSeconds": 3000
-    }
-  ]
-}
-EOF
-
-# Apply CORS configuration to uploads bucket
-echo "Configuring CORS for uploads bucket..."
-aws --endpoint-url=${AWS_ENDPOINT_URL} \
-  s3api put-bucket-cors \
-  --bucket ${S3_UPLOADS_BUCKET} \
-  --region ${AWS_REGION} \
-  --cors-configuration file:///tmp/cors.json
-
-echo "✓ CORS configured for uploads bucket"
-
-# Apply CORS configuration to static bucket
-echo "Configuring CORS for static bucket..."
-aws --endpoint-url=${AWS_ENDPOINT_URL} \
-  s3api put-bucket-cors \
-  --bucket ${S3_STATIC_BUCKET} \
-  --region ${AWS_REGION} \
-  --cors-configuration file:///tmp/cors.json
-
-echo "✓ CORS configured for static bucket"
-
 # Enable versioning on uploads bucket
 echo "Enabling versioning on uploads bucket..."
 aws --endpoint-url=${AWS_ENDPOINT_URL} \
@@ -135,33 +100,6 @@ echo "Hello from Moto S3!" | aws --endpoint-url=${AWS_ENDPOINT_URL} \
 
 echo "✓ Created sample file: s3://${S3_STATIC_BUCKET}/test.txt"
 
-# Clean up temp files
-rm -f /tmp/cors.json
-
-# Auto-update .env.local file in web directory with S3 configuration
-# Script is run from project root, so use direct path
-ENV_LOCAL_FILE="web/.env.local"
-if [ -f "$ENV_LOCAL_FILE" ]; then
-  echo "Updating $ENV_LOCAL_FILE with S3 configuration..."
-
-  # Update S3 bucket names
-  if grep -q "VITE_S3_UPLOAD_BUCKET" "$ENV_LOCAL_FILE"; then
-    sed -i.bak "s/VITE_S3_UPLOAD_BUCKET=.*/VITE_S3_UPLOAD_BUCKET=${S3_UPLOADS_BUCKET}/" "$ENV_LOCAL_FILE"
-  else
-    echo "VITE_S3_UPLOAD_BUCKET=${S3_UPLOADS_BUCKET}" >> "$ENV_LOCAL_FILE"
-  fi
-
-  if grep -q "VITE_S3_STATIC_BUCKET" "$ENV_LOCAL_FILE"; then
-    sed -i.bak "s/VITE_S3_STATIC_BUCKET=.*/VITE_S3_STATIC_BUCKET=${S3_STATIC_BUCKET}/" "$ENV_LOCAL_FILE"
-  else
-    echo "VITE_S3_STATIC_BUCKET=${S3_STATIC_BUCKET}" >> "$ENV_LOCAL_FILE"
-  fi
-
-  # Remove backup file
-  rm -f "$ENV_LOCAL_FILE.bak"
-  echo "✓ Updated $ENV_LOCAL_FILE with S3 buckets"
-fi
-
 echo ""
 echo "========================================="
 echo "S3 Configuration Complete!"
@@ -169,12 +107,10 @@ echo "========================================="
 echo ""
 echo "Buckets created:"
 echo "  - ${S3_UPLOADS_BUCKET} (versioned, private)"
-echo "  - ${S3_STATIC_BUCKET} (with CORS)"
+echo "  - ${S3_STATIC_BUCKET} (private)"
 echo "  - ${S3_ATHENA_RESULTS_BUCKET} (for query results)"
 echo ""
-echo "CORS enabled for origins:"
-echo "  - http://localhost:5173 (Web frontend)"
-echo "  - http://localhost:3000 (API)"
+echo "Note: No CORS configured - all S3 access goes through the API (server-side)"
 echo ""
 echo "Test with:"
 echo "  aws --endpoint-url=${AWS_ENDPOINT_URL} s3 ls --region ${AWS_REGION}"

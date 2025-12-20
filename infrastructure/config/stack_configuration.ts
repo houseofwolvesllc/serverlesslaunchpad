@@ -49,6 +49,10 @@ export const configurations: Record<
         tags?: Partial<StackConfiguration["tags"]>;
     }
 > = {
+    moto: {
+        // Uses defaults from getConfiguration function - local dev with Moto
+    },
+
     local: {
         // Uses defaults from getConfiguration function
     },
