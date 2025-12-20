@@ -1,29 +1,81 @@
 import {
     ApiKeyRepository,
     AuthenticateMessage,
+    AuthenticateResult,
     Authenticator,
     ConfigurationStore,
+    Features,
+    Injectable,
+    Role,
+    SessionRepository,
+    UserRepository,
+    VerifyMessage,
 } from "@houseofwolves/serverlesslaunchpad.core";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import crypto from "crypto";
 
+@Injectable()
 export class SystemAuthenticator implements Authenticator {
     constructor(
+        private readonly userRepository: UserRepository,
+        private readonly sessionRepository: SessionRepository,
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly configuration: ConfigurationStore<{
             auth: { cognito: { userPoolId: string; userPoolClientId: string } } | undefined;
         }>
     ) {}
 
-    async authenticate(message: AuthenticateMessage): Promise<boolean> {
-        if (message.accessToken) {
-            return this.verifyAccessToken(message.accessToken);
+    async authenticate(message: AuthenticateMessage): Promise<AuthenticateResult> {
+        const isAuthenticated = await this.verifyAccessToken(message.accessToken);
+        if (isAuthenticated) {
+            let user = await this.userRepository.getUserByEmail({ email: message.email });
+
+            if (!user) {
+                user = await this.userRepository.upsertUser({
+                    userId: crypto.randomUUID(),
+                    email: message.email,
+                    firstName: message.firstName,
+                    lastName: message.lastName,
+                    role: Role.Base,
+                    features: Features.None,
+                    dateCreated: new Date(),
+                    dateModified: new Date(),
+                });
+            }
+
+            const session = await this.sessionRepository.createSession({
+                userId: user.userId,
+                sessionId: crypto.randomUUID(),
+                sessionSignature: this.generateSessionSignature(message),
+                ipAddress: message.ipAddress,
+                userAgent: message.userAgent,
+            });
+
+            return {
+                authContext: {
+                    identity: user,
+                    access: {
+                        type: "session",
+                        ipAddress: message.ipAddress,
+                        userAgent: message.userAgent,
+                        sessionToken: message.sessionKey + user.userId,
+                        dateLastAccessed: session.dateLastAccessed,
+                        dateExpires: session.dateExpires,
+                    },
+                },
+            };
         }
 
-        if (message.apiKey) {
-            return this.verifyApiKey(message.apiKey);
-        }
-
-        return false;
+        return {
+            authContext: {
+                identity: undefined,
+                access: {
+                    type: "unknown",
+                    ipAddress: message.ipAddress,
+                    userAgent: message.userAgent,
+                },
+            },
+        };
     }
 
     private async verifyAccessToken(accessToken: string): Promise<boolean> {
@@ -41,23 +93,103 @@ export class SystemAuthenticator implements Authenticator {
         });
 
         try {
-            verifier.verify(accessToken);
+            await verifier.verify(accessToken);
+            return true;
         } catch (error) {
             // should throw error if not expected
             console.log(error);
             return false;
         }
-
-        return true;
     }
 
-    private async verifyApiKey(apiKey: string): Promise<boolean> {
-        const storedApiKey = await this.apiKeyRepository.getApiKey({ apiKey });
+    private generateSessionSignature(message: AuthenticateMessage): string {
+        return crypto
+            .createHash("sha256")
+            .update(`${message.sessionKey}_${message.ipAddress}_${message.userAgent}_${process.env.SESSION_TOKEN_SALT}`)
+            .digest("hex");
+    }
 
-        if (!storedApiKey) {
-            return false;
+    async verify(message: VerifyMessage): Promise<AuthenticateResult> {
+        if (message.sessionToken) {
+            const { sessionKey, userId } = this.parseSessionToken(message.sessionToken);
+
+            const result = await this.sessionRepository.verifySession({
+                userId,
+                sessionSignature: sessionKey,
+            });
+
+            if (!result) {
+                return {
+                    authContext: {
+                        identity: undefined,
+                        access: {
+                            type: "session",
+                            ipAddress: message.ipAddress,
+                            userAgent: message.userAgent,
+                        },
+                    },
+                };
+            }
+
+            return {
+                authContext: {
+                    identity: result.user,
+                    access: {
+                        type: "session",
+                        ipAddress: result.session.ipAddress,
+                        userAgent: result.session.userAgent,
+                        dateLastAccessed: result.session.dateLastAccessed,
+                        dateExpires: result.session.dateExpires,
+                    },
+                },
+            };
         }
 
-        return true;
+        if (message.apiKey) {
+            const result = await this.apiKeyRepository.verifyApiKey({ apiKey: message.apiKey });
+
+            if (!result) {
+                return {
+                    authContext: {
+                        identity: undefined,
+                        access: {
+                            type: "apiKey",
+                            ipAddress: message.ipAddress,
+                            userAgent: message.userAgent,
+                        },
+                    },
+                };
+            }
+
+            return {
+                authContext: {
+                    identity: result.user,
+                    access: {
+                        type: "apiKey",
+                        ipAddress: message.ipAddress,
+                        userAgent: message.userAgent,
+                        description: result.apiKey.description,
+                        dateLastAccessed: result.apiKey.dateLastAccessed,
+                    },
+                },
+            };
+        }
+
+        return {
+            authContext: {
+                identity: undefined,
+                access: {
+                    type: "unknown",
+                    ipAddress: message.ipAddress,
+                    userAgent: message.userAgent,
+                },
+            },
+        };
+    }
+
+    private parseSessionToken(sessionToken: string): { sessionKey: string; userId: string } {
+        const sessionKey = sessionToken.substring(0, 32);
+        const userId = sessionToken.substring(32);
+        return { sessionKey, userId };
     }
 }

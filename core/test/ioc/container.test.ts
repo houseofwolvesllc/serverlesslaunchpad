@@ -74,6 +74,49 @@ describe("Container", () => {
             expect(repoB.getUser("1").name).toBe("User B");
         });
 
+        it("Should bind concrete class to itself using toSelf", () => {
+            const container = new Container();
+            
+            class ConcreteService {
+                getValue(): string {
+                    return "concrete";
+                }
+            }
+            
+            container.bind(ConcreteService).toSelf();
+            
+            const service = container.resolve(ConcreteService);
+            
+            expect(service).toBeInstanceOf(ConcreteService);
+            expect(service.getValue()).toBe("concrete");
+        });
+
+        it("Should bind concrete class to itself as singleton using toSelf", () => {
+            const container = new Container();
+            
+            class ConcreteService {
+                private static counter = 0;
+                public readonly instanceId: number;
+                
+                constructor() {
+                    this.instanceId = ++ConcreteService.counter;
+                }
+                
+                getValue(): string {
+                    return `concrete-${this.instanceId}`;
+                }
+            }
+            
+            container.bind(ConcreteService).toSelf().asSingleton();
+            
+            const service1 = container.resolve(ConcreteService);
+            const service2 = container.resolve(ConcreteService);
+            
+            expect(service1).toBe(service2);
+            expect(service1.instanceId).toBe(service2.instanceId);
+            expect(service1.getValue()).toBe("concrete-1");
+        });
+
         it("Should throw error when binding with duplicate key/type composite", () => {
             const container = new Container();
 

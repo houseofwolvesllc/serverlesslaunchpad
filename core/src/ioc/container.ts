@@ -9,6 +9,11 @@ export class ContainerRegistrar<T> {
         return this;
     }
 
+    toSelf(): ContainerRegistrar<T> {
+        this.descriptor.implementation = this.descriptor.serviceType as Constructor<T>;
+        return this;
+    }
+
     toFactory(factory: () => T): ContainerRegistrar<T> {
         this.descriptor.factory = factory;
         return this;

@@ -9,3 +9,4 @@
     "bracketSameLine": false,
     "endOfLine": "lf"
 }
+EOF < /dev/null

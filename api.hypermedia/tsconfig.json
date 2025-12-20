@@ -1,11 +1,16 @@
+// https://www.typescriptlang.org/tsconfig
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "rootDir": ".",
+    "outDir": "dist",
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test"]
+  "extends": "../tsconfig.json",
+  "include": [
+    "src/**/*",
+    "test/**/*",
+  ],
+  "exclude": [
+    "src/**/*.d.*",
+    "test/**/*.d.*"
+  ]  
 }

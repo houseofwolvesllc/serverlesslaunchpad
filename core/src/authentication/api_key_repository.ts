@@ -1,14 +1,43 @@
 import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
-import { ApiKey } from "./types";
+import { User } from "../users";
 
 export abstract class ApiKeyProvider {
-    abstract getApiKey(message: { apiKey: string }): Promise<ApiKey | undefined>;
-
-    abstract getApiKeys(message: { pagingInstruction?: PagingInstruction }): Promise<Paginated<ApiKey>>;
+    abstract getApiKeys(message: GetApiKeysMessage): Promise<Paginated<ApiKey>>;
 }
 
 export abstract class ApiKeyRepository extends ApiKeyProvider {
-    abstract createApiKey(message: { apiKey: string; userId: string }): Promise<ApiKey>;
-
-    abstract deleteApiKey(message: { apiKeyId: string }): Promise<void>;
+    abstract createApiKey(message: CreateApiKeyMessage): Promise<ApiKey>;
+    abstract verifyApiKey(message: VerifyApiKeyMessage): Promise<VerifyApiKeyResult | undefined>;
+    abstract deleteApiKey(message: DeleteApiKeyMessage): Promise<void>;
 }
+
+export type ApiKey = {
+    apiKeyId: string;
+    userId: string;
+    apiKey: string;
+    description: string;
+    dateCreated: Date;
+    dateLastAccessed: Date;
+};
+
+export type VerifyApiKeyResult = {
+    apiKey: ApiKey;
+    user: User;
+};
+
+export type GetApiKeysMessage = {
+    pagingInstruction?: PagingInstruction;
+};
+
+export type CreateApiKeyMessage = {
+    apiKey: string;
+    userId: string;
+};
+
+export type VerifyApiKeyMessage = {
+    apiKey: string;
+};
+
+export type DeleteApiKeyMessage = {
+    apiKey: string;
+};
