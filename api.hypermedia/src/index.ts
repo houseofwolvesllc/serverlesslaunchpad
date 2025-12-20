@@ -52,6 +52,17 @@ try {
     }
 }
 
+// Initialize cookie repository with domain from config for cross-subdomain sharing
+(async () => {
+    try {
+        const configStore = container.resolve(InfrastructureConfigurationStore);
+        const config = await configStore.get();
+        AuthenticationCookieRepository.initialize(config.cors?.cookie_domain);
+    } catch {
+        // Config not available yet - will use default (same-host cookies)
+    }
+})();
+
 /**
  * Main ALB handler for the Hypermedia API.
  * This handler implements the complete request/response flow:
@@ -179,10 +190,12 @@ function getSecurityHeaders(): Record<string, string> {
 
 // Cached CORS configuration
 let corsConfig: { allowed_origin_suffix?: string } | undefined;
+let corsEnvironment: string | undefined;
 
 /**
  * Get CORS headers based on the request origin and configuration.
- * Allows origins that match the configured suffix (e.g., ".serverlesslaunchpad.com")
+ * - moto environment: allows all origins (returns "*")
+ * - other environments: allows origins matching the configured suffix (e.g., ".serverlesslaunchpad.com")
  */
 async function getCorsHeaders(event: ALBEvent): Promise<Record<string, string>> {
     const origin = event.headers?.origin || event.headers?.Origin;
@@ -193,16 +206,18 @@ async function getCorsHeaders(event: ALBEvent): Promise<Record<string, string>> 
             const configStore = container.resolve(InfrastructureConfigurationStore);
             const config = await configStore.get();
             corsConfig = config.cors || {};
+            corsEnvironment = config.environment;
         } catch {
             corsConfig = {};
         }
     }
 
+    // Moto: allow any origin; AWS environments: use suffix matching
     const suffix = corsConfig.allowed_origin_suffix;
-    const isAllowed = suffix && origin?.endsWith(suffix);
+    const isAllowed = corsEnvironment === "moto" || (suffix && origin?.endsWith(suffix));
 
     return {
-        "Access-Control-Allow-Origin": isAllowed ? origin! : "",
+        "Access-Control-Allow-Origin": isAllowed ? origin || "" : "",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie, Cache-Control",
         "Access-Control-Allow-Credentials": "true",

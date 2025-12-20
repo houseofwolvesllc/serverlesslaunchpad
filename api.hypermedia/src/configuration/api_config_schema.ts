@@ -5,12 +5,12 @@ import { z } from "zod";
  * Contains only non-sensitive configuration data that can be cached indefinitely.
  */
 export const ApiConfigSchema = z.object({
-    environment: z.enum(["local", "development", "staging", "production"]),
+    environment: z.enum(["moto", "development", "staging", "production"]),
 
     // AWS configuration
     aws: z.object({
         region: z.string(),
-        endpoint_url: z.string().optional(), // For local/Moto development
+        endpoint_url: z.string().optional(), // For moto development
     }),
 
     // Cognito configuration (non-sensitive)
@@ -58,6 +58,14 @@ export const ApiConfigSchema = z.object({
             max_api_keys_per_user: z.number().default(10),
             session_timeout_hours: z.number().default(24),
             max_query_timeout_seconds: z.number().default(300),
+        })
+        .optional(),
+
+    // CORS configuration
+    cors: z
+        .object({
+            allowed_origin_suffix: z.string().optional(),
+            cookie_domain: z.string().optional(),
         })
         .optional(),
 

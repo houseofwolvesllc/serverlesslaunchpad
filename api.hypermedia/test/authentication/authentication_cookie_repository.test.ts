@@ -116,7 +116,7 @@ describe("AuthenticationCookieRepository", () => {
             expect(setCookieHeader).toContain("Path=/");
             expect(setCookieHeader).toContain("HttpOnly");
             expect(setCookieHeader).toContain("Secure");
-            expect(setCookieHeader).toContain("SameSite=Strict");
+            expect(setCookieHeader).toContain("SameSite=Lax");
             expect(setCookieHeader).toMatch(/Expires=\w+, \d{2} \w+ \d{4} \d{2}:\d{2}:\d{2} GMT/);
         });
 
@@ -178,7 +178,7 @@ describe("AuthenticationCookieRepository", () => {
             expect(setCookieHeader).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
             expect(setCookieHeader).toContain("HttpOnly");
             expect(setCookieHeader).toContain("Secure");
-            expect(setCookieHeader).toContain("SameSite=Strict");
+            expect(setCookieHeader).toContain("SameSite=Lax");
         });
 
         it("should create headers object if not present", () => {
@@ -232,6 +232,57 @@ describe("AuthenticationCookieRepository", () => {
         });
     });
 
+    describe("cookie domain", () => {
+        it("should include domain when initialized with domain", () => {
+            // Arrange
+            AuthenticationCookieRepository.initialize(".serverlesslaunchpad.com");
+            const response = createMockResponse();
+            const token = "session-token-123";
+            const expiresIn = 3600;
+
+            // Act
+            AuthenticationCookieRepository.set(response, token, expiresIn);
+
+            // Assert
+            const setCookieHeader = response.headers?.["Set-Cookie"];
+            expect(setCookieHeader).toContain("Domain=.serverlesslaunchpad.com");
+
+            // Cleanup
+            AuthenticationCookieRepository.initialize(undefined);
+        });
+
+        it("should not include domain when not initialized", () => {
+            // Arrange
+            AuthenticationCookieRepository.initialize(undefined);
+            const response = createMockResponse();
+            const token = "session-token-123";
+            const expiresIn = 3600;
+
+            // Act
+            AuthenticationCookieRepository.set(response, token, expiresIn);
+
+            // Assert
+            const setCookieHeader = response.headers?.["Set-Cookie"];
+            expect(setCookieHeader).not.toContain("Domain=");
+        });
+
+        it("should include domain in removal cookie when initialized", () => {
+            // Arrange
+            AuthenticationCookieRepository.initialize(".example.com");
+            const response = createMockResponse();
+
+            // Act
+            AuthenticationCookieRepository.remove(response);
+
+            // Assert
+            const setCookieHeader = response.headers?.["Set-Cookie"];
+            expect(setCookieHeader).toContain("Domain=.example.com");
+
+            // Cleanup
+            AuthenticationCookieRepository.initialize(undefined);
+        });
+    });
+
     describe("security attributes", () => {
         it("should include all required security attributes", () => {
             // Arrange
@@ -248,7 +299,7 @@ describe("AuthenticationCookieRepository", () => {
             // Check all security attributes are present
             expect(setCookieHeader).toContain("HttpOnly"); // Prevents XSS
             expect(setCookieHeader).toContain("Secure"); // HTTPS only
-            expect(setCookieHeader).toContain("SameSite=Strict"); // CSRF protection
+            expect(setCookieHeader).toContain("SameSite=Lax"); // CSRF protection for cross-site POSTs, allows top-level navigation
             expect(setCookieHeader).toContain("Path=/"); // Proper scope
         });
 
