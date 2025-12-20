@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32">
+  <!-- Background: rounded square with primary color at 10% opacity -->
+  <rect x="0" y="0" width="512" height="512" rx="64" ry="64" fill="#2563eb" fill-opacity="0.1"/>
+
+  <!-- Border for better visibility on light backgrounds -->
+  <rect x="4" y="4" width="504" height="504" rx="60" ry="60" fill="none" stroke="#2563eb" stroke-width="8" stroke-opacity="0.2"/>
+
+  <!-- SL text in primary blue -->
+  <text x="256" y="370" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="340" font-weight="700" fill="#2563eb" text-anchor="middle">SL</text>
+</svg>
