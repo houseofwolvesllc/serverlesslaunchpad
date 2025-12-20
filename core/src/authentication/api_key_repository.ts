@@ -8,7 +8,7 @@ export abstract class ApiKeyProvider {
 export abstract class ApiKeyRepository extends ApiKeyProvider {
     abstract createApiKey(message: CreateApiKeyMessage): Promise<ApiKey>;
     abstract verifyApiKey(message: VerifyApiKeyMessage): Promise<VerifyApiKeyResult | undefined>;
-    abstract deleteApiKey(message: DeleteApiKeyMessage): Promise<void>;
+    abstract deleteApiKeys(message: DeleteApiKeysMessage): Promise<void>;
 }
 
 export type ApiKey = {
@@ -26,18 +26,20 @@ export type VerifyApiKeyResult = {
 };
 
 export type GetApiKeysMessage = {
+    userId: string;
     pagingInstruction?: PagingInstruction;
 };
 
 export type CreateApiKeyMessage = {
-    apiKey: string;
     userId: string;
+    apiKey: string;
 };
 
 export type VerifyApiKeyMessage = {
     apiKey: string;
 };
 
-export type DeleteApiKeyMessage = {
-    apiKey: string;
+export type DeleteApiKeysMessage = {
+    userId: string;
+    apiKeys: string[];
 };

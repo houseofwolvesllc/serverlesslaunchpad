@@ -10,7 +10,7 @@ export abstract class SessionProvider {
 export abstract class SessionRepository extends SessionProvider {
     abstract createSession(message: CreateSessionMessage): Promise<Session>;
     abstract verifySession(message: VerifySessionMessage): Promise<VerifySessionResult | undefined>;
-    abstract deleteSession(message: DeleteSessionMessage): Promise<boolean>;
+    abstract deleteSessionBySignature(message: DeleteSessionBySignatureMessage): Promise<boolean>;
     abstract deleteSessions(message: DeleteSessionsMessage): Promise<boolean>;
 }
 
@@ -57,7 +57,7 @@ export type VerifySessionMessage = {
     sessionSignature: string;
 };
 
-export type DeleteSessionMessage = {
+export type DeleteSessionBySignatureMessage = {
     userId: string;
     sessionSignature: string;
 };

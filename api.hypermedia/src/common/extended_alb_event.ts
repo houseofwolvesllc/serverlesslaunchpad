@@ -38,8 +38,18 @@ export function hasPathParameters(event: ALBEvent): event is ExtendedALBEvent & 
 }
 
 /**
- * Helper type for events that are guaranteed to have authentication context
+ * Helper type for events that are guaranteed to have authentication context with a valid user.
+ * This type reflects the runtime guarantee provided by the @Protected decorator.
  */
 export type AuthenticatedALBEvent = ExtendedALBEvent & {
-    authContext: NonNullable<ExtendedALBEvent["authContext"]>;
+    authContext: NonNullable<ExtendedALBEvent["authContext"]> & {
+        identity: User; // @Protected decorator guarantees identity is present
+    };
 };
+
+/**
+ * Type guard to verify an event has authenticated user context
+ */
+export function isAuthenticated(event: ExtendedALBEvent): event is AuthenticatedALBEvent {
+    return event.authContext?.identity !== undefined;
+}

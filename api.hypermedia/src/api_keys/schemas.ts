@@ -8,9 +8,9 @@ export const GetApiKeysSchema = z.object({
     params: z.object({
         userId: z.string()
     }),
-    query: z.object({
-        limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 25),
-        cursor: z.string().optional()
+    body: z.object({
+        // Accept pagination instruction as plain JSON object
+        pagingInstruction: z.any().optional()
     })
 });
 

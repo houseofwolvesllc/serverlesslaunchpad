@@ -6,8 +6,9 @@ import {
 import { z } from "zod";
 import { BaseController } from "../base_controller";
 import { UnauthorizedError } from "../common/errors";
-import { HypermediaResponse } from "../common/types";
 import { ExtendedALBEvent } from "../common/extended_alb_event";
+import { HypermediaResponse } from "../common/types";
+import { Route } from "../router";
 
 // Define the authentication request schema
 const authenticateSchema = z.object({
@@ -21,6 +22,14 @@ const authenticateSchema = z.object({
         email: z.string().email(),
         firstName: z.string(),
         lastName: z.string()
+    })
+});
+
+const signoutSchema = z.object({
+    headers: z.object({
+        authorization: z.string().startsWith('SessionToken '),
+        'user-agent': z.string(),
+        'x-forwarded-for': z.string()        
     })
 });
 
@@ -42,6 +51,7 @@ export class AuthenticationController extends BaseController {
      * Authenticate a user with a JWT token.
      * Returns hypermedia response with available actions based on user's permissions.
      */
+    @Route('POST', '/signin')
     async authenticate(event: ExtendedALBEvent): Promise<HypermediaResponse> {
         
         const { headers, body } = this.parseRequest(event, authenticateSchema);
@@ -95,5 +105,18 @@ export class AuthenticationController extends BaseController {
         });
 
         return links;
+    }
+
+    @Route('POST', '/signout')
+    async signout(event: ExtendedALBEvent): Promise<HypermediaResponse> {
+        const { headers } = this.parseRequest(event, signoutSchema);
+
+        await this.authenticator.revoke({
+            sessionToken: headers.authorization.replace('SessionToken ', ''),
+            ipAddress: headers['x-forwarded-for'],
+            userAgent: headers['user-agent'],
+        });
+
+        return this.success({});
     }
 }

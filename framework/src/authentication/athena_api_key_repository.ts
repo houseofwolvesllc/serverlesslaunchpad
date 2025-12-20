@@ -3,7 +3,7 @@ import {
     ApiKey,
     ApiKeyRepository,
     CreateApiKeyMessage,
-    DeleteApiKeyMessage,
+    DeleteApiKeysMessage,
     GetApiKeysMessage,
     Injectable,
     User,
@@ -39,8 +39,8 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
             throw new Error("Paging instruction must be an AthenaPagingInstruction");
         }
 
-        let sql = `SELECT * FROM api_keys`;
-        let params: any[] = [];
+        let sql = `SELECT * FROM api_keys WHERE userId = ?`;
+        let params: any[] = [message.userId];
 
         if (message.pagingInstruction?.cursor) {
             const operator = message.pagingInstruction.direction === "backward" ? ">" : "<";
@@ -94,7 +94,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
     async createApiKey(message: CreateApiKeyMessage): Promise<ApiKey> {
         const dateCreated = new Date();
         const apiKeyId = crypto.randomUUID();
-        
+
         const sql = `
             INSERT INTO api_keys (
                 apiKeyId,
@@ -112,7 +112,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
             message.apiKey,
             "API Key",
             this.athenaClient.formatTimestamp(dateCreated),
-            this.athenaClient.formatTimestamp(dateCreated)
+            this.athenaClient.formatTimestamp(dateCreated),
         ];
 
         await this.athenaClient.query(sql, params);
@@ -121,11 +121,11 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
         const apiKeySql = `SELECT * FROM api_keys WHERE apiKeyId = ?`;
         const apiKeyParams = [apiKeyId];
         const apiKeys = await this.athenaClient.query(apiKeySql, apiKeyParams, this.mapToApiKey.bind(this));
-        
+
         if (apiKeys.length === 0) {
             throw new Error(`Failed to retrieve created API key with id ${apiKeyId}`);
         }
-        
+
         return apiKeys[0];
     }
 
@@ -159,11 +159,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
             WHERE a.apiKey = ?
         `;
 
-        const params = [
-            this.athenaClient.formatTimestamp(dateLastAccessed),
-            message.apiKey,
-            message.apiKey
-        ];
+        const params = [this.athenaClient.formatTimestamp(dateLastAccessed), message.apiKey, message.apiKey];
 
         const results = await this.athenaClient.query(sql, params, (row: Record<string, any>) => {
             const apiKey: ApiKey = {
@@ -192,9 +188,9 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
         return results.length > 0 ? results[0] : undefined;
     }
 
-    async deleteApiKey(message: DeleteApiKeyMessage): Promise<void> {
-        const sql = `DELETE FROM api_keys WHERE apiKey = ?`;
-        const params = [message.apiKey];
+    async deleteApiKeys(message: DeleteApiKeysMessage): Promise<void> {
+        const sql = `DELETE FROM api_keys WHERE userId = ? AND apiKey IN (${message.apiKeys.map(() => "?").join(",")})`;
+        const params = [message.userId, ...message.apiKeys];
 
         await this.athenaClient.query(sql, params);
     }
