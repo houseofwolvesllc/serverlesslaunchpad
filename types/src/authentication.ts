@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const baseAuthorizationMessageSchema = z.object({
-    session: z.string(),
+    sessionToken: z.string(),
     accessToken: z.string(),
 });
 
@@ -26,10 +26,11 @@ export type RevokeSessionMessage = z.infer<typeof revokeSessionMessageSchema>;
 const sessionSchema = z.object({
     sessionId: z.string(),
     userId: z.string(),
+    sessionSignature: z.string(),
     ipAddress: z.string().ip(),
     userAgent: z.string(),
-    createdDate: z.date(),
-    expirationDate: z.date(),
+    dateCreated: z.date(),
+    dateExpires: z.date(),
 });
 
 export type Session = z.infer<typeof sessionSchema>;

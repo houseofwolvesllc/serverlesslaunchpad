@@ -1,4 +1,4 @@
-import { Authority, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
+import { Authority, SessionRepository, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
 import {
     AuthorizeMessage,
     GetSessionsMessage,
@@ -8,18 +8,25 @@ import {
     RevokeSessionMessage,
     Session,
     UnauthorizeMessage,
+    User,
 } from "@houseofwolves/serverlesslaunchpad.types";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { ResourcesConfig } from "@aws-amplify/core";
-import { randomUUID } from "crypto";
+import * as crypto from "crypto";
 
 export class CognitoAuthority implements Authority {
-    private readonly sessionRepository: SessionRepository;
     private readonly amplifyResourcesConfig: ResourcesConfig;
+    private readonly sessionRepository: SessionRepository;
+    private readonly userRepository: UserRepository;
 
-    constructor(amplifyResourcesConfig: ResourcesConfig, sessionRepository: SessionRepository) {
+    constructor(
+        amplifyResourcesConfig: ResourcesConfig,
+        sessionRepository: SessionRepository,
+        userRepository: UserRepository
+    ) {
         this.amplifyResourcesConfig = amplifyResourcesConfig;
         this.sessionRepository = sessionRepository;
+        this.userRepository = userRepository;
     }
 
     async authorize(message: AuthorizeMessage): Promise<boolean> {
@@ -32,8 +39,8 @@ export class CognitoAuthority implements Authority {
         // return sessionToken (this will be used for reauthorization or un-authorization)
 
         this.verifyAccessToken(message.accessToken);
-        this.upsertUser(message);
-        this.createSession(message);
+        const user = await this.upsertUser(message);
+        this.createSession(message, user);
 
         return true;
     }
@@ -53,22 +60,38 @@ export class CognitoAuthority implements Authority {
         }
     }
 
-    private async createSession(message: AuthorizeMessage): Promise<void> {
-        const sessionToken = this.generateSessionToken(message);
-        const sessionId = randomUUID();
+    private async createSession(message: AuthorizeMessage, user: User): Promise<void> {
+        const sessionSignature = this.generateSessionSignature(message);
+        const sessionId = crypto.randomUUID();
 
-        return this.sessionRepository.createSession({
+        this.sessionRepository.createSession({
             sessionId: sessionId,
-            userId: message.userId,
+            userId: user.userId,
+            sessionSignature: sessionSignature,
             ipAddress: message.ipAddress,
             userAgent: message.userAgent,
-            createdDate: new Date(),
-            expirationDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
         });
     }
 
-    private async upsertUser(message: AuthorizeMessage): Promise<void> {
-        const user = this.buildUser(message);
+    private generateSessionSignature(message: AuthorizeMessage): string {
+        const sessionKey = message.sessionToken.substring(0, 32);
+        return crypto
+            .createHash("md5")
+            .update(`${sessionKey}_${message.ipAddress}_${message.userAgent}_${process.env.SESSION_TOKEN_SALT}`)
+            .digest("hex");
+    }
+
+    private async upsertUser(message: AuthorizeMessage): Promise<User> {
+        const user = await this.userRepository.getUser({
+            email: message.email,
+        });
+
+        return this.userRepository.upsertUser({
+            userId: user?.userId ?? crypto.randomUUID(),
+            email: message.email,
+            firstName: message.firstName,
+            lastName: message.lastName,
+        });
     }
 
     async reauthorize(_message: ReauthorizeMessage): Promise<boolean> {
