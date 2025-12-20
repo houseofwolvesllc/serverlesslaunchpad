@@ -45,9 +45,9 @@ export async function getHalClient(): Promise<HalFormsClient> {
  * Note: This is a proxy that lazy-loads the real client
  */
 export const halClient = {
-    async fetch(url: string) {
+    async fetch(url: string, options?: { headers?: Record<string, string> }) {
         const client = await getHalClient();
-        return client.fetch(url);
+        return client.fetch(url, options);
     },
     async executeTemplate(template: any, data: Record<string, any>) {
         const client = await getHalClient();

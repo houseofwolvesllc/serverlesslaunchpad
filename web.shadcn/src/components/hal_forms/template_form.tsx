@@ -96,22 +96,30 @@ export function TemplateForm({
         return initial;
     });
 
+
     /**
      * Handle form field changes
      */
     const handleFieldChange = (name: string, value: any) => {
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     /**
      * Handle form submission
+     * Filters out read-only fields before submitting
      */
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        await onSubmit(formData);
+
+        // Filter out read-only fields from submission
+        const submittableData: Record<string, any> = {};
+        template.properties?.forEach((prop) => {
+            if (!prop.readOnly && formData[prop.name] !== undefined) {
+                submittableData[prop.name] = formData[prop.name];
+            }
+        });
+
+        await onSubmit(submittableData);
     };
 
     /**
@@ -122,11 +130,26 @@ export function TemplateForm({
         return error?.message;
     };
 
+    // Check if this is a DELETE operation
+    const isDeleteOperation = template.method?.toUpperCase() === 'DELETE';
+
     return (
         <form onSubmit={handleSubmit}>
             <div className="flex flex-col space-y-4">
                 {/* Form Title - conditionally hidden if displayed in modal header */}
                 {!hideTitle && template.title && <h2 className="text-2xl font-semibold">{template.title}</h2>}
+
+                {/* DELETE Warning Alert */}
+                {isDeleteOperation && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Warning: Destructive Action</AlertTitle>
+                        <AlertDescription>
+                            This action will delete data and cannot be undone. Please review the information below
+                            carefully before proceeding.
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 {/* Global Error Alert */}
                 {error && (
@@ -146,12 +169,16 @@ export function TemplateForm({
                         onChange={(value) => handleFieldChange(property.name, value)}
                         error={getFieldError(property.name)}
                         disabled={loading || property.readOnly}
-                    />
+                        />
                 ))}
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
-                    <Button type="submit" disabled={loading}>
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        variant={isDeleteOperation ? 'destructive' : 'default'}
+                    >
                         {template.title || 'Submit'}
                     </Button>
                     {onCancel && (

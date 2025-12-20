@@ -48,6 +48,26 @@ export function Cache(options: CacheOptions = {}) {
                 return originalMethod.apply(this, args);
             }
 
+            // Check if client wants to bypass cache
+            const cacheControl = event.headers?.["cache-control"]?.toLowerCase() || "";
+            const bypassCache = cacheControl.includes("no-cache") || cacheControl.includes("no-store");
+
+            if (bypassCache) {
+                // Execute original method and return without caching
+                const response = await originalMethod.apply(this, args);
+
+                // Add cache headers indicating bypass
+                if (response.statusCode >= 200 && response.statusCode < 300) {
+                    response.headers = {
+                        ...response.headers,
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "X-Cache": "BYPASS",
+                    };
+                }
+
+                return response;
+            }
+
             // Build cache key from URL and vary headers
             const cacheKey = buildCacheKey(event.path, event.queryStringParameters, varyHeaders, event.headers);
 

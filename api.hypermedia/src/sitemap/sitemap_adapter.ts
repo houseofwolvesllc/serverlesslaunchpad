@@ -1,11 +1,12 @@
-import { User, Role } from "@houseofwolves/serverlesslaunchpad.core";
-import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
-import { Router } from "../router";
-import { Navigation } from "./navigation_types";
-import { AuthenticationController } from "../authentication/authentication_controller";
-import { SessionsController } from "../sessions/sessions_controller";
+import { Role, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ApiKeysController } from "../api_keys/api_keys_controller";
+import { AuthenticationController } from "../authentication/authentication_controller";
+import { HalObject, HalResourceAdapter } from "../content_types/hal_adapter";
 import { RootController } from "../root/root_controller";
+import { Router } from "../router";
+import { SessionsController } from "../sessions/sessions_controller";
+import { UsersController } from "../users/users_controller";
+import { Navigation } from "./navigation_types";
 import { SitemapController } from "./sitemap_controller";
 
 /**
@@ -44,8 +45,8 @@ export class SitemapAdapter extends HalResourceAdapter {
                 title: "Administration",
                 items: [
                     { rel: "admin-reports", type: "link" },
-                    { rel: "admin-settings", type: "link" }
-                ]
+                    { rel: "admin-settings", type: "link" },
+                ],
             });
         }
 
@@ -53,10 +54,11 @@ export class SitemapAdapter extends HalResourceAdapter {
         nav.push({
             title: "My Account",
             items: [
+                { rel: "my-profile", type: "link", title: "My Profile" },
                 { rel: "sessions", type: "template", title: "Sessions" },
                 { rel: "api-keys", type: "template", title: "API Keys" },
-                { rel: "logout", type: "template", title: "Logout" }
-            ]
+                { rel: "logout", type: "template", title: "Logout" },
+            ],
         });
 
         return nav;
@@ -68,24 +70,29 @@ export class SitemapAdapter extends HalResourceAdapter {
 
     get _links(): HalObject["_links"] {
         const links: HalObject["_links"] = {
-            self: this.createLink(this.router.buildHref(SitemapController, 'getSitemap', {})),
-            home: this.createLink(this.router.buildHref(RootController, 'getRoot', {}), {
-                title: "API Root"
-            })
+            self: this.createLink(this.router.buildHref(SitemapController, "getSitemap", {})),
+            home: this.createLink(this.router.buildHref(RootController, "getRoot", {}), {
+                title: "API Root",
+            }),
         };
 
         // Add user-specific links for authenticated users
         if (this.user) {
-            // Sessions, API Keys, and Logout are POST operations, handled in _templates
+            links["my-profile"] = this.createLink(
+                this.router.buildHref(UsersController, "getUser", { userId: this.user.userId }),
+                {
+                    title: "My Profile",
+                }
+            );
 
             // Admin links
             if (this.hasRole(this.user, Role.Admin)) {
-                links['admin-reports'] = this.createLink('/admin/reports', {
-                    title: "Reports"
+                links["admin-reports"] = this.createLink("/admin/reports", {
+                    title: "Reports",
                 });
 
-                links['admin-settings'] = this.createLink('/admin/settings', {
-                    title: "Settings"
+                links["admin-settings"] = this.createLink("/admin/settings", {
+                    title: "Settings",
                 });
             }
         }
@@ -105,7 +112,7 @@ export class SitemapAdapter extends HalResourceAdapter {
             sessions: this.createTemplate(
                 "Sessions",
                 "POST",
-                this.router.buildHref(SessionsController, 'getSessions', { userId }),
+                this.router.buildHref(SessionsController, "getSessions", { userId }),
                 {
                     contentType: "application/json",
                     properties: [
@@ -113,15 +120,15 @@ export class SitemapAdapter extends HalResourceAdapter {
                             name: "pagingInstruction",
                             prompt: "Paging Instruction",
                             required: false,
-                            type: "hidden"
-                        }
-                    ]
+                            type: "hidden",
+                        },
+                    ],
                 }
             ),
             "api-keys": this.createTemplate(
                 "API Keys",
                 "POST",
-                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
+                this.router.buildHref(ApiKeysController, "getApiKeys", { userId }),
                 {
                     contentType: "application/json",
                     properties: [
@@ -129,16 +136,16 @@ export class SitemapAdapter extends HalResourceAdapter {
                             name: "pagingInstruction",
                             prompt: "Paging Instruction",
                             required: false,
-                            type: "hidden"
-                        }
-                    ]
+                            type: "hidden",
+                        },
+                    ],
                 }
             ),
             logout: this.createTemplate(
                 "Logout",
                 "POST",
-                this.router.buildHref(AuthenticationController, 'revoke', {})
-            )
+                this.router.buildHref(AuthenticationController, "revoke", {})
+            ),
         };
     }
 
@@ -151,7 +158,7 @@ export class SitemapAdapter extends HalResourceAdapter {
             title: this.title,
             _nav: this._nav,
             _links: this._links,
-            _templates: this._templates
+            _templates: this._templates,
         };
     }
 }

@@ -53,14 +53,16 @@ export class HalFormsClient {
      * Fetch a HAL resource from the API
      *
      * @param url - The URL to fetch
+     * @param options - Optional request options (e.g., custom headers)
      * @returns Promise<HalObject> The HAL resource
      * @throws {ApiClientError} If the request fails
      */
-    async fetch(url: string): Promise<HalObject> {
+    async fetch(url: string, options?: { headers?: Record<string, string> }): Promise<HalObject> {
         return await this.apiClient.request<HalObject>(url, {
             method: 'GET',
             headers: {
                 Accept: 'application/hal+json',
+                ...options?.headers,
             },
         });
     }

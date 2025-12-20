@@ -65,6 +65,9 @@ export function useHalResource(url: string | null): UseHalResourceResult {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    /**
+     * Fetch resource - uses ETags automatically (handled by ApiClient)
+     */
     const fetchResource = useCallback(async () => {
         if (!url) {
             setData(null);
@@ -76,6 +79,10 @@ export function useHalResource(url: string | null): UseHalResourceResult {
         setError(null);
 
         try {
+            // ApiClient automatically handles ETags:
+            // - Sends If-None-Match if ETag exists
+            // - Handles 304 Not Modified responses
+            // - Stores new ETags for future requests
             const resource = await halClient.fetch(url);
             setData(resource);
         } catch (err: any) {
@@ -90,11 +97,36 @@ export function useHalResource(url: string | null): UseHalResourceResult {
         fetchResource();
     }, [fetchResource]);
 
+    /**
+     * Refetch resource - bypasses cache with Cache-Control: no-cache
+     * Used after mutations to ensure fresh data
+     */
+    const refetch = useCallback(async () => {
+        if (!url) return;
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Bypass all caches (client, server, CDN) to get fresh data
+            const resource = await halClient.fetch(url, {
+                headers: {
+                    'Cache-Control': 'no-cache',
+                },
+            });
+            setData(resource);
+        } catch (err: any) {
+            setError(err.message || 'Failed to refetch resource');
+        } finally {
+            setLoading(false);
+        }
+    }, [url]);
+
     return {
         data,
         loading,
         error,
-        refetch: fetchResource,
+        refetch,
     };
 }
 

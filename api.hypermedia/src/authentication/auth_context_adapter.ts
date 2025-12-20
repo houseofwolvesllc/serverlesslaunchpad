@@ -1,9 +1,9 @@
 import { User } from "@houseofwolves/serverlesslaunchpad.core";
-import { HalResourceAdapter, HalObject } from "../content_types/hal_adapter";
-import { AccessAdapter, AccessContext } from "./access_adapter";
+import { ApiKeysController } from "../api_keys/api_keys_controller";
+import { HalObject, HalResourceAdapter } from "../content_types/hal_adapter";
 import { Router } from "../router";
 import { SessionsController } from "../sessions/sessions_controller";
-import { ApiKeysController } from "../api_keys/api_keys_controller";
+import { AccessAdapter, AccessContext } from "./access_adapter";
 
 export interface AuthContext {
     identity: User;
@@ -11,10 +11,7 @@ export interface AuthContext {
 }
 
 export class AuthContextAdapter extends HalResourceAdapter {
-    constructor(
-        private authContext: AuthContext,
-        private router: Router
-    ) {
+    constructor(private authContext: AuthContext, private router: Router) {
         super();
     }
 
@@ -52,45 +49,41 @@ export class AuthContextAdapter extends HalResourceAdapter {
 
     get _links(): HalObject["_links"] {
         return {
-            self: this.createLink(`/users/${this.userId}`),
+            user: this.createLink(`/users/${this.userId}`),
         };
     }
 
     get _templates(): HalObject["_templates"] {
         const templates: HalObject["_templates"] = {
-            verify: this.createTemplate(
-                "Verify Session",
-                "POST",
-                "/auth/verify"
-            ),
+            verify: this.createTemplate("Verify Session", "POST", "/auth/verify"),
             sessions: this.createTemplate(
                 "Sessions",
                 "POST",
-                this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId }),
+                this.router.buildHref(SessionsController, "getSessions", { userId: this.userId }),
                 {
                     contentType: "application/json",
                     properties: [
                         this.createProperty("pagingInstruction", {
                             prompt: "Paging Instruction",
                             required: false,
-                            type: "hidden"
-                        })
-                    ]
+                            type: "hidden",
+                        }),
+                    ],
                 }
             ),
             "api-keys": this.createTemplate(
                 "API Keys",
                 "POST",
-                this.router.buildHref(ApiKeysController, 'getApiKeys', { userId: this.userId }),
+                this.router.buildHref(ApiKeysController, "getApiKeys", { userId: this.userId }),
                 {
                     contentType: "application/json",
                     properties: [
                         this.createProperty("pagingInstruction", {
                             prompt: "Paging Instruction",
                             required: false,
-                            type: "hidden"
-                        })
-                    ]
+                            type: "hidden",
+                        }),
+                    ],
                 }
             ),
         };
@@ -98,11 +91,7 @@ export class AuthContextAdapter extends HalResourceAdapter {
         // Only allow session revocation for session-based authentication
         // API keys cannot be revoked through this endpoint
         if (this.authContext.access.type === "session") {
-            templates.revoke = this.createTemplate(
-                "Revoke current session",
-                "POST",
-                "/auth/revoke"
-            );
+            templates.revoke = this.createTemplate("Revoke current session", "POST", "/auth/revoke");
         }
 
         return templates;
@@ -110,10 +99,7 @@ export class AuthContextAdapter extends HalResourceAdapter {
 
     get _embedded(): HalObject["_embedded"] {
         return {
-            access: new AccessAdapter(
-                this.authContext.access,
-                this.userId
-            ),
+            access: new AccessAdapter(this.authContext.access),
         };
     }
 

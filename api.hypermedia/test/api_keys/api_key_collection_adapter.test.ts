@@ -55,15 +55,15 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         const json = adapter.toJSON();
 
         expect(json._templates).toBeDefined();
-        expect(json._templates?.default).toBeDefined();
-        expect(json._templates?.default.title).toBe("Create API Key");
-        expect(json._templates?.default.method).toBe("POST");
-        expect(json._templates?.default.contentType).toBe("application/json");
+        expect(json._templates?.create).toBeDefined();
+        expect(json._templates?.create.title).toBe("Create API Key");
+        expect(json._templates?.create.method).toBe("POST");
+        expect(json._templates?.create.contentType).toBe("application/json");
     });
 
     it("should include required property metadata for create template", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingData, mockRouter);
-        const template = adapter._templates?.default;
+        const template = adapter._templates?.create;
 
         expect(template?.properties).toBeDefined();
         expect(template?.properties?.length).toBe(1);
@@ -83,18 +83,18 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         expect(embeddedKeys).toBeDefined();
         expect(embeddedKeys?.length).toBe(2);
 
-        // Individual items should NOT have _templates - only collection has bulkDelete
+        // Individual items should NOT have _templates - only collection has bulk-delete
         embeddedKeys?.forEach((key: any) => {
             expect(key._templates).toBeUndefined();
         });
 
-        // Collection should have bulkDelete template instead
-        expect(json._templates?.bulkDelete).toBeDefined();
+        // Collection should have bulk-delete template instead
+        expect(json._templates?.['bulk-delete']).toBeDefined();
     });
 
     it("should include create template target URL using router", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingData, mockRouter);
-        const template = adapter._templates?.default;
+        const template = adapter._templates?.create;
 
         expect(template?.target).toBeDefined();
         expect(template?.target).toContain(userId);
@@ -113,13 +113,13 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
         expect(json).toHaveProperty("paging");
     });
 
-    it("should include bulkDelete template in collection", () => {
+    it("should include bulk-delete template in collection", () => {
         const adapter = new ApiKeyCollectionAdapter(userId, apiKeys, pagingData, mockRouter);
         const templates = adapter._templates;
 
-        expect(templates.bulkDelete).toBeDefined();
-        expect(templates.bulkDelete.title).toBe("Delete Selected API Keys");
-        expect(templates.bulkDelete.method).toBe("DELETE");
+        expect(templates['bulk-delete']).toBeDefined();
+        expect(templates['bulk-delete'].title).toBe("Delete Selected API Keys");
+        expect(templates['bulk-delete'].method).toBe("DELETE");
     });
 
     it("should include next template when pagination has next cursor", () => {
@@ -170,7 +170,7 @@ describe("ApiKeyCollectionAdapter - HAL-FORMS Templates", () => {
 
         expect(templates.next).toBeUndefined();
         expect(templates.prev).toBeUndefined();
-        expect(templates.default).toBeDefined(); // Should still have create template
-        expect(templates.bulkDelete).toBeDefined(); // Should still have bulkDelete template
+        expect(templates.create).toBeDefined(); // Should still have create template
+        expect(templates['bulk-delete']).toBeDefined(); // Should still have bulk-delete template
     });
 });

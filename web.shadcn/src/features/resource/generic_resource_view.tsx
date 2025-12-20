@@ -5,17 +5,20 @@
  * - Fetches HAL resources from any path
  * - Auto-detects collections vs single resources
  * - Renders HalCollectionList or HalResourceDetail accordingly
- * - Handles template execution with proper navigation
+ * - Handles template execution with categorization-based navigation
+ * - Only navigates for navigation templates (self, next, prev, collection)
+ * - Form and action templates are handled by child components
  */
 
-import { useLocation, useNavigate } from 'react-router-dom';
-import { isCollection } from '@houseofwolves/serverlesslaunchpad.web.commons';
-import { useHalResource } from '@/hooks/use_hal_resource';
 import { HalCollectionList } from '@/components/hal_collection';
 import { HalResourceDetail } from '@/components/hal_resource';
-import { halClient } from '@/lib/hal_forms_client';
-import { toast } from 'sonner';
 import { NoMatch } from '@/components/no_match';
+import { useHalResource } from '@/hooks/use_hal_resource';
+import { halClient } from '@/lib/hal_forms_client';
+import { isCollection, categorizeTemplate } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Generic resource view component that handles any HAL resource
@@ -41,30 +44,32 @@ export function GenericResourceView() {
     /**
      * Handle template execution with navigation logic
      *
-     * Navigation rules:
-     * - If Location header present → navigate to that URL
-     * - If DELETE method → navigate to parent collection
-     * - Otherwise → refresh current page
+     * Simplified navigation using template categorization:
+     * - Navigation templates: navigate to template.target
+     * - Form templates: refresh in place (handled by child components)
+     * - Action templates: refresh in place (handled by child components)
      */
-    const handleTemplateExecute = async (template: any, formData: any) => {
+    const handleTemplateExecute = async (template: HalTemplate, formData: Record<string, any>) => {
         try {
-            const result = await halClient.executeTemplate(template, formData);
+            // Find template key for categorization (check both resource templates)
+            const templateKey = Object.keys(data?._templates || {}).find(
+                key => data?._templates?.[key] === template
+            ) || '';
 
-            // Show success message
-            toast.success(template.title || 'Operation successful');
+            const category = categorizeTemplate(templateKey, template);
 
-            // Navigate based on result
-            if (result.locationHeader) {
-                // Navigate to Location header URL
-                const newPath = result.locationHeader.replace(/^\//, '');
-                navigate(`/${newPath}`);
-            } else if (template.method === 'DELETE') {
-                // Navigate to parent collection (remove last path segment)
-                const parentPath = getParentPath(resourcePath);
-                navigate(`/${parentPath}`);
+            // Execute the template
+            await halClient.executeTemplate(template, formData);
+
+            // Handle navigation based on category
+            if (category === 'navigation' && template.target) {
+                // Navigation templates: navigate to target
+                const targetPath = template.target.replace(/^\//, '');
+                navigate(`/${targetPath}`);
             } else {
-                // Refresh current page
-                await refetch();
+                // Form and action templates: handled by child components
+                // (they show dialogs/confirmations and refresh on success)
+                // This case shouldn't be reached as child components handle these
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Operation failed';
@@ -77,14 +82,6 @@ export function GenericResourceView() {
      * Handle successful refresh
      */
     const handleRefresh = async () => {
-        await refetch();
-        toast.success('Refreshed');
-    };
-
-    /**
-     * Handle successful create (navigate to parent list)
-     */
-    const handleCreate = async () => {
         await refetch();
     };
 
@@ -100,14 +97,6 @@ export function GenericResourceView() {
         }
     };
 
-    /**
-     * Handle bulk delete
-     */
-    const handleBulkDelete = async (selectedIds: string[]) => {
-        toast.info(`Bulk delete not yet implemented for ${selectedIds.length} items`);
-        // TODO: Implement bulk delete logic
-    };
-
     // Error state - show NoMatch for 404s
     if (error) {
         return <NoMatch />;
@@ -119,8 +108,7 @@ export function GenericResourceView() {
             <HalCollectionList
                 resource={data}
                 onRefresh={handleRefresh}
-                onCreate={handleCreate}
-                onBulkDelete={handleBulkDelete}
+                onTemplateExecute={handleTemplateExecute}
                 onRowClick={handleRowClick}
             />
         );
@@ -137,18 +125,3 @@ export function GenericResourceView() {
     }
 }
 
-/**
- * Get the parent path by removing the last segment
- *
- * @example
- * getParentPath('users/123/sessions/456') // 'users/123/sessions'
- * getParentPath('users/123') // 'users'
- * getParentPath('users') // ''
- */
-function getParentPath(path: string): string {
-    const segments = path.split('/').filter(Boolean);
-    if (segments.length <= 1) {
-        return '';
-    }
-    return segments.slice(0, -1).join('/');
-}
