@@ -446,10 +446,12 @@ export class Deployer extends StackManager {
             region: awsRegion,
         };
 
-        // Add CORS configuration based on WEB_BASE_URL
+        // Add CORS and cookie configuration based on WEB_BASE_URL
         const webBaseUrl = process.env.WEB_BASE_URL?.trim();
+        const domainSuffix = webBaseUrl ? `.${webBaseUrl}` : undefined;
         config.cors = {
-            allowed_origin_suffix: webBaseUrl ? `.${webBaseUrl}` : undefined,
+            allowed_origin_suffix: domainSuffix,
+            cookie_domain: domainSuffix, // For cross-subdomain cookie sharing
         };
 
         // Show custom domain setup hint if no domain configured

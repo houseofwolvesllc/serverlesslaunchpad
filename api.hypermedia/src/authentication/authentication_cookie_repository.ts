@@ -9,9 +9,21 @@ export class AuthenticationCookieRepository {
     private static readonly COOKIE_OPTIONS = {
         httpOnly: true,
         secure: true,
-        sameSite: "Strict" as const,
+        sameSite: "Lax" as const, // Lax allows cookies on top-level cross-subdomain navigations
         path: "/",
     };
+
+    // Cookie domain for cross-subdomain sharing (e.g., ".serverlesslaunchpad.com")
+    private static cookieDomain: string | undefined;
+
+    /**
+     * Initialize the cookie repository with domain configuration.
+     * Call this during application startup.
+     * @param domain The cookie domain (e.g., ".serverlesslaunchpad.com") or undefined for same-host only
+     */
+    static initialize(domain?: string): void {
+        this.cookieDomain = domain;
+    }
 
     /**
      * Check if session cookie is set in the cookie header
@@ -57,10 +69,21 @@ export class AuthenticationCookieRepository {
             response.headers = {};
         }
 
-        // Set expired cookie to remove it
-        response.headers[
-            "Set-Cookie"
-        ] = `${this.COOKIE_NAME}=; Path=${this.COOKIE_OPTIONS.path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict`;
+        // Build removal cookie with same attributes used for setting
+        const parts = [
+            `${this.COOKIE_NAME}=`,
+            `Path=${this.COOKIE_OPTIONS.path}`,
+            "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+            "HttpOnly",
+            "Secure",
+            `SameSite=${this.COOKIE_OPTIONS.sameSite}`,
+        ];
+
+        if (this.cookieDomain) {
+            parts.push(`Domain=${this.cookieDomain}`);
+        }
+
+        response.headers["Set-Cookie"] = parts.join("; ");
     }
 
     /**
@@ -85,13 +108,20 @@ export class AuthenticationCookieRepository {
     private static buildCookieValue(token: string, expiresIn: number): string {
         const expireDate = new Date(Date.now() + expiresIn * 1000).toUTCString();
 
-        return [
+        const parts = [
             `${this.COOKIE_NAME}=${token}`,
             `Path=${this.COOKIE_OPTIONS.path}`,
             `Expires=${expireDate}`,
             "HttpOnly",
             "Secure",
             `SameSite=${this.COOKIE_OPTIONS.sameSite}`,
-        ].join("; ");
+        ];
+
+        // Add domain if configured for cross-subdomain sharing
+        if (this.cookieDomain) {
+            parts.push(`Domain=${this.cookieDomain}`);
+        }
+
+        return parts.join("; ");
     }
 }
