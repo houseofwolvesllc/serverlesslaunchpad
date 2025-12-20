@@ -16,7 +16,7 @@ export const ResetPasswordForm = () => {
 
     const onSubmit = async (values: typeof form.values) => {
         await auth.resetPassword(values.email);
-        auth.setSignInStep(SignInStep.CONFIRM_RESET_PASSWORD);
+        auth.setSignInStep(SignInStep.CONFIRM_RESET_PASSWORD); // TODO: move this to the authentication provider
     };
 
     return (

@@ -1,8 +1,8 @@
 import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
-import { Dashboard } from '../feature/Dashboard';
-import { Authentication } from '../feature/Authentication';
-import { Admin } from '../feature/Admin';
+import { Dashboard } from '../features/Dashboard';
+import { Authentication } from '../features/Authentication';
+import { Admin } from '../features/Admin';
 import { NoMatch } from './NoMatch';
 
 export const Router = () => {

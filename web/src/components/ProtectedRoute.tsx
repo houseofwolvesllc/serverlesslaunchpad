@@ -1,4 +1,4 @@
-import { useAuth } from '../feature/Authentication';
+import { useAuth } from '../features/Authentication';
 import { Navigate, useLocation } from 'react-router-dom';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
