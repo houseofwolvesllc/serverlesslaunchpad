@@ -40,6 +40,7 @@ export {
     HalFormsClient,
     createHalFormsClient,
     type ValidationError,
+    type HalFormsClientOptions,
 } from './lib/hal_forms_client';
 
 // ============================================================================

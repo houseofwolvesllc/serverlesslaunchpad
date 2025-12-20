@@ -2,19 +2,27 @@
  * HAL-FORMS Client - React/Vite Wrapper
  *
  * This file provides a wrapper around the framework-agnostic HAL-FORMS client
- * from web.commons. It creates a singleton instance that uses the configured
- * API client.
+ * from web.commons. Configured with 401 error handling for consistent session
+ * expiration behavior across all API calls.
  */
 
-import { createHalFormsClient, type HalFormsClient } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { createHalFormsClient, type HalFormsClient, type HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { getApiClient } from '../services/api.client';
+import { logger } from '../logging/logger';
 
 /**
- * Create HAL-FORMS client with configured API client
+ * Create HAL-FORMS client with configured API client and auth error handling
  */
 async function createConfiguredHalClient(): Promise<HalFormsClient> {
     const apiClient = await getApiClient();
-    return createHalFormsClient(apiClient);
+    return createHalFormsClient(apiClient, {
+        onAuthError: () => {
+            logger.warn('Session expired or invalid, reloading page', {
+                path: window.location.pathname,
+            });
+            window.location.reload();
+        },
+    });
 }
 
 /**
@@ -43,24 +51,75 @@ export async function getHalClient(): Promise<HalFormsClient> {
 /**
  * Singleton HAL client for direct usage
  * Note: This is a proxy that lazy-loads the real client
+ *
+ * This is the ONLY client that should be used for API interactions.
+ * All methods include proper HAL Accept headers and 401 error handling.
  */
 export const halClient = {
+    /**
+     * GET a HAL resource
+     */
+    async get<T extends HalObject = HalObject>(url: string): Promise<T> {
+        const client = await getHalClient();
+        return client.get<T>(url);
+    },
+
+    /**
+     * POST to a HAL endpoint
+     */
+    async post<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        const client = await getHalClient();
+        return client.post<T>(url, data);
+    },
+
+    /**
+     * PUT to a HAL endpoint
+     */
+    async put<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        const client = await getHalClient();
+        return client.put<T>(url, data);
+    },
+
+    /**
+     * PATCH a HAL endpoint
+     */
+    async patch<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        const client = await getHalClient();
+        return client.patch<T>(url, data);
+    },
+
+    /**
+     * DELETE a HAL resource
+     */
+    async delete<T extends HalObject = HalObject>(url: string): Promise<T> {
+        const client = await getHalClient();
+        return client.delete<T>(url);
+    },
+
+    /**
+     * Fetch a HAL resource (alias for get with custom headers support)
+     */
     async fetch(url: string, options?: { headers?: Record<string, string> }) {
         const client = await getHalClient();
         return client.fetch(url, options);
     },
+
+    /**
+     * Execute a HAL-FORMS template
+     */
     async executeTemplate(template: any, data: Record<string, any>) {
         const client = await getHalClient();
         return client.executeTemplate(template, data);
     },
+
+    /**
+     * Validate template data
+     */
     validateTemplateData(template: any, data: Record<string, any>) {
-        // Note: This is not async because validation is synchronous
-        // We need to get the client instance but can't await in non-async function
-        // For now, we'll import the class and create a temporary instance
-        // This is a workaround since validation doesn't need the API client
-        const { HalFormsClient } = require('@houseofwolves/serverlesslaunchpad.web.commons');
-        const tempClient = new HalFormsClient({} as any);
-        return tempClient.validateTemplateData(template, data);
+        if (!halClientInstance) {
+            throw new Error('HAL client not initialized. Call any async method first.');
+        }
+        return halClientInstance.validateTemplateData(template, data);
     },
 };
 

@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { apiClient } from '../../../services/api.client';
+import { halClient } from '../../../lib/hal_forms_client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
 import { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
@@ -59,7 +59,7 @@ export function useSessions() {
 
             if (userId) {
                 // Fetch user resource to discover sessions endpoint (HATEOAS)
-                const userResource = await apiClient.get(`/users/${userId}`);
+                const userResource = await halClient.get(`/users/${userId}`);
 
                 // Extract sessions template from user resource
                 const sessionsTemplate = userResource?._templates?.sessions;
@@ -100,7 +100,7 @@ export function useSessions() {
 
             try {
                 // POST request to get sessions
-                const response = await apiClient.post(sessionsEndpoint, {});
+                const response = await halClient.post(sessionsEndpoint, {});
 
                 // Store full HAL object
                 setData(response as HalObject);

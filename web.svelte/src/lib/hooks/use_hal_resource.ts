@@ -1,7 +1,6 @@
 import { writable } from 'svelte/store';
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { halClient } from '$lib/hal_forms_client';
-import { apiClient } from '$lib/services/api_client';
 import { entryPoint } from '$lib/services/entry_point';
 import { trackHalResource } from '$lib/utils/hal_resource_tracking';
 import { logger } from '$lib/logging';
@@ -93,7 +92,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 					});
 
 					// Fetch the user resource to discover the template
-					const userResource = await apiClient.get(`/users/${userPath.userId}`);
+					const userResource = await halClient.get(`/users/${userPath.userId}`);
 
 					// Find the template in the user resource
 					const resourceTemplate = userResource?._templates?.[userPath.templateName];
@@ -109,16 +108,16 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 					});
 
 					// POST to the template target
-					data = await apiClient.post(resourceTemplate.target, {});
+					data = await halClient.post(resourceTemplate.target, {});
 				} else if (isListEndpoint(urlOrTemplate)) {
 					// URL ends with /list - this is a collection POST endpoint
 					// POST directly to the URL (no discovery needed)
 					logger.info('Fetching collection via POST (list endpoint)', { url: urlOrTemplate });
-					data = await apiClient.post(urlOrTemplate, {});
+					data = await halClient.post(urlOrTemplate, {});
 				} else {
 					// Regular URL path - direct fetch via GET
 					logger.info('Fetching HAL resource via GET', { url: urlOrTemplate });
-					data = await halClient.fetch(urlOrTemplate);
+					data = await halClient.get(urlOrTemplate);
 				}
 			}
 			// Template name (no '/') - discover and execute
@@ -133,7 +132,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 				logger.info('Template target discovered', { template: urlOrTemplate, target: templateTarget });
 
 				// POST to template target to get the resource
-				data = await apiClient.post(templateTarget, {});
+				data = await halClient.post(templateTarget, {});
 			}
 
 			update(state => ({
@@ -193,7 +192,7 @@ export async function followLink<T extends HalObject = HalObject>(
 
 	try {
 		logger.info('Following link', { rel, href });
-		const data = await halClient.fetch(href);
+		const data = await halClient.get(href);
 		return data as T;
 	} catch (error: any) {
 		logger.error('Failed to follow link', { rel, href, error: error.message });

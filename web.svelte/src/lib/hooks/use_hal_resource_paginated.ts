@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import type { PagingInstructions, PagingInstruction } from '@houseofwolves/serverlesslaunchpad.types/pagination';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, type PageSize } from '@houseofwolves/serverlesslaunchpad.types/pagination';
-import { apiClient } from '$lib/services/api_client';
+import { halClient } from '$lib/hal_forms_client';
 import { logger } from '$lib/logging';
 import { getEntryPoint } from '$lib/services/entry_point_provider';
 
@@ -106,7 +106,7 @@ export function createHalResourcePaginated<T extends HalObject = HalObject>(
 				});
 			}
 
-			const data = await apiClient.post(url, body);
+			const data = await halClient.post(url, body);
 
 			update(state => ({
 				...state,

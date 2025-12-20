@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { apiClient } from '../../../services/api.client';
+import { halClient } from '../../../lib/hal_forms_client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@houseofwolves/serverlesslaunchpad.types/pagination';
@@ -141,7 +141,7 @@ export function useSessions(): UseSessionsResult {
 
             if (userId) {
                 // Fetch user resource to discover sessions endpoint (HATEOAS)
-                const userResource = await apiClient.get(`/users/${userId}`);
+                const userResource = await halClient.get(`/users/${userId}`);
 
                 // Extract sessions template from user resource
                 const sessionsTemplate = userResource?._templates?.sessions;
@@ -189,7 +189,7 @@ export function useSessions(): UseSessionsResult {
                 body.pagingInstruction = { limit: pageSize };
             }
 
-            const response = (await apiClient.post(sessionsEndpoint, body)) as SessionsResponse;
+            const response = (await halClient.post(sessionsEndpoint, body)) as SessionsResponse;
 
             // Store full HAL object
             setData(response);
