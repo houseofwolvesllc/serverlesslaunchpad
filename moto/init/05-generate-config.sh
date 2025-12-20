@@ -74,7 +74,7 @@ generate_infrastructure_config() {
     "user_pool_id": "$pool_id",
     "client_id": "$client_id",
     "identity_pool_id": "$identity_pool_id",
-    "user_pool_provider_url": "https://cognito-idp.$AWS_REGION.amazonaws.com/$pool_id"
+    "user_pool_provider_url": "$AWS_ENDPOINT_URL"
   },
 
   "athena": {
