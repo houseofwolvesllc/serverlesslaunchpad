@@ -1,6 +1,10 @@
 import { ALBEvent, ALBResult } from "aws-lambda";
 import "reflect-metadata"; // Must be imported first for decorators to work
-import { getAcceptedContentType } from "./content_types/content_negotiation";
+import { getContainer } from "./container";
+import { getAcceptedContentType, CONTENT_TYPES } from "./content_types/content_negotiation";
+import { JsonAdapter } from "./content_types/json_adapter";
+import { XhtmlAdapter } from "./content_types/xhtml_adapter";
+import { ResponseData } from "./base_controller";
 import {
     ConflictError,
     ForbiddenError,
@@ -12,8 +16,6 @@ import {
     ValidationError
 } from "./errors";
 import { ExtendedALBEvent } from "./extended_alb_event";
-import { ResponseBuilder } from "./content_types/response_builder";
-import { getContainer } from "./container";
 import { ApiLogger } from "./logging";
 import { HttpMethod, Router } from "./router";
 
@@ -52,8 +54,6 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
     const logger = container.resolve(ApiLogger);
     
     try {
-        // Determine the accepted content type for the response
-        const acceptedContentType = getAcceptedContentType(event);
 
         // Match the route
         const routeMatch = router.match(event.httpMethod as HttpMethod, event.path);
@@ -82,29 +82,17 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
         // Controllers are responsible for their own validation
         const response = await controllerMethod.call(controller, extendedEvent);
 
-        // Build the ALB response based on the accepted content type
-        const result = ResponseBuilder.success(response.data || response, acceptedContentType, {
-            status: response.status,
-            headers: {
-                ...getSecurityHeaders(),
-                ...response.headers
-            },
-            links: response.links,
-            actions: response.actions,
-            metadata: response.metadata
-        });
-
         // Log minimal info on success (just status and duration for monitoring)
         const totalDuration = Date.now() - startTime;
         
         logger.logRequestSuccess(
             "Request completed successfully",
             extendedEvent,
-            result.statusCode,
+            response.statusCode,
             totalDuration
         );
 
-        return result;
+        return response;
 
     } catch (error) {
         const totalDuration = Date.now() - startTime;
@@ -121,7 +109,7 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
         );
         
         // Global error handling with content-type aware responses
-        return handleError(error as Error, event, traceId, logger);
+        return handleError(error as Error, event, traceId);
     }
 };
 
@@ -152,8 +140,10 @@ function getSecurityHeaders(): Record<string, string> {
 /**
  * Handle errors and generate appropriate responses with comprehensive error mapping
  */
-function handleError(error: Error, event: ALBEvent, traceId?: string, logger?: ApiLogger): ALBResult {
+function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult {
     const acceptedContentType = getAcceptedContentType(event);
+    const jsonAdapter = new JsonAdapter();
+    const xhtmlAdapter = new XhtmlAdapter();
     
     let status: number;
     let title: string;
@@ -210,18 +200,7 @@ function handleError(error: Error, event: ALBEvent, traceId?: string, logger?: A
             status = 500;
             title = "Internal Server Error";
             detail = error.message || "An unexpected error occurred";
-            // Log the actual error for debugging
-            if (logger) {
-                const extendedEvent = event as ExtendedALBEvent;
-                extendedEvent.traceId = traceId;
-                logger.error("Internal server error occurred", {
-                    traceId: traceId || 'unknown',
-                    message: error.message,
-                    stack: error.stack,
-                    path: event.path,
-                    httpMethod: event.httpMethod
-                });
-            }
+            // Already logged in catch block - no duplicate logging
             break;
             
         default:
@@ -229,30 +208,38 @@ function handleError(error: Error, event: ALBEvent, traceId?: string, logger?: A
             status = 500;
             title = "Internal Server Error";
             detail = "An unexpected error occurred";
-            // Log full error details internally but don't expose them
-            if (logger) {
-                const extendedEvent = event as ExtendedALBEvent;
-                extendedEvent.traceId = traceId;
-                logger.error("Unexpected error occurred", {
-                    traceId: traceId || 'unknown',
-                    errorType: error.constructor.name,
-                    message: error.message,
-                    stack: error.stack,
-                    path: event.path,
-                    httpMethod: event.httpMethod,
-                    userAgent: event.headers?.['user-agent'],
-                    sourceIp: (event.requestContext as any)?.identity?.sourceIp
-                });
-            }
+            // Already logged in catch block - no duplicate logging
     }
     
-    // Create a properly structured HttpError for the ResponseBuilder
-    const httpError = new HttpError(status, title, detail);
+    // Build error response data
+    const responseData: ResponseData = {
+        status,
+        error: {
+            status,
+            title,
+            detail,
+            instance: event.path,
+            timestamp: new Date().toISOString(),
+            traceId: traceId || generateTraceId(),
+            violations
+        },
+        links: [
+            { rel: ["home"], href: "/" },
+            { rel: ["help"], href: "/docs" }
+        ]
+    };
     
-    return ResponseBuilder.error(httpError, acceptedContentType, {
-        instance: event.path,
-        violations,
-        traceId,
-        headers: getSecurityHeaders()
-    });
+    // Format response based on content type
+    const body = acceptedContentType === CONTENT_TYPES.JSON 
+        ? jsonAdapter.format(responseData)
+        : xhtmlAdapter.format(responseData);
+    
+    return {
+        statusCode: status,
+        headers: {
+            "Content-Type": acceptedContentType,
+            ...getSecurityHeaders()
+        },
+        body
+    };
 }
