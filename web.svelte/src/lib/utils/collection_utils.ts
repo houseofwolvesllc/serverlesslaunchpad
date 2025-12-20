@@ -58,7 +58,17 @@ export function processCollection(
     }
 
     // Filter visible columns
-    const columns = visibleOnly ? allColumns.filter((col) => !col.hidden) : allColumns;
+    let columns = visibleOnly ? allColumns.filter((col) => !col.hidden) : allColumns;
+
+    // Check if any column has an explicit priority override
+    const hasExplicitPriorities = columns.some(col =>
+        columnConfig[col.key]?.priority !== undefined
+    );
+
+    // Only sort if explicit priorities exist, otherwise preserve API order
+    if (hasExplicitPriorities) {
+        columns = [...columns].sort((a, b) => a.priority - b.priority);
+    }
 
     // Extract keys
     const keys = columns.map((col) => col.key);

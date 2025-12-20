@@ -127,59 +127,6 @@ export function isSortable(fieldType: FieldType): boolean {
     return fieldType !== FieldType.HIDDEN;
 }
 
-/**
- * Determine display priority for a field
- *
- * Lower numbers = higher priority (displayed first/leftmost)
- *
- * @param fieldName - Field name
- * @param fieldType - Field type
- * @returns Priority number (0-100)
- */
-export function getFieldPriority(fieldName: string, fieldType: FieldType): number {
-    // Hidden fields get lowest priority
-    if (fieldType === FieldType.HIDDEN) {
-        return 100;
-    }
-
-    // Primary identifier fields (name, title, label) get highest priority
-    if (/^(name|title|label)$/i.test(fieldName)) {
-        return 0;
-    }
-
-    // Status/badge fields get high priority
-    if (fieldType === FieldType.BADGE) {
-        return 10;
-    }
-
-    // Date fields are important but not primary
-    if (fieldType === FieldType.DATE) {
-        return 20;
-    }
-
-    // Text and email fields
-    if (fieldType === FieldType.TEXT || fieldType === FieldType.EMAIL) {
-        return 30;
-    }
-
-    // Numbers and booleans
-    if (fieldType === FieldType.NUMBER || fieldType === FieldType.BOOLEAN) {
-        return 40;
-    }
-
-    // Code and technical fields lower priority
-    if (fieldType === FieldType.CODE) {
-        return 60;
-    }
-
-    // URLs lowest priority (often long)
-    if (fieldType === FieldType.URL) {
-        return 70;
-    }
-
-    // Default medium priority
-    return 50;
-}
 
 /**
  * Infer column definitions from an array of items
@@ -220,7 +167,8 @@ export function inferColumns(
     });
 
     // Infer column definition for each key
-    const columns: InferredColumn[] = keys.map((key) => {
+    // Use index to preserve API order (priority = index)
+    const columns: InferredColumn[] = keys.map((key, index) => {
         // Extract sample values for this key
         const sampleValues = sampledItems
             .map(item => item[key])
@@ -239,32 +187,25 @@ export function inferColumns(
         // Determine other properties
         const sortable = isSortable(fieldType);
 
-        // Calculate semantic priority based on field name and type
-        // Lower numbers = higher priority (displayed first)
-        const priority = getFieldPriority(key, fieldType);
-
         return {
             key,
             label,
             type: fieldType,
             sortable,
             hidden,
-            priority,
+            // Use index to preserve API order; can be overridden via columnConfig
+            priority: index,
         };
     });
 
-    // Sort by priority (semantic importance) by default
-    // Can be disabled via sortByPriority: false to preserve API order
-    const shouldSort = options.sortByPriority !== false;
-    return shouldSort
-        ? columns.sort((a, b) => a.priority - b.priority)
-        : columns;
+    // Return columns in API order (no automatic sorting)
+    return columns;
 }
 
 /**
  * Infer columns from items and apply visibility rules
  *
- * Returns only visible columns, sorted by priority.
+ * Returns only visible columns in API order.
  *
  * @param items - Array of items to analyze
  * @param options - Inference options

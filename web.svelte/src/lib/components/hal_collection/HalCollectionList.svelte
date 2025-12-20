@@ -10,10 +10,10 @@
 	 * - Empty and loading states
 	 */
 
-	import { Plus, RefreshCw, Trash2 } from 'lucide-svelte';
+	import { Plus, RefreshCw } from 'lucide-svelte';
 	import { processCollection, SelectionManager, type ColumnOverride } from '$lib/utils/collection_utils';
 	import HalResourceRow from './HalResourceRow.svelte';
-	import type { HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
+	import type { HalObject, BulkOperation } from '@houseofwolves/serverlesslaunchpad.web.commons';
 	import type { FieldRenderer } from './field_renderers';
 	import { cn } from '$lib/utils';
 	import Button from '$lib/components/ui/button.svelte';
@@ -22,7 +22,7 @@
 	export let resource: HalObject | null | undefined;
 	export let onRefresh: (() => void) | undefined = undefined;
 	export let onCreate: (() => void) | undefined = undefined;
-	export let onBulkDelete: ((selectedIds: string[]) => void) | undefined = undefined;
+	export let bulkOperations: BulkOperation[] = [];
 	export let onRowClick: ((item: HalObject) => void) | undefined = undefined;
 	export let columnConfig: Record<string, ColumnOverride> = {};
 	export let customRenderers: Record<string, FieldRenderer> | undefined = undefined;
@@ -31,7 +31,6 @@
 	export let emptyIcon: any = undefined;
 	export let showCreateButton = true;
 	export let showRefreshButton = true;
-	export let showBulkDelete = true;
 	export let selectableFilter: ((item: HalObject) => boolean) | undefined = undefined;
 	/** Page title to display in the header row */
 	export let title: string | undefined = undefined;
@@ -89,8 +88,9 @@
 
 	// Templates
 	$: createTemplate = templates?.default || templates?.create;
-	$: bulkDeleteTemplate = templates?.bulkDelete || templates?.['bulk-delete'];
-	$: canBulkDelete = showBulkDelete && (!!bulkDeleteTemplate || !!onBulkDelete);
+
+	// Show checkboxes only if bulk operations are defined
+	$: showCheckboxes = bulkOperations.length > 0;
 
 	// Handlers
 	function handleCreate() {
@@ -101,9 +101,9 @@
 		if (onRefresh) onRefresh();
 	}
 
-	function handleBulkDelete() {
-		if (onBulkDelete && hasSelection) {
-			onBulkDelete(selected);
+	function handleBulkOperation(operation: BulkOperation) {
+		if (hasSelection) {
+			operation.handler(selected);
 		}
 	}
 
@@ -195,11 +195,22 @@
 			{/if}
 
 			<div class="flex items-center gap-2">
-				{#if hasSelection && canBulkDelete}
-					<Button variant="outline" size="sm" on:click={handleBulkDelete}>
-						<Trash2 class="w-4 h-4 mr-2" />
-						Delete Selected
-					</Button>
+				{#if hasSelection && bulkOperations.length > 0}
+					{#each bulkOperations as operation (operation.id)}
+						{@const isDisabled = operation.disabled ? operation.disabled(selected) : false}
+						<Button
+							variant={operation.variant === 'destructive' ? 'outline' : (operation.variant || 'outline')}
+							size="sm"
+							on:click={() => handleBulkOperation(operation)}
+							disabled={isDisabled}
+							class={operation.variant === 'destructive' ? 'text-destructive hover:text-destructive' : ''}
+						>
+							{#if operation.icon}
+								<svelte:component this={operation.icon} class="w-4 h-4 mr-2" />
+							{/if}
+							{operation.label}
+						</Button>
+					{/each}
 				{/if}
 				{#if showCreateButton && createTemplate}
 					<Button variant="outline" size="sm" on:click={handleCreate}>
@@ -222,7 +233,7 @@
 				<table class="w-full caption-bottom text-sm">
 					<thead class="[&_tr]:border-b">
 						<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-							{#if canBulkDelete}
+							{#if showCheckboxes}
 								<th class="h-10 px-4 text-left align-middle font-medium text-muted-foreground w-12">
 									<input
 										type="checkbox"
@@ -234,7 +245,7 @@
 								</th>
 							{/if}
 							{#each columns as col (col.key)}
-								<th class="h-10 px-4 text-left align-middle font-medium text-muted-foreground" style="width: {col.width}">
+								<th class="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap" style="width: {col.width}">
 									{col.label}
 								</th>
 							{/each}
@@ -246,7 +257,7 @@
 							<HalResourceRow
 								{item}
 								{columns}
-								showCheckbox={canBulkDelete}
+								showCheckbox={showCheckboxes}
 								selectable={isItemSelectable}
 								selected={isSelected(item[detectedPrimaryKey])}
 								onToggleSelect={() => handleToggleSelection(item[detectedPrimaryKey])}

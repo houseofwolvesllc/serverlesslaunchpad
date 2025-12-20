@@ -1,4 +1,4 @@
-import { Key } from 'lucide-react';
+import { Key, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApiKeys } from '../hooks/use_api_keys';
 import { CreateApiKeyModal } from './create_api_key_modal';
@@ -76,7 +76,15 @@ export function ApiKeysList() {
                 resource={data}
                 onRefresh={refresh}
                 onCreate={openCreateModal}
-                onBulkDelete={handleBulkDelete}
+                bulkOperations={[
+                    {
+                        id: 'delete',
+                        label: 'Delete Selected',
+                        icon: <Trash2 className="w-4 h-4" />,
+                        variant: 'destructive',
+                        handler: handleBulkDelete,
+                    },
+                ]}
                 primaryKey="apiKeyId"
                 columnConfig={{
                     dateLastUsed: { nullText: 'Never' },

@@ -8,6 +8,9 @@
 export { HalCollectionList } from './hal_collection_list';
 export type { HalCollectionListProps } from './hal_collection_list';
 
+// Re-export BulkOperation from web.commons for convenience
+export type { BulkOperation, BulkOperationVariant } from '@houseofwolves/serverlesslaunchpad.web.commons';
+
 export { HalResourceRow } from './hal_resource_row';
 export type { HalResourceRowProps } from './hal_resource_row';
 

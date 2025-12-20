@@ -17,7 +17,6 @@ export {
     inferVisibleColumns,
     inferFieldType,
     isSortable,
-    getFieldPriority,
 } from './inference';
 
 // Utilities
@@ -46,4 +45,6 @@ export {
     type CollectionData,
     type FieldConventions,
     type InferenceOptions,
+    type BulkOperation,
+    type BulkOperationVariant,
 } from './types';

@@ -13,7 +13,7 @@
  */
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Key } from 'lucide-react';
+import { AlertCircle, Key, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiKeys } from '../hooks/use_api_keys';
 import { HalCollectionList } from '@/components/hal_collection';
@@ -89,7 +89,15 @@ export function ApiKeysList() {
                 resource={data}
                 onRefresh={refresh}
                 onCreate={open_create_modal}
-                onBulkDelete={handle_bulk_delete}
+                bulkOperations={[
+                    {
+                        id: 'delete',
+                        label: 'Delete Selected',
+                        icon: <Trash2 className="h-4 w-4" />,
+                        variant: 'destructive',
+                        handler: handle_bulk_delete,
+                    },
+                ]}
                 primaryKey="apiKeyId"
                 columnConfig={{
                     userId: { hidden: true },

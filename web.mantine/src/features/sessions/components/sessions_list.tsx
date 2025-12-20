@@ -16,7 +16,7 @@
  * - Current session cannot be selected for deletion
  */
 
-import { IconDeviceDesktop, IconClock, IconLock } from '@tabler/icons-react';
+import { IconDeviceDesktop, IconClock, IconLock, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -128,7 +128,15 @@ export function SessionsList() {
         <HalCollectionList
             resource={enrichedResource}
             onRefresh={refresh}
-            onBulkDelete={handle_bulk_delete}
+            bulkOperations={[
+                {
+                    id: 'delete',
+                    label: 'Delete Selected',
+                    icon: <IconTrash size={16} />,
+                    variant: 'destructive',
+                    handler: handle_bulk_delete,
+                },
+            ]}
             primaryKey="sessionId"
             columnConfig={{
                 sessionId: { hidden: true },
