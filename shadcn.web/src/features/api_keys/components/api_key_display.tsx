@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, Check, Copy } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Check, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -26,11 +25,10 @@ interface ApiKeyDisplayProps {
 /**
  * API Key Display Component
  *
- * Displays a newly created API key with copy functionality.
- * The full API key is also accessible from the list view at any time.
+ * Pure display component for showing an API key with copy functionality.
+ * Can be used in any context where an API key needs to be displayed.
  *
  * Features:
- * - Success message about key creation
  * - Copy to clipboard with visual feedback
  * - Display of key metadata (label, created date)
  * - Manual close action
@@ -75,16 +73,6 @@ export function ApiKeyDisplay({
 
     return (
         <div className="flex flex-col space-y-4">
-            {/* Security Warning */}
-            <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>API Key Created Successfully</AlertTitle>
-                <AlertDescription>
-                    Your API key has been created. You can copy it now or access it anytime from
-                    the API keys list. Keep your API keys secure and never share them publicly.
-                </AlertDescription>
-            </Alert>
-
             {/* API Key Display with Copy */}
             <div>
                 <p className="text-sm font-medium mb-2">API Key</p>
