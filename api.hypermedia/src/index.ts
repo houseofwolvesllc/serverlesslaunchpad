@@ -23,12 +23,13 @@ import { ApiKeysController } from "./api_keys/api_keys_controller";
 import { AuthenticationController } from "./authentication/authentication_controller";
 import { RootController } from "./root_controller";
 import { SessionsController } from "./sessions/sessions_controller";
+import { SitemapController } from "./sitemap/sitemap_controller";
 
 const container = getContainer();
 const router = new Router();
 
 // Register all controllers
-router.registerRoutes([RootController, AuthenticationController, SessionsController, ApiKeysController]);
+router.registerRoutes([RootController, AuthenticationController, SessionsController, ApiKeysController, SitemapController]);
 
 /**
  * Main ALB handler for the Hypermedia API.
@@ -212,10 +213,6 @@ function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult
             traceId: traceId || generateTraceId(),
             violations,
         },
-        links: [
-            { rel: ["home"], href: "/" },
-            { rel: ["help"], href: "/docs" },
-        ],
     };
 
     // Format response based on content type

@@ -5,6 +5,8 @@ import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Cache, Log, Protected } from "../decorators/index.js";
 import { Route } from "../router.js";
 import { DeleteSessionsSchema, GetSessionsSchema } from "./schemas.js";
+import { SessionCollectionAdapter } from "./session_collection_adapter.js";
+import { SessionDeletionAdapter } from "./session_deletion_adapter.js";
 
 /**
  * Sessions endpoint controller demonstrating proper decorator usage
@@ -48,15 +50,18 @@ export class SessionsController extends BaseController {
             userId,
             pagingInstruction
         });
-        
-        return this.success(event, {
-            sessions: sessions.items,
-            paging: {
+
+        const adapter = new SessionCollectionAdapter(
+            userId,
+            sessions.items,
+            {
                 next: sessions.pagingInstructions.next,
                 previous: sessions.pagingInstructions.previous,
                 current: sessions.pagingInstructions.current
             }
-        });
+        );
+
+        return this.success(event, adapter);
     }
 
 
@@ -88,10 +93,9 @@ export class SessionsController extends BaseController {
             userId,
             sessionIds
         });
-        
-        return this.success(event, { 
-            message: `Deleted ${sessionIds.length} sessions for user ${userId}`,
-            deletedCount: sessionIds.length
-        });
+
+        const adapter = new SessionDeletionAdapter(userId, sessionIds.length);
+
+        return this.success(event, adapter);
     }
 }

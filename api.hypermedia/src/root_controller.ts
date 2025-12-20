@@ -1,6 +1,7 @@
 import { ALBEvent, ALBResult } from "aws-lambda";
 import { BaseController } from "./base_controller.js";
 import { Route } from "./router.js";
+import { RootAdapter } from "./root_adapter.js";
 
 /**
  * Root endpoint controller
@@ -12,6 +13,7 @@ export class RootController extends BaseController {
      */
     @Route("GET", "/")
     async getRoot(event: ALBEvent): Promise<ALBResult> {
-        return this.success(event, { message: "Welcome to Serverless Launchpad API" });
+        const adapter = new RootAdapter();
+        return this.success(event, adapter);
     }
 }
