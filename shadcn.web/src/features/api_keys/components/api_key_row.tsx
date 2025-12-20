@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { Check, Copy, AlertCircle } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 
 export interface ApiKeyRowProps {
     apiKey: any; // HAL object
@@ -26,74 +17,47 @@ export interface ApiKeyRowProps {
  * Displays API key information:
  * - Label for identification
  * - Full API key with copy functionality
- * - Creation date (relative time)
- * - Expiration date with visual warnings
- * - Last used (relative time)
+ * - Creation date (formatted date)
+ * - Last used (formatted date or "Never")
  * - Checkbox for bulk selection (when enabled)
- *
- * Expiration warnings:
- * - Red badge: Already expired
- * - Orange badge with icon: Expiring within 30 days
- * - Normal text: Not expiring soon or no expiration
  *
  * Delete operations are performed via bulk delete only.
  */
 export function ApiKeyRow({ apiKey, showCheckbox, selected, onToggleSelect }: ApiKeyRowProps) {
-    const [copied, setCopied] = useState(false);
+    const [copied, set_copied] = useState(false);
 
     // Memoize date formatting
-    const createdText = useMemo(
+    const created_text = useMemo(
         () =>
             apiKey.dateCreated
-                ? formatDistanceToNow(new Date(apiKey.dateCreated), { addSuffix: true })
+                ? new Date(apiKey.dateCreated).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                  })
                 : 'Unknown',
         [apiKey.dateCreated]
     );
 
-    const lastUsedText = useMemo(
+    const last_used_text = useMemo(
         () =>
             apiKey.dateLastUsed
-                ? formatDistanceToNow(new Date(apiKey.dateLastUsed), { addSuffix: true })
+                ? new Date(apiKey.dateLastUsed).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                  })
                 : 'Never',
         [apiKey.dateLastUsed]
     );
 
-    // Calculate expiration status
-    const expirationInfo = useMemo(() => {
-        if (!apiKey.dateExpires) {
-            return { text: 'Never', variant: 'secondary' as const, warning: false };
-        }
-
-        const expiresDate = new Date(apiKey.dateExpires);
-        const now = new Date();
-        const daysUntilExpiry = Math.ceil(
-            (expiresDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        if (daysUntilExpiry < 0) {
-            return { text: 'Expired', variant: 'destructive' as const, warning: true };
-        } else if (daysUntilExpiry <= 30) {
-            return {
-                text: `${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`,
-                variant: 'default' as const, // Will be styled with orange
-                warning: true,
-            };
-        } else {
-            return {
-                text: formatDistanceToNow(expiresDate, { addSuffix: true }),
-                variant: 'secondary' as const,
-                warning: false,
-            };
-        }
-    }, [apiKey.dateExpires]);
-
-    const handleCopy = async () => {
+    const handle_copy = async () => {
         try {
-            await navigator.clipboard.writeText(apiKey.apiKey || apiKey.keyPrefix);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            await navigator.clipboard.writeText(apiKey.apiKey);
+            set_copied(true);
+            setTimeout(() => set_copied(false), 2000);
         } catch (err) {
-            console.error('Failed to copy:', err);
+            // Silently fail - clipboard API may not be available
         }
     };
 
@@ -105,66 +69,46 @@ export function ApiKeyRow({ apiKey, showCheckbox, selected, onToggleSelect }: Ap
                     <Checkbox
                         checked={selected}
                         onCheckedChange={onToggleSelect}
-                        aria-label={`Select ${apiKey.label || apiKey.keyPrefix}`}
+                        aria-label={`Select ${apiKey.label || 'API key'}`}
                     />
                 </TableCell>
             )}
             <TableCell>
-                <span className="text-sm font-medium">
+                <span className="font-medium">
                     {apiKey.label || <span className="text-muted-foreground">Unnamed</span>}
                 </span>
             </TableCell>
-            <TableCell>
-                <div className="flex items-center gap-2">
-                    <code className="flex-1 rounded bg-muted px-2 py-1 text-xs font-mono break-all">
-                        {apiKey.apiKey || apiKey.keyPrefix}
+            <TableCell className="min-w-[400px]">
+                <div className="flex items-center gap-2 w-full">
+                    <code className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1 break-all">
+                        {apiKey.apiKey}
                     </code>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={handleCopy}
-                                >
-                                    {copied ? (
-                                        <Check className="h-3.5 w-3.5 text-green-600" />
-                                    ) : (
-                                        <Copy className="h-3.5 w-3.5" />
-                                    )}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{copied ? 'Copied!' : 'Copy full API key'}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={handle_copy}
+                        title={copied ? 'Copied!' : 'Copy API key'}
+                    >
+                        {copied ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                            <Copy className="h-4 w-4" />
+                        )}
+                    </Button>
                 </div>
             </TableCell>
             <TableCell>
-                <span className="text-sm text-muted-foreground">{createdText}</span>
+                <span className="text-muted-foreground">{created_text}</span>
             </TableCell>
             <TableCell>
-                {expirationInfo.warning ? (
-                    <Badge
-                        variant={expirationInfo.variant}
-                        className={cn(
-                            expirationInfo.variant === 'default' &&
-                                'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        )}
-                    >
-                        {expirationInfo.variant === 'default' && (
-                            <AlertCircle className="mr-1 h-3 w-3" />
-                        )}
-                        {expirationInfo.text}
-                    </Badge>
-                ) : (
-                    <span className="text-sm text-muted-foreground">{expirationInfo.text}</span>
-                )}
-            </TableCell>
-            <TableCell>
-                <span className="text-sm text-muted-foreground">{lastUsedText}</span>
+                <span className="text-muted-foreground">
+                    {last_used_text === 'Never' ? (
+                        <span className="text-xs">{last_used_text}</span>
+                    ) : (
+                        last_used_text
+                    )}
+                </span>
             </TableCell>
         </TableRow>
     );

@@ -69,7 +69,7 @@ export function ApiKeyDisplay({
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            console.error('Failed to copy:', err);
+            // Silently fail - clipboard API may not be available
         }
     };
 

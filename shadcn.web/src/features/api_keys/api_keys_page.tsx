@@ -1,0 +1,25 @@
+/**
+ * API Keys Page
+ *
+ * Displays API keys with page header and description.
+ * Matches svelte.web layout structure.
+ */
+
+import { ApiKeysList } from './components/api_keys_list';
+
+export const ApiKeysPage = () => {
+    return (
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
+                <p className="text-muted-foreground">
+                    Manage your API keys for programmatic access to your resources
+                </p>
+            </div>
+
+            {/* API Keys List */}
+            <ApiKeysList />
+        </div>
+    );
+};
