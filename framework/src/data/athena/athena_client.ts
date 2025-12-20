@@ -19,6 +19,8 @@ export interface SqlParameter {
     value: string | number | boolean | null;
 }
 
+export type SqlParameterValue = string | number | boolean | null;
+
 export class AthenaClient {
     protected readonly client: AwsAthenaClient;
     protected readonly config: AthenaClientConfig;
@@ -38,11 +40,10 @@ export class AthenaClient {
      */
     async query<T = Record<string, any>>(
         sql: string,
-        params: SqlParameter[] = [],
+        params: SqlParameterValue[] = [],
         mapper?: (row: Record<string, any>) => T
     ): Promise<T[]> {
-        const processedSql = this.prepareSql(sql, params);
-        const queryExecutionId = await this.startQuery(processedSql);
+        const queryExecutionId = await this.startQuery(sql, params);
         const rawResults = await this.waitForQueryResults(queryExecutionId);
 
         if (!mapper) {
@@ -53,7 +54,7 @@ export class AthenaClient {
     }
 
     /**
-     * Prepare SQL with parameters to prevent SQL injection
+     * Prepare SQL with parameters to prevent SQL injection (legacy method for backward compatibility)
      */
     prepareSql(sql: string, params: SqlParameter[] = []): string {
         let processedSql = sql;
@@ -68,7 +69,22 @@ export class AthenaClient {
     }
 
     /**
-     * Format a parameter value based on its type
+     * Format a parameter value for AWS Athena ExecutionParameters
+     */
+    private formatParameterForExecution(value: SqlParameterValue): string {
+        if (value === null) {
+            return "NULL";
+        }
+
+        if (typeof value === "boolean") {
+            return value ? "TRUE" : "FALSE";
+        }
+
+        return String(value);
+    }
+
+    /**
+     * Format a parameter value based on its type (legacy method for backward compatibility)
      */
     private formatParameterValue(value: string | number | boolean | null): string {
         if (value === null) {
@@ -89,8 +105,8 @@ export class AthenaClient {
     /**
      * Start a query execution and return the execution ID
      */
-    async startQuery(sql: string): Promise<string> {
-        const params = {
+    async startQuery(sql: string, params: SqlParameterValue[] = []): Promise<string> {
+        const commandParams = {
             QueryString: sql,
             QueryExecutionContext: {
                 Database: this.config.databaseName,
@@ -101,9 +117,10 @@ export class AthenaClient {
                       OutputLocation: this.config.resultLocation,
                   }
                 : undefined,
+            ExecutionParameters: params.length > 0 ? params.map(this.formatParameterForExecution) : undefined,
         };
 
-        const command = new StartQueryExecutionCommand(params);
+        const command = new StartQueryExecutionCommand(commandParams);
         const response = await this.client.send(command);
 
         if (!response.QueryExecutionId) {

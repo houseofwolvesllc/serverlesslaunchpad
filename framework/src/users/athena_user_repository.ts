@@ -1,13 +1,19 @@
-import { Features, Role, User, UserProvider, UserRepository } from "@houseofwolves/serverlesslaunchpad.core";
+import {
+    GetUserByEmailMessage,
+    GetUserByIdMessage,
+    Injectable,
+    UpsertUserMessage,
+    User,
+    UserProvider,
+    UserRepository,
+} from "@houseofwolves/serverlesslaunchpad.core";
 import { AthenaClient } from "../data/athena/athena_client";
 
 export class AthenaUserProvider implements UserProvider {
     protected readonly athenaClient: AthenaClient;
-    protected readonly tableName: string;
 
-    constructor(athenaClient: AthenaClient, tableName: string = "users") {
+    constructor(athenaClient: AthenaClient) {
         this.athenaClient = athenaClient;
-        this.tableName = tableName;
     }
 
     protected mapToUser(row: Record<string, any>): User {
@@ -23,9 +29,9 @@ export class AthenaUserProvider implements UserProvider {
         };
     }
 
-    async getUser(message: { email: string }): Promise<User> {
-        const sql = `SELECT * FROM ${this.tableName} WHERE email = :email`;
-        const params = [{ name: "email", value: message.email }];
+    async getUserByEmail(message: GetUserByEmailMessage): Promise<User> {
+        const sql = `SELECT * FROM users WHERE email = ?`;
+        const params = [message.email];
 
         const results = await this.athenaClient.query(sql, params, this.mapToUser.bind(this));
 
@@ -35,26 +41,31 @@ export class AthenaUserProvider implements UserProvider {
 
         return results[0];
     }
+
+    async getUserById(message: GetUserByIdMessage): Promise<User> {
+        const sql = `SELECT * FROM users WHERE userId = ?`;
+        const params = [message.userId];
+
+        const results = await this.athenaClient.query(sql, params, this.mapToUser.bind(this));
+
+        if (results.length === 0) {
+            throw new Error(`User with id ${message.userId} not found`);
+        }
+
+        return results[0];
+    }
 }
 
+@Injectable()
 export class AthenaUserRepository extends AthenaUserProvider implements UserRepository {
-    constructor(athenaClient: AthenaClient, tableName: string = "users") {
-        super(athenaClient, tableName);
+    constructor(athenaClient: AthenaClient) {
+        super(athenaClient);
     }
 
-    async upsertUser(message: {
-        userId: string;
-        email: string;
-        firstName: string;
-        lastName: string;
-        role: Role;
-        features: Features;
-        dateCreated: Date;
-        dateModified: Date;
-    }): Promise<User> {
+    async upsertUser(message: UpsertUserMessage): Promise<User> {
         // Check if user exists
-        const checkSql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
-        const checkParams = [{ name: "userId", value: message.userId }];
+        const checkSql = `SELECT * FROM users WHERE userId = ?`;
+        const checkParams = [message.userId];
 
         const existingUsers = await this.athenaClient.query(checkSql, checkParams);
 
@@ -64,41 +75,49 @@ export class AthenaUserRepository extends AthenaUserProvider implements UserRepo
         if (existingUsers.length > 0) {
             // Update existing user
             sql = `
-                UPDATE ${this.tableName} 
-                SET email = :email, firstName = :firstName, lastName = :lastName, role = :role, features = :features, dateCreated = :dateCreated, dateModified = :dateModified
-                WHERE userId = :userId
+                UPDATE users 
+                SET email = ?, firstName = ?, lastName = ?, role = ?, features = ?, dateCreated = ?, dateModified = ?
+                WHERE userId = ?
             `;
+            params = [
+                message.email,
+                message.firstName,
+                message.lastName,
+                message.role,
+                message.features,
+                this.athenaClient.formatTimestamp(message.dateCreated),
+                this.athenaClient.formatTimestamp(message.dateModified),
+                message.userId
+            ];
         } else {
             // Insert new user
             sql = `
-                INSERT INTO ${this.tableName} (userId, email, firstName, lastName, role, features, dateCreated, dateModified) 
-                VALUES (:userId, :email, :firstName, :lastName, :role, :features, :dateCreated, :dateModified)
+                INSERT INTO users (userId, email, firstName, lastName, role, features, dateCreated, dateModified) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
+            params = [
+                message.userId,
+                message.email,
+                message.firstName,
+                message.lastName,
+                message.role,
+                message.features,
+                this.athenaClient.formatTimestamp(message.dateCreated),
+                this.athenaClient.formatTimestamp(message.dateModified)
+            ];
         }
-
-        params = [
-            { name: "userId", value: message.userId },
-            { name: "email", value: message.email },
-            { name: "firstName", value: message.firstName },
-            { name: "lastName", value: message.lastName },
-            { name: "role", value: message.role },
-            { name: "features", value: message.features },
-            { name: "dateCreated", value: message.dateCreated },
-            { name: "dateModified", value: message.dateModified },
-        ];
 
         await this.athenaClient.query(sql, params);
 
-        // Return the user object
-        return {
-            userId: message.userId,
-            email: message.email,
-            firstName: message.firstName,
-            lastName: message.lastName,
-            role: message.role,
-            features: message.features,
-            dateCreated: message.dateCreated,
-            dateModified: message.dateModified,
-        };
+        // Fetch and return the actual user record using the existing mapper
+        const userSql = `SELECT * FROM users WHERE userId = ?`;
+        const userParams = [message.userId];
+        const users = await this.athenaClient.query(userSql, userParams, this.mapToUser.bind(this));
+        
+        if (users.length === 0) {
+            throw new Error(`Failed to retrieve upserted user with id ${message.userId}`);
+        }
+        
+        return users[0];
     }
 }

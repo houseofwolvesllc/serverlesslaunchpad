@@ -1,84 +1,78 @@
 import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
-import { Session, SessionRepository } from "@houseofwolves/serverlesslaunchpad.core";
-import { AthenaClient, SqlParameter } from "../data/athena/athena_client";
+import {
+    DeleteSessionMessage,
+    DeleteSessionsMessage,
+    GetSessionByIdMessage,
+    GetSessionBySignatureMessage,
+    GetSessionsMessage,
+    Injectable,
+    Session,
+    SessionRepository,
+    User,
+    VerifySessionMessage,
+    VerifySessionResult,
+} from "@houseofwolves/serverlesslaunchpad.core";
+import { AthenaClient } from "../data/athena/athena_client";
 import { AthenaPagingInstruction } from "../data/athena/athena_paging_intstruction";
 
+@Injectable()
 export class AthenaSessionRepository extends SessionRepository {
     protected readonly athenaClient: AthenaClient;
-    protected readonly tableName: string;
 
-    constructor(athenaClient: AthenaClient, tableName: string = "sessions") {
+    constructor(athenaClient: AthenaClient) {
         super();
         this.athenaClient = athenaClient;
-        this.tableName = tableName;
     }
 
     protected mapToSession(row: Record<string, any>): Session {
         return {
             sessionId: row.sessionId,
             userId: row.userId,
-            sessionSignature: row.sessionSignature,
             ipAddress: row.ipAddress,
             userAgent: row.userAgent,
+            dateLastAccessed: new Date(row.dateLastAccessed),
             dateCreated: new Date(row.dateCreated),
-            dateModified: new Date(row.dateModified),
             dateExpires: new Date(row.dateExpires),
         };
     }
 
-    async getSession(message: {
-        userId: string;
-        sessionId?: string;
-        sessionSignature?: string;
-    }): Promise<Session | undefined> {
-        const params: SqlParameter[] = [];
-
-        if (message.sessionId) {
-            params.push({ name: "sessionId", value: message.sessionId });
-        }
-
-        if (message.sessionSignature) {
-            params.push({ name: "sessionSignature", value: message.sessionSignature });
-        }
-
-        let sql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
-        params.push({ name: "userId", value: message.userId });
-
-        if (message.sessionId) {
-            sql += " AND sessionId = :sessionId";
-            params.push({ name: "sessionId", value: message.sessionId });
-        }
-
-        if (message.sessionSignature) {
-            sql += " AND sessionSignature = :sessionSignature";
-            params.push({ name: "sessionSignature", value: message.sessionSignature });
-        }
+    async getSessionById(message: GetSessionByIdMessage): Promise<Session | undefined> {
+        const sql = `SELECT * FROM sessions WHERE userId = ? AND sessionId = ?`;
+        const params = [message.userId, message.sessionId];
 
         const result = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
         return result.length > 0 ? result[0] : undefined;
     }
 
-    async getSessions(message: { userId: string; pagingInstruction?: PagingInstruction }): Promise<Paginated<Session>> {
-        const params: SqlParameter[] = [];
+    async getSessionBySignature(message: GetSessionBySignatureMessage): Promise<Session | undefined> {
+        const sql = `SELECT * FROM sessions WHERE userId = ? AND sessionSignature = ?`;
+        const params = [message.userId, message.sessionSignature];
+
+        const result = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
+        return result.length > 0 ? result[0] : undefined;
+    }
+
+    async getSessions(message: GetSessionsMessage): Promise<Paginated<Session>> {
+        const params: any[] = [];
 
         if (message.pagingInstruction && !this.isAthenaPagingInstruction(message.pagingInstruction)) {
             throw new Error("Paging instruction must be an AthenaPagingInstruction");
         }
 
-        let sql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
-        params.push({ name: "userId", value: message.userId });
+        let sql = `SELECT * FROM sessions WHERE userId = ?`;
+        params.push(message.userId);
 
         if (message.pagingInstruction?.cursor) {
             const operator = message.pagingInstruction.direction === "backward" ? ">" : "<";
-            sql += ` AND dateCreated ${operator} :cursor`;
-            params.push({ name: "cursor", value: message.pagingInstruction.cursor });
+            sql += ` AND dateCreated ${operator} ?`;
+            params.push(message.pagingInstruction.cursor);
         }
 
         sql += " ORDER BY dateCreated DESC";
 
         if (message.pagingInstruction) {
-            sql += " LIMIT :limit";
-            params.push({ name: "limit", value: message.pagingInstruction.limit + 1 });
+            sql += " LIMIT ?";
+            params.push(message.pagingInstruction.limit + 1);
         }
 
         const sessions = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
@@ -127,60 +121,146 @@ export class AthenaSessionRepository extends SessionRepository {
         const dateCreated = new Date();
         const dateExpires = new Date(dateCreated.getTime() + 1000 * 60 * 60 * 24 * 7);
         const sql = `
-            INSERT INTO ${this.tableName} (
+            INSERT INTO sessions (
                 sessionId, 
                 userId, 
                 sessionSignature, 
                 ipAddress, 
                 userAgent,
                 dateCreated,
-                dateModified,
+                dateLastAccessed,
                 dateExpires
             ) VALUES (
-                :sessionId,
-                :userId,
-                :sessionSignature,
-                :ipAddress,
-                :userAgent,
-                :dateCreated,
-                :dateModified,
-                :dateExpires
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?
             )
         `;
 
         const params = [
-            { name: "sessionId", value: message.sessionId },
-            { name: "userId", value: message.userId },
-            { name: "sessionSignature", value: message.sessionSignature },
-            { name: "ipAddress", value: message.ipAddress },
-            { name: "userAgent", value: message.userAgent },
-            { name: "dateCreated", value: this.athenaClient.formatTimestamp(dateCreated) },
-            { name: "dateModified", value: this.athenaClient.formatTimestamp(dateCreated) },
-            { name: "dateExpires", value: this.athenaClient.formatTimestamp(dateExpires) },
+            message.sessionId,
+            message.userId,
+            message.sessionSignature,
+            message.ipAddress,
+            message.userAgent,
+            this.athenaClient.formatTimestamp(dateCreated),
+            this.athenaClient.formatTimestamp(dateCreated),
+            this.athenaClient.formatTimestamp(dateExpires),
         ];
 
         await this.athenaClient.query(sql, params);
 
-        return {
-            sessionId: message.sessionId,
-            userId: message.userId,
-            sessionSignature: message.sessionSignature,
-            ipAddress: message.ipAddress,
-            userAgent: message.userAgent,
-            dateCreated: dateCreated,
-            dateModified: dateCreated,
-            dateExpires: dateExpires,
-        };
+        // Fetch and return the actual session record using the existing mapper
+        const sessionSql = `SELECT * FROM sessions WHERE sessionId = ? AND userId = ?`;
+        const sessionParams = [message.sessionId, message.userId];
+        const sessions = await this.athenaClient.query(sessionSql, sessionParams, this.mapToSession.bind(this));
+        
+        if (sessions.length === 0) {
+            throw new Error(`Failed to retrieve created session with id ${message.sessionId}`);
+        }
+        
+        return sessions[0];
     }
 
-    async deleteSession(message: { userId: string; sessionId: string }): Promise<void> {
-        const sql = `DELETE FROM ${this.tableName} WHERE userId = :userId AND sessionId = :sessionId`;
-        const params: SqlParameter[] = [
-            { name: "userId", value: message.userId },
-            { name: "sessionId", value: message.sessionId },
+    async verifySession(message: VerifySessionMessage): Promise<VerifySessionResult | undefined> {
+        const dateLastAccessed = new Date();
+        const dateExpires = new Date(dateLastAccessed.getTime() + 1000 * 60 * 60 * 24 * 7); // 7 days from now
+
+        // Use a CTE to update the session and then join with users table to get both session and user data
+        const sql = `
+            WITH updated_sessions AS (
+                UPDATE sessions 
+                SET dateLastAccessed = ?, dateExpires = ?
+                WHERE userId = ? AND sessionSignature = ?
+            )
+            SELECT 
+                s.sessionId as "session.sessionId",
+                s.userId as "session.userId",
+                s.ipAddress as "session.ipAddress",
+                s.userAgent as "session.userAgent",
+                s.dateCreated as "session.dateCreated",
+                s.dateLastAccessed as "session.dateLastAccessed",
+                s.dateExpires as "session.dateExpires",
+                u.userId as "user.userId",
+                u.email as "user.email",
+                u.firstName as "user.firstName",
+                u.lastName as "user.lastName",
+                u.role as "user.role",
+                u.features as "user.features",
+                u.dateCreated as "user.dateCreated",
+                u.dateModified as "user.dateModified"
+            FROM sessions s
+            JOIN users u ON s.userId = u.userId
+            WHERE s.userId = ? AND s.sessionSignature = ?
+        `;
+
+        const params = [
+            this.athenaClient.formatTimestamp(dateLastAccessed),
+            this.athenaClient.formatTimestamp(dateExpires),
+            message.userId,
+            message.sessionSignature,
+            message.userId,
+            message.sessionSignature,
         ];
 
-        await this.athenaClient.query(sql, params);
+        const results = await this.athenaClient.query(sql, params, (row: Record<string, any>) => {
+            const session: Session = {
+                sessionId: row["session.sessionId"],
+                userId: row["session.userId"],
+                ipAddress: row["session.ipAddress"],
+                userAgent: row["session.userAgent"],
+                dateCreated: new Date(row["session.dateCreated"]),
+                dateLastAccessed: new Date(row["session.dateLastAccessed"]),
+                dateExpires: new Date(row["session.dateExpires"]),
+            };
+
+            const user: User = {
+                userId: row["user.userId"],
+                email: row["user.email"],
+                firstName: row["user.firstName"],
+                lastName: row["user.lastName"],
+                role: row["user.role"],
+                features: row["user.features"],
+                dateCreated: new Date(row["user.dateCreated"]),
+                dateModified: new Date(row["user.dateModified"]),
+            };
+
+            return { session, user };
+        });
+
+        return results.length > 0 ? results[0] : undefined;
+    }
+
+    async deleteSession(message: DeleteSessionMessage): Promise<boolean> {
+        const sql = `DELETE FROM sessions WHERE userId = ? AND sessionSignature = ?`;
+        const params = [message.userId, message.sessionSignature];
+
+        try {
+            await this.athenaClient.query(sql, params);
+            return true;
+        } catch (error) {
+            console.error("Error deleting session:", error);
+            return false;
+        }
+    }
+
+    async deleteSessions(message: DeleteSessionsMessage): Promise<boolean> {
+        const placeholders = message.sessionIds.map(() => '?').join(',');
+        const sql = `DELETE FROM sessions WHERE userId = ? AND sessionId IN (${placeholders})`;
+        const params = [message.userId, ...message.sessionIds];
+
+        try {
+            await this.athenaClient.query(sql, params);
+            return true;
+        } catch (error) {
+            console.error("Error deleting sessions:", error);
+            return false;
+        }
     }
 
     private isAthenaPagingInstruction(
