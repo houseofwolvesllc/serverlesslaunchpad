@@ -4,9 +4,10 @@
 
 	type $$Props = DropdownMenuPrimitive.ItemProps & {
 		inset?: boolean;
+		class?: string | null | undefined;
 	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 	export let inset: boolean = false;
 </script>

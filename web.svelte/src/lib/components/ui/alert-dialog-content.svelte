@@ -3,9 +3,11 @@
 	import { cn } from "$lib/utils";
 	import AlertDialogOverlay from "./alert-dialog-overlay.svelte";
 
-	type $$Props = AlertDialogPrimitive.ContentProps;
+	type $$Props = AlertDialogPrimitive.ContentProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

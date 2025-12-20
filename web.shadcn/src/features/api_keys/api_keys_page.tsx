@@ -7,7 +7,7 @@
 
 import { ApiKeysList } from './components/api_keys_list';
 import { useApiKeys } from './hooks/use_api_keys';
-import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking_adapter';
 
 export const ApiKeysPage = () => {
     const { data } = useApiKeys();

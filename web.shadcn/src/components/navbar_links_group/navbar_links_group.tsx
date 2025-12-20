@@ -28,17 +28,14 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, l
             key={link.label}
             onClick={async (event) => {
                 event.preventDefault();
-                console.log('[Menu Click] Child item clicked:', link.label, 'link:', link.link);
 
                 try {
                     // If there's a custom onClick handler (e.g., for POST actions), use it
                     if (link.onClick) {
-                        console.log('[Menu Click] Using custom onClick handler');
                         await link.onClick(navigate);
                     }
                     // Otherwise, use React Router to navigate (for GET links)
                     else if (link.link) {
-                        console.log('[Menu Click] Navigating to:', link.link, 'with state:', { navigationSource: 'menu' });
                         // Pass navigation source via location state (more reliable than ref flag)
                         navigate(link.link, { state: { navigationSource: 'menu' } });
                     }
@@ -54,8 +51,6 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, l
     ));
 
     const handleParentClick = () => {
-        console.log('[Menu Click] Parent clicked:', label, 'hasLinks:', hasLinks, 'link:', link);
-
         // If has children, toggle collapse
         if (hasLinks) {
             setOpened((o) => !o);
@@ -65,7 +60,6 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, link, newTab, l
             if (newTab) {
                 window.open(link, '_blank', 'noopener,noreferrer');
             } else {
-                console.log('[Menu Click] Navigating to:', link, 'with state:', { navigationSource: 'menu' });
                 // Pass navigation source via location state (more reliable than ref flag)
                 navigate(link, { state: { navigationSource: 'menu' } });
             }

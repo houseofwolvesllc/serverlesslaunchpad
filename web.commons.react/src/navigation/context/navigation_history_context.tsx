@@ -1,16 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
-import type { NavGroup } from '@/hooks/use_navigation';
-
-export type NavigationSource = 'menu' | 'link' | 'browser';
-
-export interface NavigationHistoryItem {
-  resource: HalObject;
-  source: NavigationSource;
-  timestamp: number;
-  /** Parent groups from sitemap (only when navigating via menu) */
-  parentGroups?: NavGroup[];
-}
+import type { NavGroup, NavigationSource, NavigationHistoryItem } from '../types';
 
 interface NavigationHistoryContextValue {
   history: NavigationHistoryItem[];

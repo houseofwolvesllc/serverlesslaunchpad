@@ -7,6 +7,7 @@ export default defineConfig({
         exclude: [...configDefaults.exclude, 'dist'],
         root: './',
         reporters: 'verbose',
-        testTimeout: 10000
+        testTimeout: 10000,
+        passWithNoTests: true
     },
 });

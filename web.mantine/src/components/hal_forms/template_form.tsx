@@ -200,7 +200,7 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
                 label={label}
                 placeholder={`Select ${label.toLowerCase()}`}
                 data={selectData}
-                value={value ? String(value) : null}
+                value={value != null ? String(value) : null}
                 onChange={(val) => onChange(val)}
                 required={required}
                 error={error}

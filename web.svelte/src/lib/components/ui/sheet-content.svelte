@@ -6,9 +6,10 @@
 
 	type $$Props = SheetPrimitive.ContentProps & {
 		side?: "top" | "bottom" | "left" | "right";
+		class?: string | null | undefined;
 	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 	export let side: "top" | "bottom" | "left" | "right" = "right";
 

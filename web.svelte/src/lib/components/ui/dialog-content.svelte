@@ -4,9 +4,11 @@
 	import { X } from "lucide-svelte";
 	import DialogOverlay from "./dialog-overlay.svelte";
 
-	type $$Props = DialogPrimitive.ContentProps;
+	type $$Props = DialogPrimitive.ContentProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

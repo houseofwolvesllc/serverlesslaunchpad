@@ -2,9 +2,11 @@
 	import { Avatar as AvatarPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils";
 
-	type $$Props = AvatarPrimitive.FallbackProps;
+	type $$Props = AvatarPrimitive.FallbackProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

@@ -22,7 +22,7 @@ import {
 } from '../utils/transform_navigation';
 import { AuthenticationContext } from '../../authentication';
 import { logger } from '../../../logging/logger';
-import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
+import type { NavGroup, NavItem, ResolvedNavItem } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**

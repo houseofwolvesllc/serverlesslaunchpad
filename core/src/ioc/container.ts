@@ -56,7 +56,7 @@ export class Container {
             name: options?.name ? `${options.name}-${serviceType.name}` : serviceType.name,
         };
 
-        if (this.registry.has(descriptor.name)) {
+        if (this.registry.has(descriptor.name) && !options?.replace) {
             throw new ServiceAlreadyRegisteredError(descriptor.name);
         }
 

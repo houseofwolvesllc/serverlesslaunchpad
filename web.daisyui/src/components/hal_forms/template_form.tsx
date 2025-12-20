@@ -217,7 +217,7 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
                 </label>
                 <select
                     className={`select select-bordered w-full ${error ? 'select-error' : ''}`}
-                    value={value || ''}
+                    value={value ?? ''}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
                     disabled={disabled}

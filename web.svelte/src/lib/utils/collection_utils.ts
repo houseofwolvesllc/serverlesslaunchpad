@@ -10,8 +10,12 @@ import {
     inferColumns,
     type InferredColumn,
     type HalObject,
-    type ColumnOverride,
 } from '@houseofwolves/serverlesslaunchpad.web.commons';
+
+/**
+ * Column override type - allows partial override of InferredColumn properties
+ */
+export type ColumnOverride = Partial<InferredColumn>;
 
 export interface CollectionConfig {
     columnConfig?: Record<string, ColumnOverride>;

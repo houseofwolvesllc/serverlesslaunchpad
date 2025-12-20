@@ -53,6 +53,15 @@ export const halClient = {
         const client = await getHalClient();
         return client.executeTemplate(template, data);
     },
+    validateTemplateData(template: any, data: Record<string, any>) {
+        // Note: This is not async because validation is synchronous
+        // We need to get the client instance but can't await in non-async function
+        // For now, we'll import the class and create a temporary instance
+        // This is a workaround since validation doesn't need the API client
+        const { HalFormsClient } = require('@houseofwolves/serverlesslaunchpad.web.commons');
+        const tempClient = new HalFormsClient({} as any);
+        return tempClient.validateTemplateData(template, data);
+    },
 };
 
 /**

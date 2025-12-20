@@ -11,9 +11,9 @@
 	 */
 
 	import { Plus, RefreshCw, Trash2 } from 'lucide-svelte';
-	import { processCollection, SelectionManager } from '$lib/utils/collection_utils';
+	import { processCollection, SelectionManager, type ColumnOverride } from '$lib/utils/collection_utils';
 	import HalResourceRow from './HalResourceRow.svelte';
-	import type { HalObject, ColumnOverride } from '@houseofwolves/serverlesslaunchpad.web.commons';
+	import type { HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
 	import type { FieldRenderer } from './field_renderers';
 	import { cn } from '$lib/utils';
 

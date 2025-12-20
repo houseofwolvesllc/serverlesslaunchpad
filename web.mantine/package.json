@@ -21,6 +21,7 @@
     "dependencies": {
         "@houseofwolves/serverlesslaunchpad.types": "*",
         "@houseofwolves/serverlesslaunchpad.web.commons": "*",
+        "@houseofwolves/serverlesslaunchpad.web.commons.react": "*",
         "@mantine/core": "^8.3.6",
         "@mantine/form": "^8.3.6",
         "@mantine/hooks": "^8.3.6",

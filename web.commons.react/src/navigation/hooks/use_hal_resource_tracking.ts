@@ -1,111 +1,18 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import type { HalObject, HalLink } from '@houseofwolves/serverlesslaunchpad.types/hal';
-import { useNavigationHistory } from '@/context/navigation_history_context';
-import { useSitemap } from '@/features/sitemap/hooks/use_sitemap';
-import type { NavItem, NavGroup } from '@/hooks/use_navigation';
+import type { HalObject, HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { NavItem, NavGroup } from '../types';
+import { getHref, extractTitleFromResource, findParentGroups } from '../utils/hal_helpers';
 
-/**
- * Helper to get href from a HalLink (handles both single link and array)
- */
-function getHref(link: HalLink | HalLink[] | undefined): string | undefined {
-  if (!link) return undefined;
-  if (Array.isArray(link)) return link[0]?.href;
-  return link.href;
-}
-
-/**
- * Helper to get title from a HalLink (handles both single link and array)
- */
-function getTitle(link: HalLink | HalLink[] | undefined): string | undefined {
-  if (!link) return undefined;
-  if (Array.isArray(link)) return link[0]?.title;
-  return link.title;
-}
-
-/**
- * Extract a title from HAL hypermedia controls (HATEOAS-compliant)
- * Only checks _links.self.title or _templates.self.title, then falls back to href
- */
-function extractTitleFromResource(resource: HalObject, fallbackHref: string): string {
-  // Try _links.self.title (for link-based resources)
-  const linkTitle = getTitle(resource._links?.self);
-  if (linkTitle) return linkTitle;
-
-  // Try _templates.self.title (for template-based resources)
-  // Note: Templates have title as a direct property, not nested in a link
-  const selfTemplate = (resource as any)._templates?.self;
-  if (selfTemplate?.title) return selfTemplate.title;
-
-  // Fall back to deriving from href (only when API provides no title)
-  const pathSegments = fallbackHref.split('/').filter(Boolean);
-  let lastSegment = pathSegments[pathSegments.length - 1];
-
-  // If last segment is "list", use the resource type from second-to-last segment
-  if (lastSegment === 'list' && pathSegments.length > 1) {
-    lastSegment = pathSegments[pathSegments.length - 2];
-  }
-
-  return lastSegment
-    ? lastSegment.split('-').map(word =>
-        word.charAt(0).toUpperCase() + word.slice(1)
-      ).join(' ')
-    : 'Resource';
-}
-
-/**
- * Find parent groups for a given href by searching the sitemap navigation structure
- */
-function findParentGroups(
-  href: string,
-  navStructure: (NavItem | NavGroup)[] | undefined,
-  links: Record<string, any> | undefined,
-  templates: Record<string, any> | undefined,
-  parentGroups: NavGroup[] = []
-): NavGroup[] | undefined {
-  if (!navStructure || !links || !templates) {
-    return undefined;
-  }
-
-  for (const item of navStructure) {
-    if ('rel' in item) {
-      // NavItem - check if it matches
-      const navItem = item as NavItem;
-      const itemHref = navItem.type === 'link'
-        ? links[navItem.rel]?.href
-        : templates[navItem.rel]?.target;
-
-      if (itemHref && matchesPath(itemHref, href)) {
-        return parentGroups;
-      }
-    } else {
-      // NavGroup - recurse with this group added to parent chain
-      const group = item as NavGroup;
-      const result = findParentGroups(
-        href,
-        group.items,
-        links,
-        templates,
-        [...parentGroups, group]
-      );
-
-      if (result) {
-        return result;
-      }
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Check if href matches pathname (supporting template parameters)
- */
-function matchesPath(templateHref: string, actualHref: string): boolean {
-  // Convert template variables {userId} to regex patterns
-  const pattern = templateHref.replace(/\{[^}]+\}/g, '[^/]+');
-  const regex = new RegExp(`^${pattern}$`);
-  return regex.test(actualHref);
+export interface UseHalResourceTrackingDependencies {
+  currentPathname: string;
+  locationState: any;
+  history: any[];
+  pushResource: (resource: HalObject, source: 'menu' | 'link' | 'browser', parentGroups?: NavGroup[]) => void;
+  resetHistory: (resource: HalObject, source: 'menu' | 'link' | 'browser', parentGroups?: NavGroup[]) => void;
+  shouldSkipNextNavigation: () => boolean;
+  navStructure: (NavItem | NavGroup)[] | undefined;
+  links: Record<string, HalLink> | undefined;
+  templates: Record<string, HalTemplate> | undefined;
 }
 
 /**
@@ -118,11 +25,46 @@ function matchesPath(templateHref: string, actualHref: string): boolean {
  * - Do nothing (same resource)
  *
  * @param resource - The HAL resource that was loaded
+ * @param deps - Dependencies injected by the consumer
+ *
+ * @example
+ * ```typescript
+ * // In a React project, wrap this with project-specific hooks:
+ * function useHalResourceTracking(resource: HalObject | null | undefined) {
+ *   const location = useLocation();
+ *   const { history, pushResource, resetHistory, shouldSkipNextNavigation } = useNavigationHistory();
+ *   const { navStructure, links, templates } = useSitemap();
+ *
+ *   useHalResourceTrackingCore(resource, {
+ *     currentPathname: location.pathname,
+ *     locationState: location.state,
+ *     history,
+ *     pushResource,
+ *     resetHistory,
+ *     shouldSkipNextNavigation,
+ *     navStructure,
+ *     links,
+ *     templates
+ *   });
+ * }
+ * ```
  */
-export function useHalResourceTracking(resource: HalObject | null | undefined) {
-  const location = useLocation();
-  const { history, pushResource, resetHistory, shouldSkipNextNavigation } = useNavigationHistory();
-  const { navStructure, links, templates } = useSitemap();
+export function useHalResourceTracking(
+  resource: HalObject | null | undefined,
+  deps: UseHalResourceTrackingDependencies
+) {
+  const {
+    currentPathname,
+    locationState,
+    history,
+    pushResource,
+    resetHistory,
+    shouldSkipNextNavigation,
+    navStructure,
+    links,
+    templates
+  } = deps;
+
   const previousHref = useRef<string | null>(null);
   const isInitialMount = useRef(true);
 
@@ -156,7 +98,7 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
 
     if (!currentHref) {
       // No self link or template - use current pathname as fallback
-      currentHref = location.pathname;
+      currentHref = currentPathname;
       console.log('[HAL Tracking] No self link or template, using pathname:', currentHref);
     }
 
@@ -188,7 +130,7 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
     }
 
     // Check if this navigation came from menu (via location state)
-    const isMenuNavigation = (location.state as any)?.navigationSource === 'menu';
+    const isMenuNavigation = (locationState as any)?.navigationSource === 'menu';
     console.log('[HAL Tracking] Is menu navigation:', isMenuNavigation, 'from location.state');
 
     // Lookup parent groups for menu navigation
@@ -232,5 +174,16 @@ export function useHalResourceTracking(resource: HalObject | null | undefined) {
 
     previousHref.current = currentHref;
     isInitialMount.current = false;
-  }, [resource, history, pushResource, resetHistory, shouldSkipNextNavigation, location.pathname, location.state, navStructure, links, templates]);
+  }, [
+    resource,
+    history,
+    pushResource,
+    resetHistory,
+    shouldSkipNextNavigation,
+    currentPathname,
+    locationState,
+    navStructure,
+    links,
+    templates
+  ]);
 }
