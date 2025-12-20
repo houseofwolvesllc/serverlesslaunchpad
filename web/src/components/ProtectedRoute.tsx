@@ -1,12 +1,17 @@
-import { useAuth } from '../features/Authentication';
+import { AuthenticationContext } from '../features/Authentication/context/AuthenticationContext';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useContext } from 'react';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    const { signedInUser } = useAuth();
+    const { signedInUser, initialized } = useContext(AuthenticationContext);
     const location = useLocation();
 
+    if (!initialized) {
+        return null;
+    }
+
     if (!signedInUser) {
-        return <Navigate to="/auth" replace state={{ from: location }} />;
+        return <Navigate to="/auth/signin" state={{ from: location }} />;
     }
 
     return children;

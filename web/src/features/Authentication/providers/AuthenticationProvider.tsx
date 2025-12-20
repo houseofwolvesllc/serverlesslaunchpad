@@ -1,10 +1,9 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { AuthenticationContext } from '../../Authentication';
-import { useEffect, useState } from 'react';
-import { LoadingOverlay } from '@mantine/core';
+import { AuthenticationContext, useAuth } from '../../Authentication';
+import { useContext, useEffect, useState } from 'react';
 
 import * as amplify from 'aws-amplify/auth';
 import { AmplifyErrorParams } from '@aws-amplify/core/internals/utils';
+import { LoadingContext } from '../../../context/LoadingContext';
 
 // placeholder for now
 export interface User {
@@ -36,74 +35,114 @@ export function passwordPolicyValidator(password: string) {
 }
 
 export const AuthenticationProvider = ({ children }: { children: React.ReactNode }) => {
-    const navigate = useNavigate();
-    const location = useLocation();
     const [signedInUser, setSignedInUser] = useState<User | undefined>();
-    const [isLoading, setIsLoading] = useState(false);
-    const [authSession, setAuthSession] = useState<amplify.AuthSession | undefined>();
-    const [signInStep, setSignInStep] = useState<SignInStep>(SignInStep.SIGNIN);
-    const [confirmationUsername, setConfirmationUsername] = useState<string | undefined>();
+    const [hasTriedAutoLogin, setHasTriedAutoLogin] = useState(false);
+
+    const value = {
+        signedInUser,
+        initialized: hasTriedAutoLogin,
+        setSignedInUser,
+    };
+
+    return (
+        <AuthenticationContext.Provider value={value}>
+            <AutoLogin setHasTriedAutoLogin={setHasTriedAutoLogin} />
+            {children}
+        </AuthenticationContext.Provider>
+    );
+};
+
+function AutoLogin({ setHasTriedAutoLogin }: { setHasTriedAutoLogin: (hasTriedAutoLogin: boolean) => void }) {
+    const { setIsLoading } = useContext(LoadingContext);
+    const auth = useAuth();
 
     useEffect(() => {
-        console.log('AUTHPROVIDER USEEFFECT');
-        const fetchCurrentUser = async () => {
+        autoLogin();
+
+        async function autoLogin() {
+            setIsLoading(true);
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+
             try {
-                setIsLoading(true);
-                const authSession = await amplify.fetchAuthSession();
-                setAuthSession(authSession);
-
-                const user = await authorizeSession(authSession);
-                setSignedInUser(user);
-
-                setSignInStep(SignInStep.COMPLETED);
-
-                const origin = location.state?.from?.pathname || '/dashboard';
-                navigate(origin);
+                await auth.authorize();
             } catch (error) {
-                if (error instanceof amplify.AuthError) {
-                    switch (error.name) {
-                        case 'UserUnAuthenticatedException':
-                            setSignInStep(SignInStep.SIGNIN);
-                            return;
-                    }
-                }
-
                 console.error('Error fetching current user:', error);
             } finally {
+                setHasTriedAutoLogin(true);
                 setIsLoading(false);
             }
-        };
-
-        fetchCurrentUser();
-
-        return () => {
-            console.log('cognitoUser effect cleanup');
-            setSignedInUser(undefined);
-        };
+        }
     }, []);
 
-    // placeholder for now
-    const authorizeSession = async (authSession: amplify.AuthSession): Promise<User> =>
-        new Promise((resolve) => {
-            console.log('hola', authSession);
-            setTimeout(
-                () =>
-                    resolve({
-                        username: authSession.userSub || '',
-                        email: authSession.tokens?.idToken?.payload?.email as string,
-                        firstName: authSession.tokens?.idToken?.payload?.given_name as string,
-                        lastName: authSession.tokens?.idToken?.payload?.family_name as string,
-                        name: authSession.tokens?.idToken?.payload?.name as string,
-                    }),
-                250
-            );
-        });
+    return null;
+}
 
-    const unauthorizeSession = async (authSession: amplify.AuthSession): Promise<void> =>
-        new Promise((resolve) => {
-            console.log('sayonara', authSession);
-            setTimeout(() => resolve(), 250);
-        });
+// function xuseAutoLogin() {
+//     console.log('signedInUser', signedInUser);
+//     useEffect(() => {
+//         const authorizeExistingSession = async () => {
+//             try {
+//                 const user = await authorize();
+//                 setSignedInUser(user);
+//             } catch (error) {
+//                 if (error instanceof amplify.AuthError) {
+//                     switch (error.name) {
+//                         case 'UserUnAuthenticatedException':
+//                             return;
+//                     }
+//                 }
+
+//                 console.error('Error fetching current user:', error);
+//             } finally {
+//                 console.log('useAutoLogin effect cleanup');
+//             }
+//         };
+
+//         authorizeExistingSession();
+
+//         return () => {
+//             console.log('useAutoLogin effect cleanup');
+//         };
+//     }, []);
+// }
+
+// async function authorize(): Promise<User> {
+//     const authSession = await amplify.fetchAuthSession();
+//     const user = await authorizeSession(authSession);
+//     setSignedInUser(user);
+//     return user;
+// }
+
+// async function unauthorize(): Promise<void> {
+//     const authSession = await amplify.fetchAuthSession();
+//     await unauthorizeSession(authSession);
+// }
+
+// function authorizeSession(authSession: amplify.AuthSession): Promise<User> {
+//     return new Promise((resolve) => {
+//         console.log('hola', authSession);
+//         setTimeout(
+//             () =>
+//                 resolve({
+//                     username: authSession.userSub || '',
+//                     email: authSession.tokens?.idToken?.payload?.email as string,
+//                     firstName: authSession.tokens?.idToken?.payload?.given_name as string,
+//                     lastName: authSession.tokens?.idToken?.payload?.family_name as string,
+//                     name: authSession.tokens?.idToken?.payload?.name as string,
+//                 }),
+//             250
+//         );
+//     });
+// }
+
+// function unauthorizeSession(authSession: amplify.AuthSession): Promise<void> {
+//     return new Promise((resolve) => {
+//         console.log('sayonara', authSession);
+//         setTimeout(() => resolve(), 250);
+//     });
+// }
+
+/*
 
     const signUp = async (signUpMessage: {
         username: string;
@@ -197,13 +236,16 @@ export const AuthenticationProvider = ({ children }: { children: React.ReactNode
 
             switch (nextStep.signInStep) {
                 case 'CONFIRM_SIGN_UP':
+                    // redirect to confirm sign up route with username in querystring
                     setConfirmationUsername(signInMessage.username);
                     setSignInStep(SignInStep.CONFIRM_SIGNUP);
                     break;
                 case 'RESET_PASSWORD':
+                    // redirect to reset password route
                     setSignInStep(SignInStep.RESET_PASSWORD);
                     break;
                 case 'DONE':
+                    // authorize and redirect to origin
                     setSignInStep(SignInStep.COMPLETED);
 
                     const authSession = await amplify.fetchAuthSession();
@@ -261,23 +303,4 @@ export const AuthenticationProvider = ({ children }: { children: React.ReactNode
         setSignInStep(SignInStep.SIGNIN);
     };
 
-    const value = {
-        signInStep,
-        signedInUser: signedInUser,
-        setSignInStep: setSignInStep,
-        signUp: signUp,
-        confirmSignUp: confirmSignUp,
-        resendSignUpCode: resendSignUpCode,
-        signIn: signIn,
-        signOut: signOut,
-        resetPassword: resetPassword,
-        confirmResetPassword: confirmResetPassword,
-    };
-
-    return (
-        <AuthenticationContext.Provider value={value}>
-            <LoadingOverlay visible={isLoading} />
-            {children}
-        </AuthenticationContext.Provider>
-    );
-};
+    */
