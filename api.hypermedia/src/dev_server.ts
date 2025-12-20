@@ -33,7 +33,7 @@ console.log(`🚀 Starting API development server for environment: ${environment
 // Import everything after setting NODE_ENV
 import { ALBEvent, ALBResult } from "aws-lambda";
 import express from "express";
-import { handler } from "./index.js";
+import { handler } from "./index";
 
 const app = express();
 const PORT = process.env.PORT || 3001;

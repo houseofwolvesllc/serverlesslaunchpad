@@ -4,16 +4,17 @@
     "author": "k-gar",
     "description": "Library for common types, schemas, and utils shared across the Serverless Launchpad platform.",
     "private": true,
-    "main": "src/index.ts",
+    "main": "dist/index.js",
+    "types": "dist/src/index.d.ts",
     "type": "module",
     "scripts": {
-        "build": "tsc --build --force .",
+        "build": "tsc && fix-esm-import-path dist",
         "typecheck": "tsc --noEmit",
         "test": "vitest --coverage",
         "test:watch": "vitest --watch"
     },
     "devDependencies": {
-        "tslib": "^2.8.1",
+        "fix-esm-import-path": "^1.10.3",
         "vitest": "^2.1.8"
     },
     "dependencies": {
