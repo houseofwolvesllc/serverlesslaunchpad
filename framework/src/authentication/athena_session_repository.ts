@@ -21,15 +21,22 @@ export class AthenaSessionRepository extends SessionRepository {
             ipAddress: row.ipAddress,
             userAgent: row.userAgent,
             dateCreated: new Date(row.dateCreated),
+            dateModified: new Date(row.dateModified),
             dateExpires: new Date(row.dateExpires),
         };
     }
 
-    async getSessions(message: {
-        sessionToken: string;
-        pagingInstruction?: PagingInstruction;
-    }): Promise<Paginated<Session>> {
-        const userId = message.sessionToken.substring(32);
+    async getSession(message: { sessionId: string; userId: string }): Promise<Session | undefined> {
+        const sql = `SELECT * FROM ${this.tableName} WHERE sessionId = :sessionId AND userId = :userId`;
+        const params: SqlParameter[] = [
+            { name: "sessionId", value: message.sessionId },
+            { name: "userId", value: message.userId },
+        ];
+        const result = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
+        return result.length > 0 ? result[0] : undefined;
+    }
+
+    async getSessions(message: { userId: string; pagingInstruction?: PagingInstruction }): Promise<Paginated<Session>> {
         const params: SqlParameter[] = [];
 
         if (message.pagingInstruction && !this.isAthenaPagingInstruction(message.pagingInstruction)) {
@@ -37,7 +44,7 @@ export class AthenaSessionRepository extends SessionRepository {
         }
 
         let sql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
-        params.push({ name: "userId", value: userId });
+        params.push({ name: "userId", value: message.userId });
 
         if (message.pagingInstruction?.cursor) {
             const operator = message.pagingInstruction.direction === "backward" ? ">" : "<";
@@ -105,6 +112,7 @@ export class AthenaSessionRepository extends SessionRepository {
                 ipAddress, 
                 userAgent,
                 dateCreated,
+                dateModified,
                 dateExpires
             ) VALUES (
                 :sessionId,
@@ -113,6 +121,7 @@ export class AthenaSessionRepository extends SessionRepository {
                 :ipAddress,
                 :userAgent,
                 :dateCreated,
+                :dateModified,
                 :dateExpires
             )
         `;
@@ -124,6 +133,7 @@ export class AthenaSessionRepository extends SessionRepository {
             { name: "ipAddress", value: message.ipAddress },
             { name: "userAgent", value: message.userAgent },
             { name: "dateCreated", value: this.athenaClient.formatTimestamp(dateCreated) },
+            { name: "dateModified", value: this.athenaClient.formatTimestamp(dateCreated) },
             { name: "dateExpires", value: this.athenaClient.formatTimestamp(dateExpires) },
         ];
 
@@ -136,6 +146,7 @@ export class AthenaSessionRepository extends SessionRepository {
             ipAddress: message.ipAddress,
             userAgent: message.userAgent,
             dateCreated: dateCreated,
+            dateModified: dateCreated,
             dateExpires: dateExpires,
         };
     }
