@@ -21,11 +21,23 @@ export const AuthenticateSchema = z.object({
 
 export const SignoutSchema = z.object({
     headers: z.object({
-        // SessionToken in Authorization header (required - API keys cannot be revoked)
-        authorization: z.string().startsWith("SessionToken "),
+        // SessionToken in Authorization header (optional - can use cookie instead)
+        authorization: z.string().startsWith("SessionToken ").optional(),
         "user-agent": z.string(),
         "x-forwarded-for": z.string(),
-    }),
+        // Cookie header as optional for browser-based navigation
+        cookie: z.string().optional(),
+    }).refine(
+        // Custom validation: must have either SessionToken authorization OR session cookie
+        (data) => {
+            const hasSessionToken = !!data.authorization;
+            const hasSessionCookie = AuthenticationCookieRepository.isSet(data.cookie);
+            return hasSessionToken || hasSessionCookie;
+        },
+        {
+            message: "Either SessionToken in Authorization header or session cookie must be provided"
+        }
+    ),
 });
 
 export const VerifySchema = z.object({

@@ -1,5 +1,5 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
-import { CloudFormationClient, DescribeStacksCommand, ListStacksCommand, Export } from "@aws-sdk/client-cloudformation";
+import { CloudFormationClient, DescribeStacksCommand, ListStacksCommand, Output } from "@aws-sdk/client-cloudformation";
 import chalk from "chalk";
 import { config } from "dotenv";
 import * as fs from "fs";
@@ -288,10 +288,6 @@ export class Deployer extends StackManager {
                     client_id: getOutputValue('cognito', 'UserPoolClientId'),
                     user_pool_provider_url: `https://cognito-idp.${process.env.AWS_REGION}.amazonaws.com/${userPoolId}`,
                 } : {},
-                athena: stackOutputs['data'] ? {
-                    workgroup: getOutputValue('data', 'WorkGroupName'),
-                    results_bucket: getOutputValue('data', 'QueryResultsBucketName'),
-                } : {},
                 alb: stackOutputs['alb'] ? {
                     target_group_arn: getOutputValue('alb', 'TargetGroupArn'),
                 } : {},
@@ -389,7 +385,6 @@ export class Deployer extends StackManager {
         // Fetch outputs from each stack
         const stackConfigs = [
             { name: `slp-cognito-stack-${environment}`, key: 'cognito' },
-            { name: `slp-data-stack-${environment}`, key: 'athena' },  // Fixed: was slp-athena-stack
             { name: `slp-secrets-stack-${environment}`, key: 'secrets' },
             { name: `slp-lambda-stack-${environment}`, key: 'lambda' },
             { name: `slp-alb-stack-${environment}`, key: 'alb' },
@@ -434,7 +429,7 @@ export class Deployer extends StackManager {
     /**
      * Get CloudFormation stack outputs
      */
-    private async getStackOutputs(cfnClient: CloudFormationClient, stackName: string): Promise<Export[]> {
+    private async getStackOutputs(cfnClient: CloudFormationClient, stackName: string): Promise<Output[]> {
         const command = new DescribeStacksCommand({ StackName: stackName });
         const response = await cfnClient.send(command);
         
@@ -448,7 +443,7 @@ export class Deployer extends StackManager {
     /**
      * Transform CloudFormation outputs to config structure
      */
-    private transformOutputs(outputs: Export[], stackKey: string): any {
+    private transformOutputs(outputs: Output[], stackKey: string): any {
         const result: any = {};
         
         for (const output of outputs) {
@@ -465,17 +460,7 @@ export class Deployer extends StackManager {
                         result.user_pool_provider_url = output.OutputValue;
                     }
                     break;
-                
-                case 'athena':
-                    if (output.OutputKey.includes('WorkGroupName')) {
-                        result.workgroup = output.OutputValue;
-                    } else if (output.OutputKey.includes('QueryResultsBucketName')) {
-                        result.results_bucket = output.OutputValue;
-                    } else if (output.OutputKey.includes('DataBucketName')) {
-                        result.data_bucket = output.OutputValue;
-                    }
-                    break;
-                
+
                 case 'secrets':
                     if (output.OutputKey.includes('SecretArn')) {
                         result.configuration_secret_arn = output.OutputValue;

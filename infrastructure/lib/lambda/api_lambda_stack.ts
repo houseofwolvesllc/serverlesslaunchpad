@@ -1,19 +1,17 @@
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
-import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
+import { IVpc } from "aws-cdk-lib/aws-ec2";
 import { ApplicationTargetGroup, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LambdaTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { Effect, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
-import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
 
 export interface ApiLambdaStackProps extends BaseStackProps {
     configurationSecret: Secret;
-    queryResultsBucket: Bucket;
     userPoolId: string;
     userPoolClientId: string;
     vpc: IVpc;
@@ -83,14 +81,11 @@ export class ApiLambdaStack extends BaseStack {
      * Add necessary IAM policies to the execution role
      */
     private addExecutionRolePolicies(props: ApiLambdaStackProps): void {
-        const { configurationSecret, queryResultsBucket, userPoolId } = props;
+        const { configurationSecret, userPoolId } = props;
 
         this.addBasicLambdaPolicy();
         this.addSecretsManagerPolicy(configurationSecret);
         this.addCognitoPolicy(userPoolId);
-        this.addAthenaPolicy();
-        this.addS3Policy(queryResultsBucket);
-        this.addGluePolicy();
     }
 
     /**
@@ -139,65 +134,6 @@ export class ApiLambdaStack extends BaseStack {
                     "cognito-idp:ListUsersInGroup",
                 ],
                 resources: [`arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${userPoolId}`],
-            })
-        );
-    }
-
-    /**
-     * Add Athena policy for query execution
-     */
-    private addAthenaPolicy(): void {
-        this.executionRole.addToPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    "athena:StartQueryExecution",
-                    "athena:GetQueryExecution",
-                    "athena:GetQueryResults",
-                    "athena:StopQueryExecution",
-                    "athena:GetWorkGroup",
-                ],
-                resources: [
-                    `arn:aws:athena:${this.region}:${this.account}:workgroup/${this.configuration.athena.workGroupName}`,
-                ],
-            })
-        );
-    }
-
-    /**
-     * Add S3 policy for Athena query results
-     */
-    private addS3Policy(queryResultsBucket: Bucket): void {
-        this.executionRole.addToPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
-                resources: [queryResultsBucket.bucketArn, `${queryResultsBucket.bucketArn}/*`],
-            })
-        );
-    }
-
-    /**
-     * Add Glue Data Catalog policy for Athena
-     */
-    private addGluePolicy(): void {
-        this.executionRole.addToPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    "glue:GetDatabase",
-                    "glue:GetTable",
-                    "glue:GetPartition",
-                    "glue:GetPartitions",
-                    "glue:BatchCreatePartition",
-                    "glue:BatchDeletePartition",
-                    "glue:BatchUpdatePartition",
-                ],
-                resources: [
-                    `arn:aws:glue:${this.region}:${this.account}:catalog`,
-                    `arn:aws:glue:${this.region}:${this.account}:database/default`,
-                    `arn:aws:glue:${this.region}:${this.account}:table/default/*`,
-                ],
             })
         );
     }
@@ -252,8 +188,6 @@ export class ApiLambdaStack extends BaseStack {
                 // The Lambda code can read these and build its config object
                 COGNITO_USER_POOL_ID: props.userPoolId,
                 COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
-                ATHENA_WORKGROUP: this.configuration.athena.workGroupName,
-                ATHENA_RESULTS_BUCKET: props.queryResultsBucket.bucketName,
                 CONFIGURATION_SECRET_ARN: props.configurationSecret.secretArn,
                 // Feature flags
                 ENABLE_ANALYTICS: String(this.appEnvironment === "production"),
@@ -286,7 +220,7 @@ export class ApiLambdaStack extends BaseStack {
     /**
      * Configure VPC settings if using custom VPC
      */
-    private configureVpc(functionProps: Record<string, any>, props: ApiLambdaStackProps): void {
+    private configureVpc(_functionProps: Record<string, any>, _props: ApiLambdaStackProps): void {
         // Lambda runs OUTSIDE VPC by default for:
         // - Full internet access (ChatGPT API, webhooks, etc.)
         // - Simpler architecture and lower costs (no NAT Gateway needed)

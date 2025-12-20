@@ -134,6 +134,41 @@ export abstract class HalResourceAdapter implements HalObject {
         };
     }
 
+    /**
+     * Create a collection link with title (IANA standard link relation)
+     *
+     * Helper method for creating standard 'collection' link relations as per
+     * IANA registry and HAL best practices. All collection links should include
+     * a human-readable title for better API documentation.
+     *
+     * @param href - URL to the collection resource
+     * @param title - Human-readable collection name (e.g., "API Keys", "Sessions")
+     * @param options - Additional link options (type, templated, etc.)
+     * @returns HAL link object
+     *
+     * @example
+     * ```typescript
+     * // In an adapter
+     * get _links() {
+     *   return {
+     *     self: this.createLink('/users/123/api-keys/abc'),
+     *     collection: this.createCollectionLink('/users/123/api-keys/list', 'API Keys')
+     *   };
+     * }
+     * ```
+     */
+    protected createCollectionLink(
+        href: string,
+        title: string,
+        options?: Omit<HalLink, "href" | "title">
+    ): HalLink {
+        return this.createLink(href, {
+            title,
+            type: options?.type || 'application/hal+json',
+            ...options
+        });
+    }
+
     protected createTemplate(
         title: string,
         method: string,

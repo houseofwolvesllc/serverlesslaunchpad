@@ -27,18 +27,7 @@ vi.mock('@mantine/notifications', () => ({
     },
 }));
 
-vi.mock('../../../../src/features/sitemap/utils/endpoint_route_mapper', () => ({
-    mapEndpointToRoute: vi.fn((href: string) => {
-        if (href.includes('api_keys')) return '/account/api-keys';
-        if (href.includes('sessions')) return '/account/sessions';
-        return href;
-    }),
-    extractResourceName: vi.fn((href: string) => {
-        if (href.includes('api_keys')) return 'API Keys';
-        if (href.includes('sessions')) return 'Sessions';
-        return 'Resource';
-    }),
-}));
+// No longer need to mock endpoint_route_mapper - it has been removed
 
 describe('executePostAction', () => {
     const mockNavigate = vi.fn();
@@ -47,36 +36,24 @@ describe('executePostAction', () => {
         vi.clearAllMocks();
     });
 
-    it('should execute POST request and navigate on success', async () => {
-        const mockResponse = { data: { items: [] } };
+    it('should execute POST request and navigate to self link on success', async () => {
+        const mockResponse = {
+            data: { items: [] },
+            _links: {
+                self: { href: '/users/abc123/api-keys/list' },
+            },
+        };
         vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
 
-        await executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate);
-
-        // Verify loading notification shown
-        expect(notifications.show).toHaveBeenCalledWith(
-            expect.objectContaining({
-                loading: true,
-                message: 'Loading API Keys...',
-            })
-        );
+        await executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate);
 
         // Verify POST request made
-        expect(apiClient.post).toHaveBeenCalledWith('/users/abc123/api_keys/list');
+        expect(apiClient.post).toHaveBeenCalledWith('/users/abc123/api-keys/list');
 
-        // Verify success notification shown
-        expect(notifications.update).toHaveBeenCalledWith(
-            expect.objectContaining({
-                loading: false,
-                color: 'green',
-                message: 'API Keys loaded successfully',
-            })
-        );
-
-        // Verify navigation occurred
-        expect(mockNavigate).toHaveBeenCalledWith('/account/api-keys', expect.objectContaining({
+        // Verify navigation occurred to self link
+        expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
             state: { data: mockResponse },
-        }));
+        });
     });
 
     it('should show error notification on 401 unauthorized', async () => {
@@ -84,14 +61,14 @@ describe('executePostAction', () => {
         vi.mocked(apiClient.post).mockRejectedValue(error);
 
         await expect(
-            executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate)
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
         ).rejects.toThrow();
 
         // Verify error notification shown
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
-                loading: false,
                 color: 'red',
+                title: 'Error',
                 message: expect.stringContaining('Please sign in to continue'),
             })
         );
@@ -108,8 +85,9 @@ describe('executePostAction', () => {
             executePostAction('/users/abc123/sessions/list', 'Sessions', mockNavigate)
         ).rejects.toThrow();
 
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
+                color: 'red',
                 message: expect.stringContaining("You don't have permission"),
             })
         );
@@ -120,11 +98,12 @@ describe('executePostAction', () => {
         vi.mocked(apiClient.post).mockRejectedValue(error);
 
         await expect(
-            executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate)
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
         ).rejects.toThrow();
 
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
+                color: 'red',
                 message: expect.stringContaining('Resource not found'),
             })
         );
@@ -135,11 +114,12 @@ describe('executePostAction', () => {
         vi.mocked(apiClient.post).mockRejectedValue(error);
 
         await expect(
-            executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate)
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
         ).rejects.toThrow();
 
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
+                color: 'red',
                 message: expect.stringContaining('Server error. Please try again later'),
             })
         );
@@ -150,11 +130,12 @@ describe('executePostAction', () => {
         vi.mocked(apiClient.post).mockRejectedValue(error);
 
         await expect(
-            executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate)
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
         ).rejects.toThrow();
 
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
+                color: 'red',
                 message: expect.stringContaining('Network error. Check your connection'),
             })
         );
@@ -166,32 +147,68 @@ describe('executePostAction', () => {
         vi.mocked(apiClient.post).mockRejectedValue(error);
 
         await expect(
-            executePostAction('/users/abc123/api_keys/list', 'API Keys', mockNavigate)
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
         ).rejects.toThrow();
 
-        expect(notifications.update).toHaveBeenCalledWith(
+        expect(notifications.show).toHaveBeenCalledWith(
             expect.objectContaining({
+                color: 'red',
                 message: expect.stringContaining('Request was cancelled'),
             })
         );
     });
 
-    it('should use title parameter for notification messages', async () => {
-        const mockResponse = { data: { items: [] } };
+    it('should force full page reload when response includes federate link', async () => {
+        const mockResponse = {
+            message: 'Session revoked successfully',
+            _links: {
+                federate: { href: '/auth/federate' }
+            },
+        };
         vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
 
-        await executePostAction('/users/abc123/sessions/list', 'My Sessions', mockNavigate);
+        // Mock window.location.href setter
+        const mockLocation = { href: '' };
+        vi.stubGlobal('window', { location: mockLocation });
 
-        expect(notifications.show).toHaveBeenCalledWith(
-            expect.objectContaining({
-                message: 'Loading My Sessions...',
-            })
-        );
+        // This works for any action that returns a federate link (logout, session expiry, etc.)
+        await executePostAction('/auth/revoke', 'Logout', mockNavigate);
 
-        expect(notifications.update).toHaveBeenCalledWith(
-            expect.objectContaining({
-                message: 'My Sessions loaded successfully',
-            })
-        );
+        expect(apiClient.post).toHaveBeenCalledWith('/auth/revoke');
+        expect(mockLocation.href).toBe('/auth/signin');
+        expect(mockNavigate).not.toHaveBeenCalled(); // Should NOT use navigate
+
+        // Cleanup
+        vi.unstubAllGlobals();
+    });
+
+    it('should use collection link when no self link', async () => {
+        const mockResponse = {
+            message: 'Action completed',
+            _links: {
+                collection: { href: '/users/abc123/api-keys/list' }
+            },
+        };
+        vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
+
+        await executePostAction('/users/abc123/api-keys/create', 'Create', mockNavigate);
+
+        expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
+            state: { data: mockResponse }
+        });
+    });
+
+    it('should throw error when response missing self link and no alternatives', async () => {
+        const mockResponse = {
+            data: { items: [] },
+            _links: {},
+        };
+        vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
+
+        await expect(
+            executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate)
+        ).rejects.toThrow('Response missing _links.self.href or alternative navigation link');
+
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 });

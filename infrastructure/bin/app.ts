@@ -5,7 +5,6 @@ import "source-map-support/register";
 import { getConfiguration } from "../config/stack_configuration";
 import { AlbStack } from "../lib/alb/alb_stack";
 import { CognitoStack } from "../lib/auth/cognito_stack";
-import { AthenaStack } from "../lib/data/athena_stack";
 import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
 import { NetworkStack } from "../lib/network/network_stack";
 import { SecretsStack } from "../lib/secrets/secrets_stack";
@@ -66,11 +65,6 @@ const secretsStack = new SecretsStack(app, `slp-secrets-stack-${environment}`, {
     description: `Secrets and configuration for Serverless Launchpad ${environment}`,
 });
 
-const athenaStack = new AthenaStack(app, `slp-data-stack-${environment}`, {
-    ...commonProps,
-    description: `Data infrastructure for Serverless Launchpad ${environment}`,
-});
-
 const cognitoStack = new CognitoStack(app, `slp-cognito-stack-${environment}`, {
     ...commonProps,
     description: `Cognito User Pool for Serverless Launchpad ${environment}`,
@@ -88,7 +82,6 @@ const apiLambdaStack = new ApiLambdaStack(app, `slp-lambda-stack-${environment}`
     ...commonProps,
     description: `API Lambda function for Serverless Launchpad ${environment}`,
     configurationSecret: secretsStack.configurationSecret,
-    queryResultsBucket: athenaStack.queryResultsBucket,
     userPoolId: cognitoStack.userPool.userPoolId,
     userPoolClientId: cognitoStack.userPoolClient.userPoolClientId,
     vpc: networkStack.vpc,
@@ -104,11 +97,9 @@ const albStack = new AlbStack(app, `slp-alb-stack-${environment}`, {
 });
 
 // Define stack dependencies - clean dependency chain
-athenaStack.addDependency(secretsStack);
 cognitoStack.addDependency(secretsStack);
 networkStack.addDependency(secretsStack);
 apiLambdaStack.addDependency(secretsStack);
-apiLambdaStack.addDependency(athenaStack);
 apiLambdaStack.addDependency(cognitoStack);
 apiLambdaStack.addDependency(networkStack);
 albStack.addDependency(networkStack);

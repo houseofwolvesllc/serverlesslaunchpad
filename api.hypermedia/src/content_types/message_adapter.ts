@@ -4,8 +4,8 @@ import { HalResourceAdapter, HalObject } from "./hal_adapter";
  * Configuration for MessageAdapter
  */
 export interface MessageAdapterConfig {
-    /** The self link href */
-    selfHref: string;
+    /** The self link href (optional - only for resource messages, not action responses) */
+    selfHref?: string;
 
     /** The message to display */
     message: string;
@@ -16,7 +16,7 @@ export interface MessageAdapterConfig {
     /** Additional properties to include in the response */
     properties?: Record<string, any>;
 
-    /** Whether to include base links (home, sitemap). Default: true */
+    /** Whether to include base links (home, sitemap). Default: true for resources, false for actions */
     includeBaseLinks?: boolean;
 }
 
@@ -25,23 +25,27 @@ export interface MessageAdapterConfig {
  * Replaces the need for many specialized "weak" adapters that just return
  * a message with some links.
  *
+ * Supports two patterns:
+ * 1. **Resource messages**: Include selfHref (for idempotent GET-able resources)
+ * 2. **Action responses**: No selfHref (for non-idempotent actions like DELETE/CREATE)
+ *
  * @example
- * // Simple message response
+ * // Action response (no self link)
  * new MessageAdapter({
- *   selfHref: '/auth/revoke',
- *   message: 'Session revoked successfully'
+ *   message: 'Deleted 3 API keys',
+ *   links: {
+ *     collection: { href: '/users/123/api-keys/list', title: 'API Keys' }
+ *   },
+ *   properties: { deletedCount: 3 }
  * })
  *
  * @example
- * // With additional properties and links
+ * // Resource message (with self link)
  * new MessageAdapter({
- *   selfHref: '/users/123/sessions/delete',
- *   message: 'Deleted 5 sessions for user 123',
+ *   selfHref: '/users/123/profile/update',
+ *   message: 'Profile updated successfully',
  *   links: {
- *     sessions: { href: '/users/123/sessions/list', title: 'View remaining sessions' }
- *   },
- *   properties: {
- *     deletedCount: 5
+ *     collection: { href: '/users/123', title: 'User' }
  *   }
  * })
  */
@@ -61,9 +65,12 @@ export class MessageAdapter extends HalResourceAdapter {
     }
 
     get _links(): HalObject["_links"] {
-        const links: any = {
-            self: this.createLink(this.config.selfHref),
-        };
+        const links: any = {};
+
+        // Add self link only if provided (for resource messages)
+        if (this.config.selfHref) {
+            links.self = this.createLink(this.config.selfHref);
+        }
 
         // Add custom links
         if (this.config.links) {
@@ -72,8 +79,13 @@ export class MessageAdapter extends HalResourceAdapter {
             }
         }
 
-        // Add base links unless disabled
-        if (this.config.includeBaseLinks !== false) {
+        // Add base links for resources (when selfHref present), unless explicitly disabled
+        // For action responses (no selfHref), don't include base links by default
+        const shouldIncludeBaseLinks = this.config.includeBaseLinks !== undefined
+            ? this.config.includeBaseLinks
+            : !!this.config.selfHref;
+
+        if (shouldIncludeBaseLinks) {
             Object.assign(links, this.getBaseLinks());
         }
 

@@ -46,12 +46,7 @@ describe("WebConfigSchema", () => {
                 ...validConfig.cognito,
                 client_secret: 'should-not-be-included'
             },
-            session_token_salt: 'should-not-be-included',
-            athena: {
-                workgroup: 'should-not-be-included',
-                data_bucket: 'should-not-be-included',
-                results_bucket: 'should-not-be-included'
-            }
+            session_token_salt: 'should-not-be-included'
         };
 
         // The schema should parse successfully but won't include the sensitive fields
@@ -60,7 +55,6 @@ describe("WebConfigSchema", () => {
         if (result.success) {
             expect(result.data).not.toHaveProperty('client_secret');
             expect(result.data).not.toHaveProperty('session_token_salt');
-            expect(result.data).not.toHaveProperty('athena');
         }
     });
 
