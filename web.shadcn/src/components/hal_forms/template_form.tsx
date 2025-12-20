@@ -12,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -90,7 +91,12 @@ export function TemplateForm({
         const initial: Record<string, any> = { ...initialValues };
         template.properties?.forEach((prop) => {
             if (initial[prop.name] === undefined) {
-                initial[prop.name] = prop.value ?? '';
+                // For checkbox (bitfield) type, ensure value is an array
+                if (prop.type === 'checkbox' && prop.value) {
+                    initial[prop.name] = Array.isArray(prop.value) ? prop.value : [];
+                } else {
+                    initial[prop.name] = prop.value ?? '';
+                }
             }
         });
         return initial;
@@ -220,7 +226,52 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
         return <input type="hidden" name={property.name} value={value} />;
     }
 
-    // Select/dropdown for options
+    // Checkbox/Toggle switches for bitfield (multi-select)
+    if (property.type === 'checkbox' && property.options && property.options.length > 0) {
+        const selectedValues = Array.isArray(value) ? value : [];
+
+        const toggleOption = (optionValue: string) => {
+            const newValues = selectedValues.includes(optionValue)
+                ? selectedValues.filter((v) => v !== optionValue)
+                : [...selectedValues, optionValue];
+            onChange(newValues);
+        };
+
+        return (
+            <div className="flex flex-col space-y-3">
+                <Label>
+                    {label}
+                    {required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                <div className="space-y-3 rounded-lg border p-4">
+                    {property.options.map((opt) => {
+                        const optionValue = String(opt.value);
+                        const isChecked = selectedValues.includes(optionValue);
+
+                        return (
+                            <div key={optionValue} className="flex items-center justify-between space-x-2">
+                                <Label
+                                    htmlFor={`${property.name}-${optionValue}`}
+                                    className="text-sm font-normal cursor-pointer flex-1"
+                                >
+                                    {opt.prompt || optionValue}
+                                </Label>
+                                <Switch
+                                    id={`${property.name}-${optionValue}`}
+                                    checked={isChecked}
+                                    onCheckedChange={() => toggleOption(optionValue)}
+                                    disabled={disabled}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+        );
+    }
+
+    // Select/dropdown for single-select options (enums)
     if (property.options && property.options.length > 0) {
         return (
             <div className="flex flex-col space-y-2">
