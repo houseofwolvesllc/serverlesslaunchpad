@@ -1,4 +1,4 @@
-import { Features, Role, User } from "@houseofwolves/serverlesslaunchpad.core";
+import { Features, FEATURES_METADATA, Role, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ZodError, z } from "zod";
 import { ALBResult } from "aws-lambda";
 import {
@@ -118,14 +118,9 @@ export abstract class BaseController {
      * Helper to get list of feature names from bitmask
      */
     protected getFeatureNames(features: Features): string[] {
-        const names: string[] = [];
-        
-        if (features & Features.Contacts) names.push('Contacts');
-        if (features & Features.Campaigns) names.push('Campaigns');
-        if (features & Features.Links) names.push('Links');
-        if (features & Features.Apps) names.push('Apps');
-        
-        return names;
+        return FEATURES_METADATA.options
+            .filter(opt => opt.value !== 0 && (features & Number(opt.value)))
+            .map(opt => opt.label);
     }
 
     /**
