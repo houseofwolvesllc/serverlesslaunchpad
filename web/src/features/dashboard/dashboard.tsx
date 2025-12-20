@@ -1,16 +1,16 @@
 import { ActionIcon, Alert, AppShell, Box, Button, Group, Image, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { IconAlertCircle, IconChevronRight, IconMenu2, IconRefresh, IconApi } from '@tabler/icons-react';
+import { IconAlertCircle, IconApi, IconChevronRight, IconHome, IconMenu2, IconRefresh } from '@tabler/icons-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { useMemo, useEffect, useState } from 'react';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
-import { UserButton } from '../../components/user_button/user_button';
-import { useSitemap } from '../sitemap/hooks/use_sitemap';
-import { generateRoutesFromSitemap } from '../../routing/route_generator';
 import { NoMatch } from '../../components/no_match';
-import { DashboardHome } from './dashboard_home';
+import { UserButton } from '../../components/user_button/user_button';
 import WebConfigurationStore from '../../configuration/web_config_store';
+import { generateRoutesFromSitemap } from '../../routing/route_generator';
+import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import classes from './dashboard.module.css';
+import { DashboardHome } from './dashboard_home';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
@@ -36,7 +36,7 @@ export const Dashboard = () => {
         return generateRoutesFromSitemap(rawItems);
     }, [rawItems]);
 
-    // Split navigation into main nav (home, documentation, admin) and account nav
+    // Split navigation into main nav (root items + groups except "My Account") and account nav
     const accountNav = navigation.find((item) => item.label === 'My Account');
     const mainNav = navigation.filter((item) => item.label !== 'My Account');
 
@@ -78,7 +78,11 @@ export const Dashboard = () => {
 
         return (
             <>
-                {mainNav.map((item) => <LinksGroup {...item} key={item.label} />)}
+                <LinksGroup
+                    icon={IconHome}
+                    label="Home"
+                    link="/"
+                />
                 {apiBaseUrl && (
                     <LinksGroup
                         icon={IconApi}
@@ -87,6 +91,7 @@ export const Dashboard = () => {
                         newTab={true}
                     />
                 )}
+                {mainNav.map((item) => <LinksGroup {...item} key={item.label} />)}
             </>
         );
     };

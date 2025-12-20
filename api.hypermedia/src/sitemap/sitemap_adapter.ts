@@ -26,32 +26,19 @@ export class SitemapAdapter extends HalResourceAdapter {
     /**
      * Navigation structure using _nav pattern
      * References _links and _templates by key for true HATEOAS
+     *
+     * Returns only dynamic, permission-based navigation.
+     * Static items (Home, API Documentation) are managed by the web client.
      */
     get _nav(): Navigation {
         const nav: Navigation = [];
 
         if (!this.user) {
-            // Unauthenticated users see limited navigation
-            nav.push({
-                title: "Public",
-                items: [
-                    { rel: "home", type: "link" }
-                ]
-            });
-            return nav;
+            // Unauthenticated users have no dynamic navigation
+            return [];
         }
 
-        // Main navigation for authenticated users
-        nav.push({
-            title: "Main Navigation",
-            items: [
-                { rel: "home", type: "link" },
-                { rel: "sessions", type: "template" },
-                { rel: "api-keys", type: "template" }
-            ]
-        });
-
-        // Admin section (nested group example)
+        // Admin section (if user has admin role)
         if (this.hasRole(this.user, Role.Admin)) {
             nav.push({
                 title: "Administration",
@@ -62,11 +49,13 @@ export class SitemapAdapter extends HalResourceAdapter {
             });
         }
 
-        // User menu
+        // My Account menu (for user button)
         nav.push({
-            title: "User",
+            title: "My Account",
             items: [
-                { rel: "logout", type: "template" }
+                { rel: "sessions", type: "template", title: "Sessions" },
+                { rel: "api-keys", type: "template", title: "API Keys" },
+                { rel: "logout", type: "template", title: "Logout" }
             ]
         });
 
@@ -81,7 +70,7 @@ export class SitemapAdapter extends HalResourceAdapter {
         const links: HalObject["_links"] = {
             self: this.createLink(this.router.buildHref(SitemapController, 'getSitemap', {})),
             home: this.createLink(this.router.buildHref(RootController, 'getRoot', {}), {
-                title: "Home"
+                title: "API Root"
             })
         };
 

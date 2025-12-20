@@ -4,8 +4,8 @@ import { App } from './app.tsx';
 
 // Import shims FIRST to ensure they're applied before any AWS Amplify code runs
 import './configuration/moto_amplify_shims';
-import { initializeEntryPoint } from './services/entry_point_provider';
 import WebConfigurationStore from './configuration/web_config_store';
+import { initializeEntryPoint } from './services/entry_point_provider';
 
 async function initializeApp() {
     try {

@@ -14,6 +14,8 @@ export interface ApiKey {
     };
 }
 
+import type { PageSize } from '../../constants/pagination';
+
 /**
  * Pagination state for cursor-based pagination
  */
@@ -24,10 +26,10 @@ export interface PaginationState {
 }
 
 /**
- * Page size options
+ * Page size type
+ * Re-export from shared pagination constants
  */
-export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
-export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+export type { PageSize };
 
 /**
  * API response for API keys list (HAL format with cursor pagination)

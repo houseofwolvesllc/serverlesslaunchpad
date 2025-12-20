@@ -38,11 +38,10 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter._nav;
 
-        // Admin sees: Main Navigation + Administration + User
-        expect(nav).toHaveLength(3);
-        expect(nav[0].title).toBe("Main Navigation");
-        expect(nav[1].title).toBe("Administration");
-        expect(nav[2].title).toBe("User");
+        // Admin sees: Administration group + My Account group
+        expect(nav).toHaveLength(2);
+        expect(nav[0]).toMatchObject({ title: "Administration" });
+        expect(nav[1]).toMatchObject({ title: "My Account" });
     });
 
     it("should exclude admin menu for regular users", () => {
@@ -51,10 +50,9 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter._nav;
 
-        // Regular user sees: Main Navigation + User (no Administration)
-        expect(nav).toHaveLength(2);
-        expect(nav[0].title).toBe("Main Navigation");
-        expect(nav[1].title).toBe("User");
+        // Regular user sees: My Account group (no Administration)
+        expect(nav).toHaveLength(1);
+        expect(nav[0]).toMatchObject({ title: "My Account" });
     });
 
     it("should build minimal navigation for unauthenticated users", () => {
@@ -62,23 +60,23 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter._nav;
 
-        // Unauthenticated sees: Public navigation only
-        expect(nav).toHaveLength(1);
-        expect(nav[0].title).toBe("Public");
-        expect(nav[0].items).toHaveLength(1);
-        expect(nav[0].items[0].rel).toBe("home");
+        // Unauthenticated sees: Empty array (web client handles static items)
+        expect(nav).toHaveLength(0);
     });
 
     it("should create structure with sessions and api-keys as templates", () => {
         const user = createMockUser({ role: Role.User });
         const adapter = new SitemapAdapter(user, mockRouter);
 
-        const mainNav = adapter._nav[0];
+        const myAccountGroup = adapter._nav.find(item => 'title' in item && item.title === "My Account");
 
-        expect(mainNav.items).toHaveLength(3); // home, sessions, api-keys
-        expect(mainNav.items[0]).toEqual({ rel: "home", type: "link" });
-        expect(mainNav.items[1]).toEqual({ rel: "sessions", type: "template" });
-        expect(mainNav.items[2]).toEqual({ rel: "api-keys", type: "template" });
+        expect(myAccountGroup).toBeDefined();
+        expect(myAccountGroup).toHaveProperty('items');
+        const items = (myAccountGroup as any).items;
+        expect(items).toHaveLength(3); // sessions, api-keys, logout
+        expect(items[0]).toEqual({ rel: "sessions", type: "template", title: "Sessions" });
+        expect(items[1]).toEqual({ rel: "api-keys", type: "template", title: "API Keys" });
+        expect(items[2]).toEqual({ rel: "logout", type: "template", title: "Logout" });
     });
 
     it("should serialize to valid HAL JSON", () => {
@@ -105,11 +103,12 @@ describe("SitemapAdapter", () => {
         const user = createMockUser({ role: Role.User });
         const adapter = new SitemapAdapter(user, mockRouter);
 
-        const userMenu = adapter._nav.find(group => group.title === "User");
+        const myAccountGroup = adapter._nav.find(item => 'title' in item && item.title === "My Account");
 
-        expect(userMenu).toBeDefined();
-        expect(userMenu?.items).toHaveLength(1);
-        expect(userMenu?.items[0]).toEqual({ rel: "logout", type: "template" });
+        expect(myAccountGroup).toBeDefined();
+        expect(myAccountGroup).toHaveProperty('items');
+        const items = (myAccountGroup as any).items;
+        expect(items[2]).toEqual({ rel: "logout", type: "template", title: "Logout" });
     });
 
     it("should include sessions and api-keys in templates", () => {

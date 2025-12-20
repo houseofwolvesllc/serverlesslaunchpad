@@ -21,26 +21,11 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
     }
 
     get _links() {
-        const selfHref = this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId });
-
-        const links: any = {
-            self: this.createLink(selfHref, { title: "Sessions" }),
-            ...this.getBaseLinks()
+        // POST-only API: only include GET-able navigation links
+        // Operations (self, next, prev) are in _templates only
+        return {
+            ...this.getBaseLinks() // home, sitemap
         };
-
-        if (this.pagingData.next) {
-            links.next = this.createLink(selfHref, {
-                title: "Next page"
-            });
-        }
-
-        if (this.pagingData.previous) {
-            links.previous = this.createLink(selfHref, {
-                title: "Previous page"
-            });
-        }
-
-        return links;
     }
 
     get _embedded() {
@@ -53,18 +38,32 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
                 dateCreated: session.dateCreated.toISOString(),
                 dateExpires: session.dateExpires.toISOString(),
                 dateLastAccessed: session.dateLastAccessed.toISOString(),
-                _links: {
-                    // Note: Individual session resource doesn't have a route yet
-                    // Using path template for now - add route when implementing GET /users/{userId}/sessions/{sessionId}
-                    self: this.createLink(`/users/${this.userId}/sessions/${session.sessionId}`)
-                },
-                // No individual delete template - use bulk delete only
+                // No _links - all session data is visible in collection view
+                // No individual session endpoint needed
             }))
         };
     }
 
     get _templates() {
+        const listEndpoint = this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId });
+
         const templates: any = {
+            // Self template - allows link to reference this POST operation
+            self: this.createTemplate(
+                "Sessions",
+                "POST",
+                listEndpoint,
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("pagingInstruction", {
+                            prompt: "Paging Instruction",
+                            required: false,
+                            type: "hidden"
+                        })
+                    ]
+                }
+            ),
             // Sessions collection has bulk delete but no create operation
             bulkDelete: this.createTemplate(
                 "Delete Selected Sessions",
@@ -85,7 +84,6 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
         };
 
         // Add pagination templates when applicable
-        const listEndpoint = this.router.buildHref(SessionsController, 'getSessions', { userId: this.userId });
 
         if (this.pagingData.next) {
             templates.next = this.createTemplate(

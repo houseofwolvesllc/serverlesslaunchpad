@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
-import { AuthenticationContext } from '../../authentication/context/authentication_context';
 import { HalObject } from '../../../types/hal';
-import { PageSize } from '../types';
+import { AuthenticationContext } from '../../authentication/context/authentication_context';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, PageSize } from '../../../constants/pagination';
 
 const STORAGE_KEY = 'api_keys_page_size';
 
@@ -57,6 +58,7 @@ const STORAGE_KEY = 'api_keys_page_size';
  */
 export function useApiKeys() {
     const { signedInUser } = useContext(AuthenticationContext);
+    const location = useLocation();
 
     // State
     const [data, setData] = useState<HalObject | null>(null);
@@ -65,17 +67,22 @@ export function useApiKeys() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [apiKeysEndpoint, setApiKeysEndpoint] = useState<string | null>(null);
     const [pagingInstructions, setPagingInstructions] = useState<any>(null);
+    const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+
+    // Pagination history for backward navigation
+    const [historyStack, setHistoryStack] = useState<any[]>([]);
+    const [currentInstruction, setCurrentInstruction] = useState<any | null>(null);
 
     // Pagination state with localStorage persistence
     const [pageSize, setPageSize] = useState<PageSize>(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-            const parsed = parseInt(saved, 10);
-            if ([10, 25, 50, 100].includes(parsed)) {
-                return parsed as PageSize;
+            const parsed = parseInt(saved, 10) as PageSize;
+            if (PAGE_SIZE_OPTIONS.includes(parsed)) {
+                return parsed;
             }
         }
-        return 25;
+        return DEFAULT_PAGE_SIZE;
     });
 
     /**
@@ -90,7 +97,7 @@ export function useApiKeys() {
         try {
             const entryPoint = getEntryPoint();
             // Get API keys template target (now in templates for POST operations)
-            const apiKeysHref = await entryPoint.getTemplateTarget('listApiKeys');
+            const apiKeysHref = await entryPoint.getTemplateTarget('api-keys');
 
             if (!apiKeysHref) {
                 throw new Error('API keys endpoint not found');
@@ -106,65 +113,88 @@ export function useApiKeys() {
     /**
      * Fetch API keys HAL resource from API using POST with paging instruction
      */
-    const fetchApiKeys = useCallback(async (pagingInstruction?: any) => {
-        if (!apiKeysEndpoint) return;
+    const fetchApiKeys = useCallback(
+        async (pagingInstruction?: any) => {
+            if (!apiKeysEndpoint) return;
 
-        setLoading(true);
-        setError(null);
+            setLoading(true);
+            setError(null);
 
-        try {
-            // POST request with paging instruction in body
-            const body: any = {};
-            if (pagingInstruction) {
-                body.pagingInstruction = pagingInstruction;
-            } else {
-                // Initial load - set page size
-                body.pagingInstruction = { limit: pageSize };
+            try {
+                // POST request with paging instruction in body
+                const body: any = {};
+                if (pagingInstruction) {
+                    body.pagingInstruction = pagingInstruction;
+                } else {
+                    // Initial load - set page size
+                    body.pagingInstruction = { limit: pageSize };
+                }
+
+                const response = await apiClient.post(apiKeysEndpoint, body);
+
+                // Store full HAL object
+                setData(response as HalObject);
+                setPagingInstructions(response.paging);
+
+                // Clear selection when data changes
+                setSelectedIds(new Set());
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to load API keys');
+                setData(null);
+            } finally {
+                setLoading(false);
             }
-
-            const response = await apiClient.post(apiKeysEndpoint, body);
-
-            // Store full HAL object
-            setData(response as HalObject);
-            setPagingInstructions(response.paging);
-
-            // Clear selection when data changes
-            setSelectedIds(new Set());
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load API keys');
-            setData(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [apiKeysEndpoint, pageSize]);
+        },
+        [apiKeysEndpoint, pageSize]
+    );
 
     /**
      * Handle next page navigation
+     * Pushes current instruction to history before navigating forward
      */
     const handleNextPage = useCallback(() => {
         if (pagingInstructions?.next) {
+            // Push current instruction to history stack
+            if (currentInstruction) {
+                setHistoryStack((prev) => [...prev, currentInstruction]);
+            }
+            // Set next as current
+            setCurrentInstruction(pagingInstructions.next);
             fetchApiKeys(pagingInstructions.next);
         }
-    }, [pagingInstructions, fetchApiKeys]);
+    }, [pagingInstructions, currentInstruction, fetchApiKeys]);
 
     /**
      * Handle previous page navigation
+     * Pops instruction from history stack to navigate backward
      */
     const handlePreviousPage = useCallback(() => {
-        if (pagingInstructions?.previous) {
-            fetchApiKeys(pagingInstructions.previous);
+        if (historyStack.length > 0) {
+            // Pop from history stack
+            const previousInstruction = historyStack[historyStack.length - 1];
+            setHistoryStack((prev) => prev.slice(0, -1));
+            setCurrentInstruction(previousInstruction);
+            fetchApiKeys(previousInstruction);
+        } else if (currentInstruction) {
+            // Go back to page 1 (no instruction)
+            setCurrentInstruction(null);
+            fetchApiKeys({ limit: pageSize });
         }
-    }, [pagingInstructions, fetchApiKeys]);
+    }, [historyStack, currentInstruction, pageSize, fetchApiKeys]);
 
     /**
      * Handle page size change
-     * Resets pagination and persists preference to localStorage
+     * Resets pagination, clears history, and persists preference to localStorage
      */
     const handlePageSizeChange = useCallback((newSize: PageSize) => {
         setPageSize(newSize);
         setSelectedIds(new Set());
+        setHistoryStack([]);  // Clear history
+        setCurrentInstruction(null);  // Reset to page 1
         localStorage.setItem(STORAGE_KEY, newSize.toString());
-    }, []);
+        // Refetch with new page size from page 1
+        fetchApiKeys({ limit: newSize });
+    }, [fetchApiKeys]);
 
     /**
      * Handle individual API key selection
@@ -218,16 +248,24 @@ export function useApiKeys() {
         discoverEndpoint();
     }, [discoverEndpoint]);
 
-    // Fetch API keys when endpoint or page size changes
+    // Fetch initial data when endpoint is discovered
     useEffect(() => {
-        if (apiKeysEndpoint) {
+        if (apiKeysEndpoint && !hasInitiallyLoaded) {
+            setHasInitiallyLoaded(true);
+
+            // Clear any navigation state to prevent using stale pagination data
+            if (location.state?.data) {
+                window.history.replaceState({}, document.title);
+            }
+
+            // Always fetch with our pageSize state, ignore navigation data
             fetchApiKeys();
         }
-    }, [apiKeysEndpoint, pageSize]);
+    }, [apiKeysEndpoint, hasInitiallyLoaded, location.state, fetchApiKeys]);
 
     const pagination = {
         hasNext: !!pagingInstructions?.next,
-        hasPrevious: !!pagingInstructions?.previous,
+        hasPrevious: historyStack.length > 0 || !!currentInstruction,  // Can go back if history exists or on page 2+
         pageSize,
     };
 

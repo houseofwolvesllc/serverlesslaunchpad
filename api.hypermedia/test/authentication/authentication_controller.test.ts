@@ -84,8 +84,8 @@ describe("AuthenticationController", () => {
                 if (method === 'federate') return '/auth/federate';
                 if (method === 'verify') return '/auth/verify';
                 if (method === 'revoke') return '/auth/revoke';
-                if (method === 'getSessions') return `/users/${params.userId}/sessions/`;
-                if (method === 'getApiKeys') return `/users/${params.userId}/api-keys/`;
+                if (method === 'getSessions') return `/users/${params.userId}/sessions/list`;
+                if (method === 'getApiKeys') return `/users/${params.userId}/api-keys/list`;
                 return '/';
             }),
         } as any;
@@ -143,9 +143,10 @@ describe("AuthenticationController", () => {
             // HAL uses _links object, not links array
             expect(responseBody._links).toHaveProperty("self");
             expect(responseBody._links.self.href).toBe("/users/user-123");
-            expect(responseBody._links).toHaveProperty("sessions");
-            expect(responseBody._links.sessions.href).toBe("/users/user-123/sessions/");
-            expect(responseBody._links).toHaveProperty("api-keys");
+
+            // Sessions and API Keys are templates (POST operations)
+            expect(responseBody._templates).toHaveProperty("sessions");
+            expect(responseBody._templates).toHaveProperty("api-keys");
 
             // Base navigation links automatically injected
             expect(responseBody._links).toHaveProperty("home");
@@ -258,7 +259,7 @@ describe("AuthenticationController", () => {
             );
         });
 
-        it("should build user links with sessions and api-keys", async () => {
+        it("should build user links with sessions and api-keys templates", async () => {
             // Arrange
             const user = createMockUser();
             const event = createSigninEvent();
@@ -281,15 +282,18 @@ describe("AuthenticationController", () => {
 
             // Assert
             const responseBody = JSON.parse(result.body || "{}");
-            // HAL uses _links object instead of links array
-            const links = responseBody._links;
 
-            expect(links).toHaveProperty("self");
-            expect(links.self.href).toBe("/users/user-123");
-            expect(links).toHaveProperty("sessions");
-            expect(links.sessions.href).toBe("/users/user-123/sessions/");
-            expect(links).toHaveProperty("api-keys");
-            expect(links["api-keys"].href).toBe("/users/user-123/api_keys/");
+            // User self link
+            expect(responseBody._links.self.href).toBe("/users/user-123");
+
+            // Sessions and API Keys are templates (POST operations)
+            expect(responseBody._templates).toHaveProperty("sessions");
+            expect(responseBody._templates.sessions.method).toBe("POST");
+            expect(responseBody._templates.sessions.target).toBe("/users/user-123/sessions/list");
+
+            expect(responseBody._templates).toHaveProperty("api-keys");
+            expect(responseBody._templates["api-keys"].method).toBe("POST");
+            expect(responseBody._templates["api-keys"].target).toBe("/users/user-123/api-keys/list");
         });
     });
 

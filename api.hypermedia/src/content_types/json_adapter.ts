@@ -59,8 +59,8 @@ export class JsonAdapter {
             timestamp: error.timestamp || new Date().toISOString(),
             traceId: error.traceId || this.generateTraceId(),
             _links: {
-                home: { href: "/" },
-                sitemap: { href: "/sitemap", title: "Navigation" }
+                home: { href: "/", title: "API Root" },
+                sitemap: { href: "/sitemap", title: "API Navigation" }
             }
         };
 

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../../../constants/pagination';
 import { PageSize, PaginationState, PagingInstructions, SessionsResponse, UseSessionsResult } from '../types';
 
 /**
@@ -89,8 +90,18 @@ export function useSessions(): UseSessionsResult {
     const [pagingInstructions, setPagingInstructions] = useState<PagingInstructions | null>(null);
     const [pageSize, setPageSize] = useState<PageSize>(() => {
         const saved = localStorage.getItem('sessions_page_size');
-        return saved ? (parseInt(saved, 10) as PageSize) : 25;
+        if (saved) {
+            const parsed = parseInt(saved, 10) as PageSize;
+            if (PAGE_SIZE_OPTIONS.includes(parsed)) {
+                return parsed;
+            }
+        }
+        return DEFAULT_PAGE_SIZE;
     });
+
+    // Pagination history for backward navigation
+    const [historyStack, setHistoryStack] = useState<any[]>([]);
+    const [currentInstruction, setCurrentInstruction] = useState<any | null>(null);
 
     /**
      * Extract sessions array from HAL response and mark current session
@@ -106,7 +117,7 @@ export function useSessions(): UseSessionsResult {
 
     const pagination: PaginationState = {
         hasNext: !!pagingInstructions?.next,
-        hasPrevious: !!pagingInstructions?.previous,
+        hasPrevious: historyStack.length > 0 || !!currentInstruction,  // Can go back if history exists or on page 2+
         pageSize,
     };
 
@@ -122,7 +133,7 @@ export function useSessions(): UseSessionsResult {
         try {
             const entryPoint = getEntryPoint();
             // Get sessions template target (now in templates for POST operations)
-            const sessionsHref = await entryPoint.getTemplateTarget('listSessions');
+            const sessionsHref = await entryPoint.getTemplateTarget('sessions');
 
             if (!sessionsHref) {
                 throw new Error('Sessions endpoint not found');
@@ -172,30 +183,49 @@ export function useSessions(): UseSessionsResult {
 
     /**
      * Handle next page navigation
+     * Pushes current instruction to history before navigating forward
      */
     const handleNextPage = useCallback(() => {
         if (pagingInstructions?.next) {
+            // Push current instruction to history stack
+            if (currentInstruction) {
+                setHistoryStack((prev) => [...prev, currentInstruction]);
+            }
+            // Set next as current
+            setCurrentInstruction(pagingInstructions.next);
             fetchSessions(pagingInstructions.next);
         }
-    }, [pagingInstructions, fetchSessions]);
+    }, [pagingInstructions, currentInstruction, fetchSessions]);
 
     /**
      * Handle previous page navigation
+     * Pops instruction from history stack to navigate backward
      */
     const handlePreviousPage = useCallback(() => {
-        if (pagingInstructions?.previous) {
-            fetchSessions(pagingInstructions.previous);
+        if (historyStack.length > 0) {
+            // Pop from history stack
+            const previousInstruction = historyStack[historyStack.length - 1];
+            setHistoryStack((prev) => prev.slice(0, -1));
+            setCurrentInstruction(previousInstruction);
+            fetchSessions(previousInstruction);
+        } else if (currentInstruction) {
+            // Go back to page 1 (no instruction)
+            setCurrentInstruction(null);
+            fetchSessions({ limit: pageSize });
         }
-    }, [pagingInstructions, fetchSessions]);
+    }, [historyStack, currentInstruction, pageSize, fetchSessions]);
 
     /**
      * Handle page size change
+     * Resets pagination, clears history, and persists preference to localStorage
      */
     const handlePageSizeChange = useCallback((newSize: PageSize) => {
         setPageSize(newSize);
         setSelectedIds(new Set()); // Clear selection
+        setHistoryStack([]);  // Clear history
+        setCurrentInstruction(null);  // Reset to page 1
         localStorage.setItem('sessions_page_size', newSize.toString());
-        // Refetch with new page size
+        // Refetch with new page size from page 1
         fetchSessions({ limit: newSize });
     }, [fetchSessions]);
 
@@ -248,26 +278,20 @@ export function useSessions(): UseSessionsResult {
         discoverEndpoint();
     }, [discoverEndpoint]);
 
-    // Check if we received data from navigation state (from POST action)
+    // Fetch initial data when endpoint is discovered
     useEffect(() => {
-        const navigationData = location.state?.data as SessionsResponse | undefined;
-
-        if (navigationData && sessionsEndpoint) {
-            // Use the data from navigation instead of fetching
-            setData(navigationData);
-            setPagingInstructions(navigationData.paging);
-            setError(null); // Clear any previous errors
-            setLoading(false); // Ensure loading is false
+        if (sessionsEndpoint && !hasInitiallyLoaded) {
             setHasInitiallyLoaded(true);
 
-            // Clear the navigation state to prevent reuse on subsequent renders
-            window.history.replaceState({}, document.title);
-        } else if (sessionsEndpoint && !hasInitiallyLoaded) {
-            // No navigation data, fetch initial page
-            setHasInitiallyLoaded(true);
+            // Clear any navigation state to prevent using stale pagination data
+            if (location.state?.data) {
+                window.history.replaceState({}, document.title);
+            }
+
+            // Always fetch with our pageSize state, ignore navigation data
             fetchSessions();
         }
-    }, [sessionsEndpoint, location.state, hasInitiallyLoaded, fetchSessions]);
+    }, [sessionsEndpoint, hasInitiallyLoaded, location.state, fetchSessions]);
 
     return {
         data,

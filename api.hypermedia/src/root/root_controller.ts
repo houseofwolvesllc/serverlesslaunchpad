@@ -101,8 +101,8 @@ export class RootController extends BaseController {
                 contentType: "application/json",
                 properties: []
             };
-            response._templates["listSessions"] = {
-                title: "View Sessions",
+            response._templates["sessions"] = {
+                title: "Sessions",
                 method: "POST",
                 target: this.router.buildHref(SessionsController, 'getSessions', { userId }),
                 contentType: "application/json",
@@ -115,8 +115,8 @@ export class RootController extends BaseController {
                     }
                 ]
             };
-            response._templates["listApiKeys"] = {
-                title: "View API Keys",
+            response._templates["api-keys"] = {
+                title: "API Keys",
                 method: "POST",
                 target: this.router.buildHref(ApiKeysController, 'getApiKeys', { userId }),
                 contentType: "application/json",
