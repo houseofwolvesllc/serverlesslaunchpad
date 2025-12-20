@@ -15,6 +15,7 @@ import { getIcon } from './icon_mapper';
 import type { Icon } from '@tabler/icons-react';
 import { createPostActionHandler } from './navigation_actions';
 import type { NavigateFunction } from 'react-router-dom';
+import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
 
 /**
  * Navigation item structure from the API
@@ -244,4 +245,109 @@ export function createFallbackNavigation(userContext?: UserContext): LinksGroupP
     }
 
     return navigation;
+}
+
+/**
+ * Transform HAL _nav structure to LinksGroupProps array
+ *
+ * Converts the new hierarchical NavGroup[] structure from the API into
+ * the LinksGroupProps[] format expected by the LinksGroup component.
+ *
+ * @param navGroups - NavGroup array from API's _nav property
+ * @param resolveItem - Function to resolve NavItem refs to actual links/templates
+ * @returns Array of LinksGroupProps ready for rendering
+ */
+export function transformNavStructure(
+    navGroups: NavGroup[],
+    resolveItem: (item: NavItem) => ResolvedNavItem | null
+): LinksGroupProps[] {
+    const result: LinksGroupProps[] = [];
+
+    for (const group of navGroups) {
+        // Handle single-item groups (flatten to single LinksGroupProps)
+        if (group.items.length === 1 && 'rel' in group.items[0]) {
+            const navItem = group.items[0] as NavItem;
+            const resolved = resolveItem(navItem);
+
+            if (!resolved) continue;
+
+            // Map icon based on rel key
+            const icon = getIcon(navItem.rel);
+
+            result.push({
+                icon,
+                label: resolved.title,
+                link: resolved.type === 'link' ? resolved.href : undefined,
+                newTab: false,
+                // Template items get onClick handler
+                links: resolved.type === 'template' && resolved.method === 'POST'
+                    ? [{
+                        label: resolved.title,
+                        link: resolved.href,
+                        onClick: createPostActionHandler(resolved.href, resolved.title)
+                    }]
+                    : undefined
+            });
+        }
+        // Handle multi-item groups
+        else {
+            // For groups with multiple items, we need a parent icon
+            // Use the first item's rel for icon, or default to the group title
+            const firstNavItem = group.items.find(item => 'rel' in item) as NavItem | undefined;
+            const icon = firstNavItem ? getIcon(firstNavItem.rel) : getIcon(group.title.toLowerCase());
+
+            // Transform child items
+            const childLinks: Array<{ label: string; link?: string; onClick?: (navigate: NavigateFunction) => Promise<void> }> = [];
+
+            for (const item of group.items) {
+                if ('rel' in item) {
+                    // NavItem - resolve to link/template
+                    const navItem = item as NavItem;
+                    const resolved = resolveItem(navItem);
+
+                    if (!resolved) continue;
+
+                    if (resolved.type === 'template' && resolved.method === 'POST') {
+                        childLinks.push({
+                            label: resolved.title,
+                            link: resolved.href,
+                            onClick: createPostActionHandler(resolved.href, resolved.title)
+                        });
+                    } else {
+                        childLinks.push({
+                            label: resolved.title,
+                            link: resolved.href
+                        });
+                    }
+                } else {
+                    // Nested NavGroup - recursively transform
+                    const nestedGroup = item as NavGroup;
+                    const nestedTransformed = transformNavStructure([nestedGroup], resolveItem);
+
+                    // Flatten nested group items into child links
+                    for (const nested of nestedTransformed) {
+                        if (nested.link) {
+                            childLinks.push({
+                                label: nested.label,
+                                link: nested.link
+                            });
+                        } else if (nested.links) {
+                            childLinks.push(...nested.links);
+                        }
+                    }
+                }
+            }
+
+            if (childLinks.length > 0) {
+                result.push({
+                    icon,
+                    label: group.title,
+                    newTab: false,
+                    links: childLinks
+                });
+            }
+        }
+    }
+
+    return result;
 }

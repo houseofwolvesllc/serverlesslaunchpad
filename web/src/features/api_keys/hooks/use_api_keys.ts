@@ -1,33 +1,28 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
-import { ApiKey, ApiKeysResponse, PageSize, UseApiKeysResult } from '../types';
+import { HalObject } from '../../../types/hal';
+import { PageSize } from '../types';
 
 const STORAGE_KEY = 'api_keys_page_size';
 
 /**
- * Custom hook for managing API keys with cursor-based pagination
+ * Custom hook for managing API keys with HAL-FORMS templates
  *
- * Provides functionality to:
- * - Fetch API keys from the hypermedia API with server-side pagination
- * - Select and bulk delete API keys
- * - Persist pagination preferences to localStorage
- * - Handle loading and error states
- * - Track expiration status
+ * Returns the full HAL object containing:
+ * - _embedded.apiKeys: Array of API key resources
+ * - _templates: Available operations (create, delete)
+ * - _links: Navigation links
+ * - paging: Pagination metadata
  *
- * The hook discovers the API keys endpoint via hypermedia navigation:
- * Entry Point → API Keys Link
- *
- * Uses POST-based cursor pagination matching the Sessions pattern.
- *
- * @returns {UseApiKeysResult} API keys data and operation functions
+ * @returns {object} HAL resource with API keys data and metadata
  *
  * @example
  * ```tsx
  * function ApiKeysPage() {
  *   const {
- *     apiKeys,
+ *     data,
  *     loading,
  *     error,
  *     selectedIds,
@@ -37,33 +32,34 @@ const STORAGE_KEY = 'api_keys_page_size';
  *     handleNextPage,
  *     handlePreviousPage,
  *     handlePageSizeChange,
- *     deleteApiKeys,
  *     refresh,
  *   } = useApiKeys();
  *
- *   if (loading) return <ApiKeysTableSkeleton />;
- *   if (error) return <Alert color="red">{error}</Alert>;
+ *   const apiKeys = data?._embedded?.apiKeys || [];
+ *   const createTemplate = data?._templates?.create;
  *
  *   return (
- *     <Table>
- *       {apiKeys.map(apiKey => (
- *         <ApiKeyRow
- *           key={apiKey.apiKeyId}
- *           apiKey={apiKey}
- *           selected={selectedIds.has(apiKey.apiKeyId)}
- *           onSelectionChange={handleSelectionChange}
- *         />
- *       ))}
- *     </Table>
+ *     <>
+ *       {createTemplate && (
+ *         <Button onClick={() => openCreateModal()}>
+ *           {createTemplate.title}
+ *         </Button>
+ *       )}
+ *       <Table>
+ *         {apiKeys.map(apiKey => (
+ *           <ApiKeyRow key={apiKey.apiKeyId} apiKey={apiKey} />
+ *         ))}
+ *       </Table>
+ *     </>
  *   );
  * }
  * ```
  */
-export function useApiKeys(): UseApiKeysResult {
+export function useApiKeys() {
     const { signedInUser } = useContext(AuthenticationContext);
 
     // State
-    const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -93,7 +89,6 @@ export function useApiKeys(): UseApiKeysResult {
 
         try {
             const entryPoint = getEntryPoint();
-            // Get api-keys link directly from root
             const apiKeysHref = await entryPoint.getLinkHref('api-keys');
 
             if (!apiKeysHref) {
@@ -108,7 +103,7 @@ export function useApiKeys(): UseApiKeysResult {
     }, [signedInUser]);
 
     /**
-     * Fetch API keys from API using POST with paging instruction
+     * Fetch API keys HAL resource from API using POST with paging instruction
      */
     const fetchApiKeys = useCallback(async (pagingInstruction?: any) => {
         if (!apiKeysEndpoint) return;
@@ -126,16 +121,17 @@ export function useApiKeys(): UseApiKeysResult {
                 body.pagingInstruction = { limit: pageSize };
             }
 
-            const response = (await apiClient.post(apiKeysEndpoint, body)) as ApiKeysResponse;
+            const response = await apiClient.post(apiKeysEndpoint, body);
 
-            setApiKeys(response._embedded.apiKeys);
+            // Store full HAL object
+            setData(response as HalObject);
             setPagingInstructions(response.paging);
 
             // Clear selection when data changes
             setSelectedIds(new Set());
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load API keys');
-            setApiKeys([]);
+            setData(null);
         } finally {
             setLoading(false);
         }
@@ -167,7 +163,6 @@ export function useApiKeys(): UseApiKeysResult {
         setPageSize(newSize);
         setSelectedIds(new Set());
         localStorage.setItem(STORAGE_KEY, newSize.toString());
-        // Will trigger re-fetch via useEffect
     }, []);
 
     /**
@@ -186,110 +181,24 @@ export function useApiKeys(): UseApiKeysResult {
     }, []);
 
     /**
+     * Get API keys array from HAL response
+     */
+    const apiKeys = useMemo(() => {
+        return data?._embedded?.apiKeys || [];
+    }, [data]);
+
+    /**
      * Handle select all checkbox
      */
     const handleSelectAll = useCallback(
         (checked: boolean) => {
             if (checked) {
-                setSelectedIds(new Set(apiKeys.map((key) => key.apiKeyId)));
+                setSelectedIds(new Set(apiKeys.map((key: any) => key.apiKeyId)));
             } else {
                 setSelectedIds(new Set());
             }
         },
         [apiKeys]
-    );
-
-    /**
-     * Delete selected API keys
-     * Refreshes the current page after deletion
-     */
-    const deleteApiKeys = useCallback(
-        async (apiKeyIds: string[]): Promise<{ success: boolean; error?: string }> => {
-            if (!apiKeysEndpoint) {
-                return { success: false, error: 'API keys endpoint not available' };
-            }
-
-            try {
-                // Construct delete endpoint (replace /list with /delete)
-                // Note: Ideally this should be discovered from HAL links
-                const deleteEndpoint = apiKeysEndpoint.replace('/list', '/delete');
-
-                await apiClient.post(deleteEndpoint, { apiKeyIds });
-
-                // Clear selection
-                setSelectedIds(new Set());
-
-                // Refresh current page using current paging instruction
-                if (pagingInstructions?.current) {
-                    await fetchApiKeys(pagingInstructions.current);
-                } else {
-                    // If no current instruction, do initial load
-                    await fetchApiKeys();
-                }
-
-                return { success: true };
-            } catch (err) {
-                return {
-                    success: false,
-                    error: err instanceof Error ? err.message : 'Failed to delete API keys',
-                };
-            }
-        },
-        [apiKeysEndpoint, pagingInstructions, fetchApiKeys]
-    );
-
-    /**
-     * Create a new API key
-     * Returns the full API key data including the secret (shown only once)
-     */
-    const createApiKey = useCallback(
-        async (
-            label: string
-        ): Promise<{
-            success: boolean;
-            data?: {
-                apiKeyId: string;
-                apiKey: string;
-                label: string;
-                dateCreated: string;
-            };
-            error?: string;
-        }> => {
-            if (!apiKeysEndpoint) {
-                return { success: false, error: 'API keys endpoint not available' };
-            }
-
-            try {
-                // Construct create endpoint (replace /list with /create)
-                // Note: Ideally this should be discovered from HAL links
-                const createEndpoint = apiKeysEndpoint.replace('/list', '/create');
-
-                const body = { label };
-
-                // Make request - response includes full API key
-                const response = await apiClient.post(createEndpoint, body);
-
-                // Refresh list to show new key (with prefix only)
-                await fetchApiKeys();
-
-                // Return full API key from response (one-time display)
-                return {
-                    success: true,
-                    data: {
-                        apiKeyId: response.apiKeyId,
-                        apiKey: response.apiKey, // Full key from server
-                        label: response.label,
-                        dateCreated: response.dateCreated,
-                    },
-                };
-            } catch (err) {
-                return {
-                    success: false,
-                    error: err instanceof Error ? err.message : 'Failed to create API key',
-                };
-            }
-        },
-        [apiKeysEndpoint, fetchApiKeys]
     );
 
     /**
@@ -322,6 +231,7 @@ export function useApiKeys(): UseApiKeysResult {
     };
 
     return {
+        data,
         apiKeys,
         loading,
         error,
@@ -332,8 +242,6 @@ export function useApiKeys(): UseApiKeysResult {
         handleNextPage,
         handlePreviousPage,
         handlePageSizeChange,
-        createApiKey,
-        deleteApiKeys,
         refresh,
     };
 }

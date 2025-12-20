@@ -58,7 +58,61 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
                     // Using path template for now - add route when implementing GET /users/{userId}/api-keys/{apiKeyId}
                     self: this.createLink(`/users/${this.userId}/api-keys/${apiKey.apiKeyId}`),
                 },
+                _templates: {
+                    delete: this.createTemplate(
+                        "Delete API Key",
+                        "DELETE",
+                        this.router.buildHref(ApiKeysController, 'deleteApiKeys', { userId: this.userId }),
+                        {
+                            contentType: "application/json",
+                            properties: [
+                                this.createProperty("apiKeyIds", {
+                                    prompt: "API Key ID",
+                                    required: true,
+                                    type: "text",
+                                    value: apiKey.apiKeyId
+                                })
+                            ]
+                        }
+                    )
+                }
             })),
+        };
+    }
+
+    get _templates() {
+        return {
+            create: this.createTemplate(
+                "Create API Key",
+                "POST",
+                this.router.buildHref(ApiKeysController, 'createApiKey', { userId: this.userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("label", {
+                            prompt: "API Key Label",
+                            required: true,
+                            type: "text"
+                        })
+                    ]
+                }
+            ),
+            bulkDelete: this.createTemplate(
+                "Delete Selected API Keys",
+                "DELETE",
+                this.router.buildHref(ApiKeysController, 'deleteApiKeys', { userId: this.userId }),
+                {
+                    contentType: "application/json",
+                    properties: [
+                        this.createProperty("apiKeyIds", {
+                            prompt: "API Key IDs",
+                            required: true,
+                            type: "array",
+                            value: []
+                        })
+                    ]
+                }
+            )
         };
     }
 
@@ -77,6 +131,7 @@ export class ApiKeyCollectionAdapter extends HalResourceAdapter {
             paging: this.paging,
             _links: this._links,
             _embedded: this._embedded,
+            _templates: this._templates,
         };
     }
 }

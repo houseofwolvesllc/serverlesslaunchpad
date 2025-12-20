@@ -22,6 +22,7 @@
         "@mantine/core": "^7.13.4",
         "@mantine/form": "^7.13.4",
         "@mantine/hooks": "^7.13.4",
+        "@mantine/modals": "^7.17.8",
         "@mantine/notifications": "^7.13.4",
         "@tabler/icons-react": "^2.47.0",
         "aws-amplify": "^6.14.4",

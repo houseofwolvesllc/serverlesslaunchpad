@@ -1,25 +1,21 @@
 import { useState } from 'react';
-import { Button, Group, Modal, Stack, TextInput } from '@mantine/core';
-import { useForm } from '@mantine/form';
+import { Modal, Stack } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useApiKeys } from '../hooks/use_api_keys';
+import { TemplateForm } from '../../../components/hal_forms/template_form';
+import { useExecuteTemplate } from '../../../hooks/use_hal_resource';
+import { HalTemplate } from '../../../types/hal';
 import { ApiKeyDisplay } from './api_key_display';
 
 /**
  * Props for CreateApiKeyModal component
  */
 interface CreateApiKeyModalProps {
+    /** HAL-FORMS template for creating API keys */
+    template?: HalTemplate;
     /** Whether the modal is open */
     opened: boolean;
     /** Callback when modal should close */
     onClose: () => void;
-}
-
-/**
- * Form values for API key creation
- */
-interface CreateApiKeyForm {
-    label: string;
 }
 
 /**
@@ -33,62 +29,63 @@ interface CreatedApiKey {
 }
 
 /**
- * Create API Key Modal Component
+ * Create API Key Modal Component using HAL-FORMS templates
  *
  * Two-state modal that allows users to create new API keys:
- * 1. Form View: Input label
+ * 1. Form View: Template-driven form
  * 2. Success View: Display the newly created API key (one-time only)
  *
- * Features:
- * - Form validation (label required, 1-255 chars)
- * - Loading states during creation
- * - Error handling with user-friendly messages
- * - One-time display of full API key with copy functionality
+ * The form is dynamically generated from the HAL-FORMS template provided
+ * by the API, ensuring the form always matches the server's requirements.
  *
  * @example
  * ```tsx
- * const [opened, { open, close }] = useDisclosure(false);
+ * const { data } = useApiKeys();
+ * const createTemplate = data?._templates?.create;
  *
- * <CreateApiKeyModal opened={opened} onClose={close} />
+ * <CreateApiKeyModal
+ *   template={createTemplate}
+ *   opened={opened}
+ *   onClose={close}
+ * />
  * ```
  */
-export function CreateApiKeyModal({ opened, onClose }: CreateApiKeyModalProps) {
+export function CreateApiKeyModal({ template, opened, onClose }: CreateApiKeyModalProps) {
     const [step, setStep] = useState<'form' | 'success'>('form');
     const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null);
-    const [loading, setLoading] = useState(false);
-    const { createApiKey } = useApiKeys();
 
-    const form = useForm<CreateApiKeyForm>({
-        initialValues: {
-            label: '',
-        },
-        validate: {
-            label: (value) => {
-                if (!value || value.length < 1) {
-                    return 'Label is required';
-                }
-                if (value.length > 255) {
-                    return 'Label too long (max 255 characters)';
-                }
-                return null;
-            },
-        },
-    });
+    const { execute, loading, error, validationErrors, reset } = useExecuteTemplate(
+        (result: any) => {
+            // Success callback - API returns the full key (one-time)
+            if (result.apiKeyId && result.apiKey) {
+                setCreatedKey({
+                    apiKeyId: result.apiKeyId,
+                    apiKey: result.apiKey,
+                    label: result.label,
+                    dateCreated: result.dateCreated,
+                });
+                setStep('success');
+            } else {
+                notifications.show({
+                    title: 'Success',
+                    message: 'API key created successfully',
+                    color: 'green',
+                });
+                handleClose();
+            }
+        }
+    );
 
-    const handleSubmit = async (values: CreateApiKeyForm) => {
-        setLoading(true);
+    const handleSubmit = async (formData: Record<string, any>) => {
+        if (!template) return;
 
-        const result = await createApiKey(values.label);
-
-        setLoading(false);
-
-        if (result.success && result.data) {
-            setCreatedKey(result.data);
-            setStep('success');
-        } else {
+        try {
+            await execute(template, formData);
+        } catch (err) {
+            // Error is handled by useExecuteTemplate hook
             notifications.show({
                 title: 'Error',
-                message: result.error || 'Failed to create API key',
+                message: error || 'Failed to create API key',
                 color: 'red',
             });
         }
@@ -98,48 +95,40 @@ export function CreateApiKeyModal({ opened, onClose }: CreateApiKeyModalProps) {
         // Reset form and state
         setStep('form');
         setCreatedKey(null);
-        form.reset();
+        reset();
         onClose();
     };
+
+    // Don't render if no template provided
+    if (!template) return null;
 
     return (
         <Modal
             opened={opened}
             onClose={handleClose}
-            title={step === 'form' ? 'Create API Key' : 'API Key Created'}
+            title={step === 'form' ? template.title : 'API Key Created'}
             size="md"
-            closeOnClickOutside={step === 'form'} // Prevent accidental close in success view
         >
             {step === 'form' ? (
-                <form onSubmit={form.onSubmit(handleSubmit)}>
-                    <Stack gap="md">
-                        <TextInput
-                            label="Label"
-                            placeholder="Production API Key"
-                            required
-                            disabled={loading}
-                            {...form.getInputProps('label')}
-                        />
-
-                        <Group justify="flex-end" mt="md">
-                            <Button variant="subtle" onClick={handleClose} disabled={loading}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" loading={loading}>
-                                Create
-                            </Button>
-                        </Group>
-                    </Stack>
-                </form>
+                <TemplateForm
+                    template={template}
+                    onSubmit={handleSubmit}
+                    loading={loading}
+                    error={error}
+                    validationErrors={validationErrors}
+                    onCancel={handleClose}
+                />
             ) : (
-                createdKey && (
-                    <ApiKeyDisplay
-                        apiKey={createdKey.apiKey}
-                        label={createdKey.label}
-                        dateCreated={createdKey.dateCreated}
-                        onClose={handleClose}
-                    />
-                )
+                <Stack gap="md">
+                    {createdKey && (
+                        <ApiKeyDisplay
+                            apiKey={createdKey.apiKey}
+                            label={createdKey.label}
+                            dateCreated={createdKey.dateCreated}
+                            onClose={handleClose}
+                        />
+                    )}
+                </Stack>
             )}
         </Modal>
     );
