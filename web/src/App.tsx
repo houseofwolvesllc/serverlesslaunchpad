@@ -1,6 +1,6 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
-import { AuthenticationProvider } from './feature/Authentication/';
+import { AuthenticationProvider } from './features/Authentication/';
 import { Router } from './components/Router';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';

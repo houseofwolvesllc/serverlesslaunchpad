@@ -1,6 +1,6 @@
 import { AppShell, Burger, Text } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { useAuth } from '../../feature/Authentication';
+import { useAuth } from '../Authentication';
 import { Logo } from './Logo';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
 import {
