@@ -19,6 +19,17 @@ export interface ValidationError {
 }
 
 /**
+ * Configuration options for HalFormsClient
+ */
+export interface HalFormsClientOptions {
+    /**
+     * Callback invoked when a 401 Unauthorized error occurs.
+     * Use this to handle session expiration (e.g., redirect to login).
+     */
+    onAuthError?: () => void;
+}
+
+/**
  * HAL-FORMS client for interacting with hypermedia API templates
  *
  * Pure TypeScript client that works with any framework (React, Svelte, Vue, etc.).
@@ -29,7 +40,9 @@ export interface ValidationError {
  * import { ApiClient, HalFormsClient } from '@houseofwolves/serverlesslaunchpad.web.commons';
  *
  * const apiClient = new ApiClient({ baseUrl: 'https://api.example.com' });
- * const halClient = new HalFormsClient(apiClient);
+ * const halClient = new HalFormsClient(apiClient, {
+ *   onAuthError: () => window.location.reload()
+ * });
  *
  * // Fetch a HAL resource
  * const resource = await halClient.fetch('/users/123');
@@ -47,7 +60,147 @@ export interface ValidationError {
  * ```
  */
 export class HalFormsClient {
-    constructor(private apiClient: ApiClient) {}
+    private options: HalFormsClientOptions;
+
+    constructor(private apiClient: ApiClient, options?: HalFormsClientOptions) {
+        this.options = options || {};
+    }
+
+    /**
+     * Handle errors, checking for 401 and invoking callback if configured
+     * Returns true if error was handled (401 with callback), false otherwise
+     */
+    private handleError(error: any): boolean {
+        if (error?.status === 401 && this.options.onAuthError) {
+            this.options.onAuthError();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * GET a HAL resource from the API
+     *
+     * @param url - The URL to fetch
+     * @returns Promise<T> The HAL resource
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
+     */
+    async get<T extends HalObject = HalObject>(url: string): Promise<T> {
+        try {
+            return await this.apiClient.request<T>(url, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/hal+json',
+                },
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {}); // Never resolves, prevents component updates
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * POST to a HAL API endpoint
+     *
+     * @param url - The URL to post to
+     * @param data - Optional data to send
+     * @returns Promise<T> The HAL resource response
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
+     */
+    async post<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        try {
+            return await this.apiClient.request<T>(url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/hal+json',
+                    'Content-Type': 'application/json',
+                },
+                body: data ? JSON.stringify(data) : undefined,
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * PUT to a HAL API endpoint
+     *
+     * @param url - The URL to put to
+     * @param data - Optional data to send
+     * @returns Promise<T> The HAL resource response
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
+     */
+    async put<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        try {
+            return await this.apiClient.request<T>(url, {
+                method: 'PUT',
+                headers: {
+                    Accept: 'application/hal+json',
+                    'Content-Type': 'application/json',
+                },
+                body: data ? JSON.stringify(data) : undefined,
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * PATCH a HAL API endpoint
+     *
+     * @param url - The URL to patch
+     * @param data - Optional data to send
+     * @returns Promise<T> The HAL resource response
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
+     */
+    async patch<T extends HalObject = HalObject>(url: string, data?: any): Promise<T> {
+        try {
+            return await this.apiClient.request<T>(url, {
+                method: 'PATCH',
+                headers: {
+                    Accept: 'application/hal+json',
+                    'Content-Type': 'application/json',
+                },
+                body: data ? JSON.stringify(data) : undefined,
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * DELETE a HAL API resource
+     *
+     * @param url - The URL to delete
+     * @returns Promise<T> The HAL resource response
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
+     */
+    async delete<T extends HalObject = HalObject>(url: string): Promise<T> {
+        try {
+            return await this.apiClient.request<T>(url, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/hal+json',
+                },
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
+    }
 
     /**
      * Fetch a HAL resource from the API
@@ -55,16 +208,23 @@ export class HalFormsClient {
      * @param url - The URL to fetch
      * @param options - Optional request options (e.g., custom headers)
      * @returns Promise<HalObject> The HAL resource
-     * @throws {ApiClientError} If the request fails
+     * @throws {ApiClientError} If the request fails (except 401 when onAuthError is configured)
      */
     async fetch(url: string, options?: { headers?: Record<string, string> }): Promise<HalObject> {
-        return await this.apiClient.request<HalObject>(url, {
-            method: 'GET',
-            headers: {
-                Accept: 'application/hal+json',
-                ...options?.headers,
-            },
-        });
+        try {
+            return await this.apiClient.request<HalObject>(url, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/hal+json',
+                    ...options?.headers,
+                },
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
     }
 
     /**
@@ -111,11 +271,18 @@ export class HalFormsClient {
         // Use POST for DELETE/PUT method overrides, otherwise use the template method
         const httpMethod = method === 'DELETE' || method === 'PUT' ? 'POST' : method;
 
-        return await this.apiClient.request<HalObject>(target, {
-            method: httpMethod,
-            headers,
-            body,
-        });
+        try {
+            return await this.apiClient.request<HalObject>(target, {
+                method: httpMethod,
+                headers,
+                body,
+            });
+        } catch (error) {
+            if (this.handleError(error)) {
+                return new Promise<never>(() => {});
+            }
+            throw error;
+        }
     }
 
     /**
@@ -267,8 +434,9 @@ export class HalFormsClient {
  * Factory function to create a HAL-FORMS client instance
  *
  * @param apiClient - ApiClient instance to use for HTTP requests
+ * @param options - Optional configuration (e.g., onAuthError callback)
  * @returns New HalFormsClient instance
  */
-export function createHalFormsClient(apiClient: ApiClient): HalFormsClient {
-    return new HalFormsClient(apiClient);
+export function createHalFormsClient(apiClient: ApiClient, options?: HalFormsClientOptions): HalFormsClient {
+    return new HalFormsClient(apiClient, options);
 }

@@ -9,7 +9,8 @@
 
 import { NavigateFunction } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { apiClient, ApiClientError } from '../../../services/api.client';
+import { halClient } from '../../../lib/hal_forms_client';
+import { ApiClientError } from '../../../services/api.client';
 import { logger } from '../../../logging/logger';
 
 /**
@@ -69,10 +70,11 @@ export async function executePostAction(
 
     try {
         // Execute POST request
-        const response = await apiClient.post(href);
+        const response = await halClient.post(href);
 
         // Check for special navigation cases
-        const federateHref = response._links?.federate?.href;
+        const federateLink = response._links?.federate;
+        const federateHref = federateLink && !Array.isArray(federateLink) ? federateLink.href : undefined;
 
         // If response includes a federate link, it means session was revoked
         // and we need to return to unauthenticated state (e.g., logout)

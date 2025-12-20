@@ -54,8 +54,9 @@ export async function getApiClient(): Promise<ApiClient> {
 
 /**
  * Helper to handle 401 errors consistently
+ * Returns true if error was handled (redirect initiated), false otherwise
  */
-function handle401Error(error: any): void {
+function handle401Error(error: any): boolean {
     if (error?.status === 401) {
         const isAuthPage = window.location.pathname.startsWith('/auth/');
         if (!isAuthPage) {
@@ -63,8 +64,10 @@ function handle401Error(error: any): void {
                 path: window.location.pathname,
             });
             window.location.href = '/auth/signin';
+            return true; // Error was handled, don't re-throw
         }
     }
+    return false; // Error not handled, should re-throw
 }
 
 /**
@@ -78,8 +81,11 @@ export const apiClient = {
         try {
             return await client.request<T>(path, options);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            // 401 handled - return never-resolving promise to prevent component updates
+            return new Promise<never>(() => {});
         }
     },
     async get<T>(path: string, params?: Record<string, string>) {
@@ -87,8 +93,10 @@ export const apiClient = {
         try {
             return await client.get<T>(path, params);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
     async post<T>(path: string, data?: any) {
@@ -96,8 +104,10 @@ export const apiClient = {
         try {
             return await client.post<T>(path, data);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
     async put<T>(path: string, data?: any) {
@@ -105,8 +115,10 @@ export const apiClient = {
         try {
             return await client.put<T>(path, data);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
     async patch<T>(path: string, data?: any) {
@@ -114,8 +126,10 @@ export const apiClient = {
         try {
             return await client.patch<T>(path, data);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
     async delete<T>(path: string) {
@@ -123,8 +137,10 @@ export const apiClient = {
         try {
             return await client.delete<T>(path);
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
     async health() {
@@ -132,8 +148,10 @@ export const apiClient = {
         try {
             return await client.health();
         } catch (error: any) {
-            handle401Error(error);
-            throw error;
+            if (!handle401Error(error)) {
+                throw error;
+            }
+            return new Promise<never>(() => {});
         }
     },
 };

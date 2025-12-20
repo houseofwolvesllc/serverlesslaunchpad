@@ -12,7 +12,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
-import { apiClient, type ApiResponse } from '../../../services/api.client';
+import { halClient } from '../../../lib/hal_forms_client';
+import { type ApiResponse } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import {
     transformNavStructure,
@@ -185,7 +186,7 @@ export function useSitemap(): UseSitemapResult {
                 // Create new abort controller
                 abortControllerRef.current = new AbortController();
 
-                const response = await apiClient.get<SitemapResponse>(sitemapHref);
+                const response = await halClient.get<SitemapResponse>(sitemapHref);
 
                 // Validate response structure
                 if (!response._nav) {
