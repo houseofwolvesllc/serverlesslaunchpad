@@ -334,26 +334,27 @@ export class ApiLambdaStack extends BaseStack {
      * Configure VPC settings if using custom VPC
      */
     private configureVpc(functionProps: Record<string, any>, props: ApiLambdaStackProps): void {
-        // Always run Lambda inside VPC for consistent architecture and future resource compatibility
+        // Lambda runs OUTSIDE VPC by default for:
+        // - Full internet access (ChatGPT API, webhooks, etc.)
+        // - Simpler architecture and lower costs (no NAT Gateway needed)
+        // - AWS service access via IAM (not network-based)
+        
+        // To run Lambda INSIDE VPC (for RDS, ElastiCache, etc.), uncomment below:
+        /*
         console.log("🔒 Configuring Lambda to run inside VPC...");
         functionProps.vpc = props.vpc;
         
-        // For development with default VPC (public subnets only), use public subnets
-        // For staging/production with custom VPC, use private subnets with NAT Gateway
-        if (this.appEnvironment === 'development') {
-            console.log("📍 Using public subnets for development environment (default VPC)");
-            functionProps.vpcSubnets = {
-                subnetType: SubnetType.PUBLIC,
-            };
-            // CDK requires explicit acknowledgment that Lambda in public subnet can't reach internet
-            // This is acceptable for development since we primarily call AWS services (which work via VPC endpoints)
-            functionProps.allowPublicSubnet = true;
-        } else {
-            console.log("📍 Using private subnets with egress for staging/production environment");
-            functionProps.vpcSubnets = {
-                subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-            };
-        }
+        // For default VPC (public subnets only):
+        functionProps.vpcSubnets = {
+            subnetType: SubnetType.PUBLIC,
+        };
+        functionProps.allowPublicSubnet = true;
+        
+        // For custom VPC with private subnets + NAT Gateway:
+        // functionProps.vpcSubnets = {
+        //     subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        // };
+        */
     }
 
     /**
