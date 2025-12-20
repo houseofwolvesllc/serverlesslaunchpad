@@ -1,17 +1,24 @@
-import { TextInput, PasswordInput, Button, Stack, Paper, Text, Center, Box } from '@mantine/core';
+import { TextInput, PasswordInput, Button, Stack, Paper, Text, Center, Box, Input, Anchor } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { passwordPolicyValidator, useAuth } from '../../Authentication';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { AuthError, passwordPolicyValidator, useAuth } from '../../Authentication';
+import { notifications } from '@mantine/notifications';
 
 export const ConfirmResetPasswordForm = () => {
     const auth = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const confirmationEmail = searchParams.get('email');
 
     const form = useForm({
         initialValues: {
+            confirmationEmail: confirmationEmail || '',
             confirmationCode: '',
             newPassword: '',
             confirmNewPassword: '',
         },
         validate: {
+            confirmationEmail: (val) => (val ? null : 'Confirmation email is required'),
             confirmationCode: (val) => (val ? null : 'Confirmation code is required'),
             newPassword: passwordPolicyValidator,
             confirmNewPassword: (val, values) => (val === values.newPassword ? null : 'Passwords do not match'),
@@ -19,7 +26,55 @@ export const ConfirmResetPasswordForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        await auth.confirmResetPassword(values.confirmationCode, values.newPassword);
+        try {
+            await auth.confirmResetPassword(values.confirmationEmail, values.confirmationCode, values.newPassword);
+
+            notifications.show({
+                title: 'Password reset successful',
+                message: 'Your password has been reset. Please sign in to continue.',
+            });
+
+            navigate('/auth/signin');
+        } catch (error) {
+            if (error instanceof AuthError) {
+                switch (error.name) {
+                    case 'ExpiredCodeException':
+                        form.setFieldError(
+                            'confirmationCode',
+                            <>
+                                Confirmation code has expired.{' '}
+                                <Anchor
+                                    size="xs"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={async () => {
+                                        await auth.resetPassword(values.confirmationEmail);
+
+                                        notifications.show({
+                                            title: 'Reset code resent',
+                                            message: 'Please check your email for your reset code',
+                                        });
+                                    }}
+                                >
+                                    Resend code?
+                                </Anchor>
+                            </>
+                        );
+                        return;
+                    case 'InvalidPasswordException':
+                        form.setFieldError('newPassword', 'Invalid password');
+                        return;
+                    case 'LimitExceededException':
+                        form.setFieldError('confirmationCode', 'Too many attempts. Please try again later.');
+                        return;
+                    default:
+                        console.error('Unhandled auth error:', error);
+                        throw error;
+                }
+            }
+
+            console.error('FORM Unexpected error:', error);
+            throw error;
+        }
     };
 
     return (
@@ -31,6 +86,7 @@ export const ConfirmResetPasswordForm = () => {
                     </Text>
                     <form id="confirm-reset-password-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
+                            <Input type="hidden" {...form.getInputProps('confirmationEmail')} />
                             <TextInput
                                 required
                                 label="Confirmation Code"

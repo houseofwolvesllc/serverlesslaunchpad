@@ -13,12 +13,13 @@ import {
     Group,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { AuthError, useAuth, SocialLoginButtons, SignInStep, passwordPolicyValidator } from '../../Authentication';
+import { AuthError, useAuth, SocialLoginButtons, passwordPolicyValidator, SignInStep } from '../../Authentication';
 import { notifications } from '@mantine/notifications';
+import { useNavigate } from 'react-router-dom';
 
 export const SignUpForm = () => {
     const auth = useAuth();
-
+    const navigate = useNavigate();
     const form = useForm({
         initialValues: {
             firstName: '',
@@ -37,20 +38,29 @@ export const SignUpForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
-        console.log('Signup hola');
         try {
-            await auth.signUp({
-                username: values.email,
-                password: values.password,
+            const result = await auth.signUp({
                 email: values.email,
+                password: values.password,
                 firstName: values.firstName,
                 lastName: values.lastName,
             });
 
-            notifications.show({
-                title: 'Sign up code sent',
-                message: 'Please check your email for your sign up code',
-            });
+            switch (result) {
+                case SignInStep.CONFIRM_SIGNUP:
+                    notifications.show({
+                        title: 'Sign up code sent',
+                        message: 'Please check your email for your sign up code',
+                    });
+
+                    navigate(`/auth/confirm-signup?email=${values.email}`);
+                    break;
+                case SignInStep.SIGNIN:
+                    navigate(`/auth/signin`);
+                    break;
+                default:
+                    throw new Error(`Unexpected sign in step: ${result}`);
+            }
         } catch (error) {
             if (error instanceof AuthError) {
                 switch (error.name) {
@@ -129,7 +139,7 @@ export const SignUpForm = () => {
                             type="button"
                             c="dimmed"
                             onClick={() => {
-                                auth.setSignInStep(SignInStep.SIGNIN);
+                                navigate(`/auth/signin`);
                             }}
                             size="xs"
                         >

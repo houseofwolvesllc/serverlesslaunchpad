@@ -1,9 +1,12 @@
 import { TextInput, Button, Stack, Paper, Text, Center, Box } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { SignInStep, useAuth } from '../../Authentication';
+import { notifications } from '@mantine/notifications';
+import { useAuth } from '../../Authentication';
+import { useNavigate } from 'react-router-dom';
 
 export const ResetPasswordForm = () => {
     const auth = useAuth();
+    const navigate = useNavigate();
 
     const form = useForm({
         initialValues: {
@@ -15,8 +18,14 @@ export const ResetPasswordForm = () => {
     });
 
     const onSubmit = async (values: typeof form.values) => {
+        notifications.show({
+            title: 'Reset code sent',
+            message: 'Please check your email for your reset code',
+        });
+
         await auth.resetPassword(values.email);
-        auth.setSignInStep(SignInStep.CONFIRM_RESET_PASSWORD); // TODO: move this to the authentication provider
+
+        navigate(`/auth/confirm-reset-password?email=${values.email}`);
     };
 
     return (
