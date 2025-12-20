@@ -111,13 +111,8 @@ export class Container {
                   return this.resolve(param, key);
               });
 
-        console.log("Prior to loop, Resolved params:", resolvedParams);
-        console.log("Params:", params);
-
         // Validate that all parameters were successfully resolved
         resolvedParams.forEach((param, index) => {
-            console.log("Resolved param:", param);
-            console.log("Param type:", params[index]);
             if (param === undefined) {
                 const paramType = params[index];
                 throw new ContainerError(
