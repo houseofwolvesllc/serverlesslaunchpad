@@ -1,6 +1,4 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
-import * as dotenv from "dotenv";
-import * as path from "path";
 import "reflect-metadata"; // Must be imported first for decorators to work
 
 // Parse command line argument for environment
@@ -15,20 +13,11 @@ if (!validEnvironments.includes(environmentArg as Environment)) {
 
 const environment = environmentArg as Environment;
 
-// Load environment-specific .env file
-const envFile = path.join(process.cwd(), `.env.${environment}`);
-const envResult = dotenv.config({ path: envFile });
-
-if (envResult.error) {
-    console.warn(`⚠️  Could not load ${envFile}, using default environment variables`);
-} else {
-    console.log(`✅ Loaded environment configuration from .env.${environment}`);
-}
-
 // Set NODE_ENV for ConfigStore to use
 process.env.NODE_ENV = environment;
 
 console.log(`🚀 Starting API development server for environment: ${environment}`);
+console.log(`📄 Configuration will be loaded from config/${environment}.infrastructure.json`);
 
 // Import everything after setting NODE_ENV
 import { ALBEvent, ALBResult } from "aws-lambda";

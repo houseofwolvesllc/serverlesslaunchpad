@@ -12,6 +12,21 @@ let amplifyConfigured = false;
 async function ensureAmplifyConfigured() {
     if (amplifyConfigured) return;
 
+    // Check if shims are installed before configuring Amplify
+    const shimDiagnostics = (globalThis as any).__MOTO_SHIM_DIAGNOSTICS__?.();
+    if (shimDiagnostics) {
+        console.log('🔍 [AUTH] Amplify configuration starting - Shim status:', {
+            shimsInitialized: shimDiagnostics.initialized,
+            shimTimestamp: shimDiagnostics.initTimestamp,
+            xhrShimInstalled: shimDiagnostics.xhrShimInstalled,
+            fetchShimInstalled: shimDiagnostics.fetchShimInstalled,
+            awsEnvConfigured: shimDiagnostics.awsEnvConfigured,
+            timeSinceShimInit: shimDiagnostics.initTimestamp ? Date.now() - new Date(shimDiagnostics.initTimestamp).getTime() : 'unknown'
+        });
+    } else {
+        console.warn('⚠️ [AUTH] Amplify configuring but shim diagnostics not available - shims may not be loaded');
+    }
+
     const config = await WebConfigurationStore.getConfig();
 
     // Configure Amplify v6 with environment config and Moto-specific settings
@@ -37,8 +52,17 @@ async function ensureAmplifyConfigured() {
         },
     };
 
+    console.log('🔧 [AUTH] Configuring Amplify with:', {
+        region: amplifyConfig.Auth.Cognito.region,
+        userPoolId: amplifyConfig.Auth.Cognito.userPoolId,
+        clientId: amplifyConfig.Auth.Cognito.userPoolClientId,
+        timestamp: new Date().toISOString()
+    });
+
     Amplify.configure(amplifyConfig);
     amplifyConfigured = true;
+
+    console.log('✅ [AUTH] Amplify configured successfully');
 }
 
 export const useAuth = function () {
