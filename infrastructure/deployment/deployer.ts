@@ -419,22 +419,35 @@ export class Deployer extends StackManager {
             max_query_timeout_seconds: environment === Environment.Production ? 120 : 300,
         };
 
-        // Determine API URL: prefer API_BASE_URL from environment, fallback to ALB DNS
+        // Determine API URL from ALB_DOMAIN_NAME or fall back to ALB DNS
+        const albDomainName = process.env.ALB_DOMAIN_NAME?.trim();
         const albDnsName = config.alb?.dns_name;
-        const apiBaseUrl = process.env.API_BASE_URL?.trim() ||
-            (albDnsName ? `http://${albDnsName}` : undefined);
 
-        if (apiBaseUrl) {
-            // Normalize URL: remove trailing slash if present
-            config.api = {
-                url: apiBaseUrl.replace(/\/$/, ''),
-            };
-            console.log(chalk.gray(`   API URL: ${config.api.url}`));
+        let apiBaseUrl: string | undefined;
+        if (albDomainName) {
+            // Custom domain configured - use HTTPS
+            apiBaseUrl = `https://${albDomainName}`;
+            console.log(chalk.green(`   API URL: ${apiBaseUrl} (custom domain)`));
+        } else if (albDnsName) {
+            // No custom domain - use ALB DNS directly over HTTP
+            apiBaseUrl = `http://${albDnsName}`;
+            console.log(chalk.yellow(`   API URL: ${apiBaseUrl} (direct ALB access, no HTTPS)`));
         }
 
-        // Warn if using HTTP in production without API_BASE_URL
-        if (environment === Environment.Production && !process.env.API_BASE_URL && albDnsName) {
-            console.log(chalk.yellow(`⚠️  Production using ALB DNS directly (HTTP). Consider setting API_BASE_URL for HTTPS.`));
+        if (apiBaseUrl) {
+            config.api = {
+                url: apiBaseUrl,
+            };
+        }
+
+        // Show custom domain setup hint if no domain configured
+        if (albDnsName && !albDomainName) {
+            console.log(chalk.cyan(`\n   💡 Custom Domain Setup:`));
+            console.log(chalk.gray(`      To use a custom API domain with HTTPS:`));
+            console.log(chalk.gray(`      1. Get an ACM certificate for your domain`));
+            console.log(chalk.gray(`      2. Set ALB_DOMAIN_NAME and ALB_CERTIFICATE_ARN in .env.${environment}`));
+            console.log(chalk.gray(`      3. Create CNAME: your-domain → ${albDnsName}`));
+            console.log(chalk.gray(`      4. Redeploy`));
         }
 
         // Write environment-specific infrastructure config for API
