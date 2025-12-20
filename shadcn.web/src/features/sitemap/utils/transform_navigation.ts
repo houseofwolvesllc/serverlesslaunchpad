@@ -258,7 +258,8 @@ export function transformNavStructure(
             result.push({
                 icon,
                 label: resolved.title,
-                link: resolved.type === 'link' ? resolved.href : undefined,
+                // Use actual href for routing
+                link: resolved.href,
                 newTab: resolved.href?.startsWith('http'), // Open external links in new tab
                 // Template items get onClick handler
                 links:
@@ -290,7 +291,8 @@ export function transformNavStructure(
             result.push({
                 icon,
                 label: resolved.title,
-                link: resolved.type === 'link' ? resolved.href : undefined,
+                // Use actual href for routing
+                link: resolved.href,
                 newTab: false,
                 // Template items get onClick handler
                 links:

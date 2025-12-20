@@ -1,28 +1,173 @@
 /**
  * Dashboard Home Component
  *
- * Default landing page for the dashboard when no specific route is selected.
- * Displays a welcome message and basic information about the application.
+ * Default landing page showing personalized greeting, quick actions, and account info.
+ * Matches the UX of svelte.web dashboard.
  */
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Key, Clock, LogOut, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/authentication/hooks/use_auth';
+import { AuthenticationContext } from '@/features/authentication/context/authentication_context';
+import { toast } from 'sonner';
+import { useSitemap } from '../sitemap/hooks/use_sitemap';
 
 export const DashboardHome = () => {
+    const navigate = useNavigate();
+    const { signOut } = useAuth();
+    const { signedInUser } = useContext(AuthenticationContext);
+    const { rawItems } = useSitemap();
+
+    const username = signedInUser?.username || signedInUser?.email || 'User';
+    const first_name = signedInUser?.firstName;
+
+    // Find navigation items by ID to get their hrefs
+    const findNavItemById = (id: string): any => {
+        const search = (items: any[]): any => {
+            for (const item of items) {
+                if (item.id === id) return item;
+                if (item.items) {
+                    const found = search(item.items);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+        return search(rawItems || []);
+    };
+
+    const sessions_item = findNavItemById('sessions');
+    const api_keys_item = findNavItemById('api-keys');
+
+    // Greeting based on time of day
+    const get_greeting = (): string => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good morning';
+        if (hour < 18) return 'Good afternoon';
+        return 'Good evening';
+    };
+
+    const handle_logout = async () => {
+        try {
+            await signOut();
+            toast.success('Logged out successfully');
+            navigate('/auth/signin');
+        } catch (error) {
+            toast.error('Failed to logout');
+        }
+    };
+
     return (
-        <div className="container max-w-4xl py-8">
-            <div className="flex flex-col gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-3xl">Welcome to Serverless Launchpad</CardTitle>
-                        <CardDescription className="text-lg">
-                            Get started by selecting an option from the navigation menu.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {/* Additional content can be added here */}
-                    </CardContent>
-                </Card>
+        <div className="space-y-8">
+            {/* Welcome Header */}
+            <div className="space-y-2">
+                <h1 className="text-4xl font-bold tracking-tight">
+                    {get_greeting()}{first_name ? `, ${first_name}` : ''}!
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                    Welcome to your dashboard. Here's an overview of your account.
+                </p>
             </div>
+
+            {/* Quick Actions */}
+            <div>
+                <h2 className="text-2xl font-semibold tracking-tight mb-4">Quick Actions</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                    <Clock className="h-5 w-5 text-primary" />
+                                </div>
+                                <h3 className="font-semibold">Manage Sessions</h3>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                View and manage your active login sessions across devices.
+                            </p>
+                            <Button
+                                className="w-full"
+                                onClick={() => sessions_item?.href && navigate(sessions_item.href)}
+                                disabled={!sessions_item?.href}
+                            >
+                                Manage Sessions
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                    <Key className="h-5 w-5 text-primary" />
+                                </div>
+                                <h3 className="font-semibold">Manage API Keys</h3>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Generate and manage API keys for programmatic access.
+                            </p>
+                            <Button
+                                className="w-full"
+                                onClick={() => api_keys_item?.href && navigate(api_keys_item.href)}
+                                disabled={!api_keys_item?.href}
+                            >
+                                Manage API Keys
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
+                                    <LogOut className="h-5 w-5 text-destructive" />
+                                </div>
+                                <h3 className="font-semibold">Logout</h3>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Sign out of your account and end your current session.
+                            </p>
+                            <Button variant="destructive" className="w-full" onClick={handle_logout}>
+                                Logout
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Account Information */}
+            <Card>
+                <CardHeader>
+                    <h2 className="text-2xl font-semibold tracking-tight">Account Information</h2>
+                </CardHeader>
+                <CardContent>
+                    <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="space-y-1">
+                            <dt className="text-sm font-medium text-muted-foreground">Username</dt>
+                            <dd className="text-base font-semibold">{username}</dd>
+                        </div>
+                        <div className="space-y-1">
+                            <dt className="text-sm font-medium text-muted-foreground">Email Address</dt>
+                            <dd className="text-base font-semibold">{signedInUser?.email}</dd>
+                        </div>
+                        <div className="space-y-1">
+                            <dt className="text-sm font-medium text-muted-foreground">Account Type</dt>
+                            <dd className="text-base font-semibold">Standard</dd>
+                        </div>
+                    </dl>
+                </CardContent>
+            </Card>
         </div>
     );
 };
