@@ -53,9 +53,9 @@ export class DynamoDbClientFactory {
 
             const dynamoDbConfig: DynamoDbClientConfig = {
                 region: config.aws.region,
-                endpoint: environment === "local" ? config.aws.endpoint_url : undefined,
+                endpoint: environment === "moto" ? config.aws.endpoint_url : undefined,
                 credentials:
-                    environment === "local" ? { accessKeyId: "testing", secretAccessKey: "testing" } : undefined,
+                    environment === "moto" ? { accessKeyId: "testing", secretAccessKey: "testing" } : undefined,
             };
 
             const tablePrefix = `slp_${environment}`;

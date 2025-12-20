@@ -1,4 +1,5 @@
 export enum Environment {
+    Moto = "moto",
     Local = "local",
     Development = "development",
     Staging = "staging",

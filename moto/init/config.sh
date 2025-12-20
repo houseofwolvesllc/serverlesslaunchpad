@@ -14,7 +14,7 @@ export MOTO_INIT_CONFIG_LOADED=1
 # ============================================
 # Environment & Endpoints
 # ============================================
-export ENVIRONMENT=${ENVIRONMENT:-local}
+export ENVIRONMENT=${ENVIRONMENT:-moto}
 export AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localhost:5555}
 export COGNITO_LOCAL_ENDPOINT=${COGNITO_LOCAL_ENDPOINT:-http://localhost:9229}
 export AWS_REGION=${AWS_DEFAULT_REGION:-us-west-2}

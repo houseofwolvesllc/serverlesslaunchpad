@@ -129,10 +129,13 @@ echo ""
 echo "Generating infrastructure configuration files..."
 
 # Generate API configuration
-generate_infrastructure_config "api.hypermedia/config/local.infrastructure.json"
+generate_infrastructure_config "api.hypermedia/config/${ENVIRONMENT}.infrastructure.json"
 
-# Generate Web configuration (same content, different location)
-generate_infrastructure_config "mantine.web/config/local.infrastructure.json"
+# Generate Web configurations (same content, different locations)
+generate_infrastructure_config "web.mantine/config/${ENVIRONMENT}.infrastructure.json"
+generate_infrastructure_config "web.shadcn/config/${ENVIRONMENT}.infrastructure.json"
+generate_infrastructure_config "web.daisyui/config/${ENVIRONMENT}.infrastructure.json"
+generate_infrastructure_config "web.svelte/config/${ENVIRONMENT}.infrastructure.json"
 
 echo ""
 echo "========================================="
@@ -140,8 +143,11 @@ echo "Infrastructure Configuration Complete!"
 echo "========================================="
 echo ""
 echo "Generated files:"
-echo "  - api.hypermedia/config/local.infrastructure.json"
-echo "  - mantine.web/config/local.infrastructure.json"
+echo "  - api.hypermedia/config/${ENVIRONMENT}.infrastructure.json"
+echo "  - web.mantine/config/${ENVIRONMENT}.infrastructure.json"
+echo "  - web.shadcn/config/${ENVIRONMENT}.infrastructure.json"
+echo "  - web.daisyui/config/${ENVIRONMENT}.infrastructure.json"
+echo "  - web.svelte/config/${ENVIRONMENT}.infrastructure.json"
 echo ""
 echo "These files contain non-sensitive infrastructure references."
 echo "Sensitive data (secrets, salts) remains in AWS Secrets Manager."

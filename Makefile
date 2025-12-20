@@ -79,9 +79,9 @@ dev-start:
 	@echo ""
 	@echo "🚀 Starting development servers with file watching (web=$(web))..."
 	@# Validate web argument
-	@if [ "$(web)" != "all" ] && [ "$(web)" != "mantine" ] && [ "$(web)" != "shadcn" ] && [ "$(web)" != "daisyui" ] && [ "$(web)" != "none" ]; then \
+	@if [ "$(web)" != "all" ] && [ "$(web)" != "mantine" ] && [ "$(web)" != "shadcn" ] && [ "$(web)" != "daisyui" ] && [ "$(web)" != "svelte" ] && [ "$(web)" != "none" ]; then \
 		echo "❌ Invalid web value: $(web)"; \
-		echo "   Valid options: all, mantine, shadcn, daisyui, none"; \
+		echo "   Valid options: all, mantine, shadcn, daisyui, svelte, none"; \
 		exit 1; \
 	fi
 	@# Start development servers based on web argument
@@ -93,6 +93,8 @@ dev-start:
 		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue --names "SHADCN,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
 	elif [ "$(web)" = "daisyui" ]; then \
 		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue --names "DAISYUI,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
+	elif [ "$(web)" = "svelte" ]; then \
+		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange --names "SVELTE,API,TYPES,CORE,FRAMEWORK" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
 	elif [ "$(web)" = "none" ]; then \
 		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue --names "API,TYPES,CORE,FRAMEWORK" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework"; \
 	fi
@@ -105,12 +107,15 @@ dev-start:
 		echo "  Mantine:    http://localhost:5173"; \
 		echo "  shadcn:     http://localhost:5174"; \
 		echo "  DaisyUI:    http://localhost:5175"; \
+		echo "  Svelte:     http://localhost:5176"; \
 	elif [ "$(web)" = "mantine" ]; then \
 		echo "  Mantine:    http://localhost:5173"; \
 	elif [ "$(web)" = "shadcn" ]; then \
 		echo "  shadcn:     http://localhost:5174"; \
 	elif [ "$(web)" = "daisyui" ]; then \
 		echo "  DaisyUI:    http://localhost:5175"; \
+	elif [ "$(web)" = "svelte" ]; then \
+		echo "  Svelte:     http://localhost:5176"; \
 	fi
 	@echo ""
 	@echo "View Moto logs with: make moto-logs"
