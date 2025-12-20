@@ -1,6 +1,6 @@
-import { Duration, SecretValue } from "aws-cdk-lib";
+import { SecretValue } from "aws-cdk-lib";
 import { Key } from "aws-cdk-lib/aws-kms";
-import { RotationSchedule, Secret } from "aws-cdk-lib/aws-secretsmanager";
+import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { randomBytes } from "crypto";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
@@ -17,7 +17,6 @@ export class SecretsStack extends BaseStack {
 
         this.encryptionKey = this.createEncryptionKey();
         this.configurationSecret = this.createConfigurationSecret();
-        this.configureSecretRotation();
         this.createOutputs();
     }
 
@@ -88,23 +87,6 @@ export class SecretsStack extends BaseStack {
         // Generate 64 bytes (128 hex characters) of random data
         // This provides excellent entropy for session token signing
         return randomBytes(64).toString("hex");
-    }
-
-    /**
-     * Configure secret rotation for production environments
-     */
-    private configureSecretRotation(): void {
-        const { secrets } = this.configuration;
-
-        if (!secrets.rotationDays || !this.isProduction()) {
-            return;
-        }
-
-        new RotationSchedule(this, this.constructId("configuration-secret-rotation"), {
-            secret: this.configurationSecret,
-            rotationLambda: undefined, // Will use default rotation function
-            automaticallyAfter: Duration.days(secrets.rotationDays),
-        });
     }
 
     /**

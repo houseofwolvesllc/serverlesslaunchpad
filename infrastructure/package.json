@@ -15,6 +15,7 @@
         "cdk": "cdk",
         "synth": "cdk synth",
         "deploy": "tsx deployment/deploy.ts",
+        "deploy:web": "tsx deployment/deploy_web.ts",
         "destroy": "tsx deployment/destroy.ts",
         "cdk:deploy": "cdk deploy --all --require-approval never",
         "cdk:diff": "cdk diff --all"
