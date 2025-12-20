@@ -1,6 +1,4 @@
 import { CfnOutput, RemovalPolicy } from "aws-cdk-lib";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
@@ -12,12 +10,12 @@ export interface WebStaticHostingStackProps extends BaseStackProps {
 }
 
 /**
- * Stack for hosting static web frontend assets via S3 and CloudFront
+ * Stack for hosting static web frontend assets via S3 website hosting
  * Each web package (mantine, shadcn, daisyui, svelte) gets its own stack
+ * Designed to work with Cloudflare as the CDN layer (Flexible SSL mode)
  */
 export class WebStaticHostingStack extends BaseStack {
     public readonly bucket: s3.Bucket;
-    public readonly distribution: cloudfront.Distribution;
 
     constructor(scope: Construct, id: string, props: WebStaticHostingStackProps) {
         super(scope, id, props);
@@ -25,49 +23,23 @@ export class WebStaticHostingStack extends BaseStack {
         const { webPackageName } = props;
         const isProduction = this.isProduction();
 
-        // Create S3 bucket for static hosting
+        // Create S3 bucket with website hosting enabled
         this.bucket = new s3.Bucket(this, this.constructId(`web-bucket-${webPackageName}`), {
             bucketName: this.resourceName(`web-${webPackageName}-${this.account}`),
+            websiteIndexDocument: "index.html",
+            websiteErrorDocument: "index.html", // SPA routing
+            publicReadAccess: true,
+            blockPublicAccess: new s3.BlockPublicAccess({
+                blockPublicAcls: false,
+                ignorePublicAcls: false,
+                blockPublicPolicy: false,
+                restrictPublicBuckets: false,
+            }),
             removalPolicy: isProduction ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
             autoDeleteObjects: !isProduction,
-            blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             encryption: s3.BucketEncryption.S3_MANAGED,
             versioned: isProduction,
         });
-
-        // Create CloudFront distribution using S3BucketOrigin (new API)
-        this.distribution = new cloudfront.Distribution(
-            this,
-            this.constructId(`distribution-${webPackageName}`),
-            {
-                defaultBehavior: {
-                    origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
-                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-                    allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-                },
-                defaultRootObject: "index.html",
-                errorResponses: [
-                    {
-                        httpStatus: 403,
-                        responseHttpStatus: 200,
-                        responsePagePath: "/index.html", // SPA routing
-                        ttl: undefined,
-                    },
-                    {
-                        httpStatus: 404,
-                        responseHttpStatus: 200,
-                        responsePagePath: "/index.html", // SPA routing
-                        ttl: undefined,
-                    },
-                ],
-                comment: `Serverless Launchpad ${webPackageName} frontend - ${this.appEnvironment}`,
-                enabled: true,
-                priceClass: isProduction
-                    ? cloudfront.PriceClass.PRICE_CLASS_ALL
-                    : cloudfront.PriceClass.PRICE_CLASS_100, // Cheaper for non-prod
-            }
-        );
 
         // Outputs
         new CfnOutput(this, `BucketName`, {
@@ -76,16 +48,16 @@ export class WebStaticHostingStack extends BaseStack {
             exportName: this.resourceName(`web-${webPackageName}-bucket`),
         });
 
-        new CfnOutput(this, `DistributionDomainName`, {
-            value: this.distribution.distributionDomainName,
-            description: `CloudFront distribution domain for ${webPackageName} web frontend`,
-            exportName: this.resourceName(`web-${webPackageName}-domain`),
+        new CfnOutput(this, `WebsiteURL`, {
+            value: this.bucket.bucketWebsiteUrl,
+            description: `S3 website URL for ${webPackageName} web frontend`,
+            exportName: this.resourceName(`web-${webPackageName}-website-url`),
         });
 
-        new CfnOutput(this, `DistributionId`, {
-            value: this.distribution.distributionId,
-            description: `CloudFront distribution ID for ${webPackageName} web frontend`,
-            exportName: this.resourceName(`web-${webPackageName}-distribution-id`),
+        new CfnOutput(this, `WebsiteDomainName`, {
+            value: this.bucket.bucketWebsiteDomainName,
+            description: `S3 website domain name for ${webPackageName} web frontend`,
+            exportName: this.resourceName(`web-${webPackageName}-website-domain`),
         });
     }
 }

@@ -21,8 +21,7 @@ interface WebPackageConfig {
 
 interface StackOutputs {
     bucketName: string;
-    distributionId: string;
-    distributionDomain: string;
+    websiteUrl: string;
 }
 
 interface DeploymentResult {
@@ -33,7 +32,7 @@ interface DeploymentResult {
 }
 
 /**
- * Handles deployment of web assets to S3 and CloudFront
+ * Handles deployment of web assets to S3 website hosting
  */
 export class WebDeployer extends StackManager {
     private readonly webPackages: WebPackageConfig[] = [
@@ -179,14 +178,12 @@ export class WebDeployer extends StackManager {
         for (const output of outputs) {
             if (output.OutputKey?.includes("BucketName")) {
                 result.bucketName = output.OutputValue;
-            } else if (output.OutputKey?.includes("DistributionId")) {
-                result.distributionId = output.OutputValue;
-            } else if (output.OutputKey?.includes("DistributionDomainName")) {
-                result.distributionDomain = output.OutputValue;
+            } else if (output.OutputKey?.includes("WebsiteURL")) {
+                result.websiteUrl = output.OutputValue;
             }
         }
 
-        if (!result.bucketName || !result.distributionId || !result.distributionDomain) {
+        if (!result.bucketName || !result.websiteUrl) {
             return null;
         }
 
@@ -208,7 +205,7 @@ export class WebDeployer extends StackManager {
             if (outputs) {
                 console.log(`  - ${chalk.bold(pkg)}`);
                 console.log(chalk.gray(`      Bucket: ${outputs.bucketName}`));
-                console.log(chalk.gray(`      CloudFront: ${outputs.distributionDomain}`));
+                console.log(chalk.gray(`      Website: ${outputs.websiteUrl}`));
             }
         }
 
@@ -273,13 +270,10 @@ export class WebDeployer extends StackManager {
                 continue;
             }
 
-            // Invalidate CloudFront
-            await this.invalidateCloudFront(outputs.distributionId, awsProfile);
-
             results.push({
                 package: pkgName,
                 success: true,
-                url: `https://${outputs.distributionDomain}`,
+                url: outputs.websiteUrl,
             });
         }
 
@@ -348,29 +342,6 @@ export class WebDeployer extends StackManager {
         } catch (error: any) {
             console.log(chalk.red(`  [${pkg.name}] ✗ S3 sync failed`));
             console.log(chalk.gray(`  Error: ${error.message}`));
-            return false;
-        }
-    }
-
-    /**
-     * Invalidate CloudFront distribution
-     */
-    private async invalidateCloudFront(distributionId: string, awsProfile: string): Promise<boolean> {
-        console.log(chalk.gray(`  Invalidating CloudFront cache (${distributionId})...`));
-
-        try {
-            const previousVerbose = $.verbose;
-            $.verbose = false;
-
-            await $`AWS_PROFILE=${awsProfile} aws cloudfront create-invalidation --distribution-id ${distributionId} --paths "/*"`;
-
-            $.verbose = previousVerbose;
-
-            console.log(chalk.green(`  ✓ CloudFront invalidation created`));
-            return true;
-        } catch (error: any) {
-            console.log(chalk.yellow(`  ⚠ CloudFront invalidation failed: ${error.message}`));
-            // Non-fatal - content will update eventually
             return false;
         }
     }
