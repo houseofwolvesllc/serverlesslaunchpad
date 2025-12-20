@@ -1,4 +1,5 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
+import { CloudFormationClient, DescribeStacksCommand, ListStacksCommand, Export } from "@aws-sdk/client-cloudformation";
 import chalk from "chalk";
 import { config } from "dotenv";
 import * as fs from "fs";
@@ -209,6 +210,9 @@ export class Deployer extends StackManager {
             $.verbose = previousVerbose;
 
             console.log(chalk.green.bold("\n✅ Deployment completed successfully!"));
+            
+            // Always generate local.config.json after deployment
+            await this.generateLocalConfig(environment);
         } catch (error) {
             console.error(chalk.red(`\n❌ Deployment failed: ${(error as Error).message}`));
             process.exit(1);
@@ -316,5 +320,206 @@ export class Deployer extends StackManager {
             console.error(chalk.yellow(`⚠️  Could not generate config: ${(error as Error).message}`));
             console.log(chalk.yellow("Config will be generated during Lambda stack deployment."));
         }
+    }
+    
+    /**
+     * Generate configurations from deployed CloudFormation stacks
+     */
+    private async generateLocalConfig(environment: Environment): Promise<void> {
+        try {
+            console.log(chalk.blue("\n📄 Generating configuration files from deployed stacks..."));
+            
+            const awsRegion = process.env.AWS_REGION || process.env.CDK_DEFAULT_REGION || 'us-west-2';
+            const awsProfile = process.env.AWS_PROFILE;
+            
+            console.log(chalk.gray(`   AWS Region: ${awsRegion}`));
+            console.log(chalk.gray(`   AWS Profile: ${awsProfile || 'default'}`));
+            
+            // Initialize CloudFormation client - don't manually set credentials when using profile
+            const cfnClient = new CloudFormationClient({ 
+                region: awsRegion
+                // AWS SDK will automatically use the profile from AWS_PROFILE env var
+            });
+            
+            // List existing stacks for debugging
+            await this.listExistingStacks(cfnClient, environment);
+            
+            // Generate config from stack outputs
+            await this.generateConfigFromStackOutputs(cfnClient, environment);
+            
+            console.log(chalk.gray(`   You can now run: cd ../api.hypermedia && npm run dev`));
+        } catch (error) {
+            console.error(chalk.yellow(`⚠️  Could not generate config: ${(error as Error).message}`));
+        }
+    }
+    
+    /**
+     * List existing stacks for debugging
+     */
+    private async listExistingStacks(cfnClient: CloudFormationClient, environment: Environment): Promise<void> {
+        try {
+            const command = new ListStacksCommand({
+                StackStatusFilter: ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
+            });
+            const response = await cfnClient.send(command);
+            
+            const relevantStacks = response.StackSummaries?.filter(stack => 
+                stack.StackName?.includes(`-${environment}`)
+            ) || [];
+            
+            console.log(chalk.gray(`   Found ${relevantStacks.length} deployed stacks for ${environment}:`));
+            relevantStacks.forEach(stack => {
+                console.log(chalk.gray(`     - ${stack.StackName}`));
+            });
+            
+        } catch (error: any) {
+            console.log(chalk.yellow(`⚠️  Could not list stacks: ${error.message}`));
+        }
+    }
+    
+    /**
+     * Generate configuration from actual deployed CloudFormation outputs
+     */
+    private async generateConfigFromStackOutputs(cfnClient: CloudFormationClient, environment: Environment): Promise<void> {
+        const config: any = {
+            environment: environment,
+            _generated: new Date().toISOString(),
+        };
+        
+        // Fetch outputs from each stack
+        const stackConfigs = [
+            { name: `slp-cognito-stack-${environment}`, key: 'cognito' },
+            { name: `slp-data-stack-${environment}`, key: 'athena' },  // Fixed: was slp-athena-stack
+            { name: `slp-secrets-stack-${environment}`, key: 'secrets' },
+            { name: `slp-lambda-stack-${environment}`, key: 'lambda' },
+            { name: `slp-alb-stack-${environment}`, key: 'alb' },
+        ];
+        
+        for (const { name, key } of stackConfigs) {
+            try {
+                const outputs = await this.getStackOutputs(cfnClient, name);
+                if (outputs.length > 0) {
+                    config[key] = this.transformOutputs(outputs, key);
+                    console.log(chalk.gray(`   ✓ Found ${outputs.length} outputs from ${name}`));
+                }
+            } catch (error: any) {
+                console.log(chalk.yellow(`⚠️  Stack ${name}: ${error.message}`));
+                // More detailed error for debugging
+                if (error.name === 'ValidationException' && error.message.includes('does not exist')) {
+                    console.log(chalk.gray(`     (Stack not deployed yet)`));
+                }
+            }
+        }
+        
+        // Add feature flags and limits based on environment
+        config.features = {
+            enable_analytics: environment === Environment.Production,
+            enable_rate_limiting: environment !== Environment.Development,
+            enable_advanced_security: environment === Environment.Production,
+        };
+        
+        config.limits = {
+            max_api_keys_per_user: environment === Environment.Production ? 3 : 10,
+            session_timeout_hours: environment === Environment.Production ? 8 : 24,
+            max_query_timeout_seconds: environment === Environment.Production ? 120 : 300,
+        };
+        
+        // Write environment-specific config
+        this.writeConfig(config, `${environment}.config.json`);
+        
+        // Always write local.config.json
+        this.writeConfig({
+            ...config,
+            _source: `Generated from ${environment} environment`
+        }, 'local.config.json');
+    }
+    
+    /**
+     * Get CloudFormation stack outputs
+     */
+    private async getStackOutputs(cfnClient: CloudFormationClient, stackName: string): Promise<Export[]> {
+        const command = new DescribeStacksCommand({ StackName: stackName });
+        const response = await cfnClient.send(command);
+        
+        if (!response.Stacks || response.Stacks.length === 0) {
+            throw new Error(`Stack ${stackName} not found`);
+        }
+        
+        return response.Stacks[0].Outputs || [];
+    }
+    
+    /**
+     * Transform CloudFormation outputs to config structure
+     */
+    private transformOutputs(outputs: Export[], stackKey: string): any {
+        const result: any = {};
+        
+        for (const output of outputs) {
+            if (!output.OutputKey || !output.OutputValue) continue;
+            
+            // Map specific outputs based on stack type
+            switch (stackKey) {
+                case 'cognito':
+                    if (output.OutputKey.includes('UserPoolId')) {
+                        result.user_pool_id = output.OutputValue;
+                    } else if (output.OutputKey.includes('UserPoolClientId')) {
+                        result.user_pool_client_id = output.OutputValue;
+                    } else if (output.OutputKey.includes('UserPoolProviderUrl')) {
+                        result.user_pool_provider_url = output.OutputValue;
+                    }
+                    break;
+                
+                case 'athena':
+                    if (output.OutputKey.includes('WorkGroupName')) {
+                        result.workgroup = output.OutputValue;
+                    } else if (output.OutputKey.includes('QueryResultsBucketName')) {
+                        result.results_bucket = output.OutputValue;
+                    } else if (output.OutputKey.includes('DataBucketName')) {
+                        result.data_bucket = output.OutputValue;
+                    }
+                    break;
+                
+                case 'secrets':
+                    if (output.OutputKey.includes('SecretArn')) {
+                        result.configuration_secret_arn = output.OutputValue;
+                    } else if (output.OutputKey.includes('EncryptionKeyArn')) {
+                        result.encryption_key_arn = output.OutputValue;
+                    }
+                    break;
+                
+                case 'lambda':
+                    if (output.OutputKey.includes('FunctionArn')) {
+                        result.function_arn = output.OutputValue;
+                    } else if (output.OutputKey.includes('FunctionName')) {
+                        result.function_name = output.OutputValue;
+                    }
+                    break;
+                
+                case 'alb':
+                    if (output.OutputKey.includes('LoadBalancerDnsName')) {
+                        result.dns_name = output.OutputValue;
+                    } else if (output.OutputKey.includes('TargetGroupArn')) {
+                        result.target_group_arn = output.OutputValue;
+                    }
+                    break;
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Write configuration file
+     */
+    private writeConfig(config: any, filename: string): void {
+        const configDir = path.join(__dirname, '../../api.hypermedia/config');
+        const configPath = path.join(configDir, filename);
+        
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        console.log(chalk.green(`✅ Generated ${filename}`));
     }
 }
