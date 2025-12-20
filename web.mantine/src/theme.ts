@@ -31,10 +31,10 @@ export const theme = createTheme({
             '#f1f5f9', // 1 (slate-100)
             '#e2e8f0', // 2 (slate-200)
             '#cbd5e1', // 3 (slate-300)
-            '#94a3b8', // 4 (slate-400)
+            '#1e293b', // 4 (slate-400)
             '#64748b', // 5 (slate-500)
             '#475569', // 6 (slate-600)
-            '#1e293b', // 7 - muted dark (shadcn --muted dark)
+            '#020617', // 7 - muted dark (shadcn --muted dark)
             '#0f172a', // 8
             '#020617', // 9 - darkest background (shadcn --background dark)
         ],
