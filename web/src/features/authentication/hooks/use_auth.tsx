@@ -12,31 +12,15 @@ let amplifyConfigured = false;
 async function ensureAmplifyConfigured() {
     if (amplifyConfigured) return;
 
-    // Check if shims are installed before configuring Amplify
-    const shimDiagnostics = (globalThis as any).__MOTO_SHIM_DIAGNOSTICS__?.();
-    if (shimDiagnostics) {
-        console.log('🔍 [AUTH] Amplify configuration starting - Shim status:', {
-            shimsInitialized: shimDiagnostics.initialized,
-            shimTimestamp: shimDiagnostics.initTimestamp,
-            xhrShimInstalled: shimDiagnostics.xhrShimInstalled,
-            fetchShimInstalled: shimDiagnostics.fetchShimInstalled,
-            awsEnvConfigured: shimDiagnostics.awsEnvConfigured,
-            timeSinceShimInit: shimDiagnostics.initTimestamp ? Date.now() - new Date(shimDiagnostics.initTimestamp).getTime() : 'unknown'
-        });
-    } else {
-        console.warn('⚠️ [AUTH] Amplify configuring but shim diagnostics not available - shims may not be loaded');
-    }
-
     const config = await WebConfigurationStore.getConfig();
 
-    // Configure Amplify v6 with environment config and Moto-specific settings
+    // Configure Amplify v6 with cognito-local endpoint for local development
     const amplifyConfig: any = {
         Auth: {
             Cognito: {
                 region: config.aws.region,
                 userPoolId: config.cognito.user_pool_id,
                 userPoolClientId: config.cognito.client_id,
-                identityPoolId: config.cognito.identity_pool_id,
                 loginWith: { email: true },
                 signUpVerificationMethod: 'code',
                 userAttributes: { email: { required: true } },
@@ -52,10 +36,22 @@ async function ensureAmplifyConfigured() {
         },
     };
 
+    // Use cognito-local endpoint if configured (local development)
+    if (config.cognito.endpoint_url) {
+        amplifyConfig.Auth.Cognito.endpoint = config.cognito.endpoint_url;
+        // Don't configure identity pool for cognito-local (it doesn't support Cognito Identity)
+    } else {
+        // Only use identity pool in production with real AWS Cognito
+        if (config.cognito.identity_pool_id) {
+            amplifyConfig.Auth.Cognito.identityPoolId = config.cognito.identity_pool_id;
+        }
+    }
+
     console.log('🔧 [AUTH] Configuring Amplify with:', {
         region: amplifyConfig.Auth.Cognito.region,
         userPoolId: amplifyConfig.Auth.Cognito.userPoolId,
         clientId: amplifyConfig.Auth.Cognito.userPoolClientId,
+        endpoint: amplifyConfig.Auth.Cognito.endpoint || 'default (AWS)',
         timestamp: new Date().toISOString()
     });
 
@@ -111,8 +107,8 @@ export const useAuth = function () {
             const federateRequest = {
                 sessionKey,
                 email: payload?.email as string,
-                firstName: payload?.given_name as string,
-                lastName: payload?.family_name as string,
+                firstName: (payload?.given_name as string) || "",
+                lastName: (payload?.family_name as string) || "",
             };
             console.log('Federation request:', federateRequest);
 

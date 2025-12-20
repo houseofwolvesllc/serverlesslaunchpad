@@ -33,11 +33,13 @@ export class AuthenticationController extends BaseController {
             userAgent: headers["user-agent"],
             sessionKey: body.sessionKey,
             email: body.email,
-            firstName: body.firstName,
-            lastName: body.lastName,
+            firstName: body.firstName || "",
+            lastName: body.lastName || "",
         };
 
         const authResult = await this.authenticator.authenticate(authMessage);
+
+        console.log("authResult", authResult);
 
         if (!authResult.authContext.identity) {
             throw new UnauthorizedError("Bearer failed validation.");
