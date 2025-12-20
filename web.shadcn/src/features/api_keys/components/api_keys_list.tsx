@@ -36,11 +36,11 @@ export function ApiKeysList() {
 
     const { confirmDelete } = useConfirmDelete();
 
-    const create_template = data?._templates?.default;
+    const create_template = data?._templates?.create || data?._templates?.default;
 
     // Handle bulk delete with confirmation
     const handle_bulk_delete = async (selected_ids: string[]) => {
-        const bulk_delete_template = data?._templates?.bulkDelete;
+        const bulk_delete_template = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulk_delete_template) return;
 
         const count = selected_ids.length;

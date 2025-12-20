@@ -65,7 +65,7 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
                 }
             ),
             // Sessions collection has bulk delete but no create operation
-            bulkDelete: this.createTemplate(
+            "bulk-delete": this.createTemplate(
                 "Delete Selected Sessions",
                 "DELETE",
                 this.router.buildHref(SessionsController, 'deleteSessions', { userId: this.userId }),

@@ -127,6 +127,39 @@ export {
 } from './collection';
 
 // ============================================================================
+// Templates - Template categorization and execution
+// ============================================================================
+
+export {
+    categorizeTemplate,
+    buildTemplateData,
+    getPropertySource,
+    getConfirmationConfig,
+    type TemplateCategory,
+    type TemplateExecutionContext,
+    type PropertySource,
+    type ConfirmationConfig,
+} from './templates';
+
+// ============================================================================
+// Enums - Enum translation and bitflag utilities
+// ============================================================================
+
+export {
+    getEnumLabel,
+    getEnumOptions,
+    isEnumProperty,
+    getEnumLabelSafe,
+    parseBitfield,
+    hasBitflag,
+    formatBitfield,
+    countBitflags,
+    toggleBitflag,
+    setBitflag,
+    unsetBitflag,
+} from './enums';
+
+// ============================================================================
 // Version
 // ============================================================================
 

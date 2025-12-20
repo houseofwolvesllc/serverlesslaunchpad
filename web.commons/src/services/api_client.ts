@@ -93,6 +93,8 @@ export interface ApiClientConfig {
  */
 export class ApiClient {
     private config: Required<ApiClientConfig>;
+    private etagCache = new Map<string, string>();
+    private responseCache = new Map<string, any>();
 
     constructor(config: ApiClientConfig) {
         this.config = {
@@ -129,6 +131,16 @@ export class ApiClient {
             defaultHeaders['X-Forwarded-For'] = '127.0.0.1';
         }
 
+        // Add If-None-Match header for GET requests if we have a cached ETag
+        const method = (options.method || 'GET').toUpperCase();
+        if (method === 'GET') {
+            const cachedETag = this.etagCache.get(path);
+            if (cachedETag) {
+                defaultHeaders['If-None-Match'] = cachedETag;
+                this.config.logger.debug('Using cached ETag', { path, etag: cachedETag });
+            }
+        }
+
         const requestOptions: RequestInit = {
             ...options,
             credentials: this.config.credentials ? 'include' : 'omit',
@@ -154,11 +166,32 @@ export class ApiClient {
             const response = await fetch(url, requestOptions);
             clearTimeout(timeoutId);
 
+            // Handle 304 Not Modified - return cached response
+            if (response.status === 304) {
+                const cachedResponse = this.responseCache.get(path);
+                if (cachedResponse) {
+                    this.config.logger.debug('304 Not Modified - using cached response', { path });
+                    return cachedResponse;
+                }
+                // Fallback: if no cached response, treat as error
+                this.config.logger.error('304 Not Modified but no cached response', { path });
+            }
+
             if (!response.ok) {
                 await this.handleErrorResponse(response);
             }
 
             const data = await response.json();
+
+            // Store ETag and response for GET requests
+            if (method === 'GET') {
+                const etag = response.headers.get('ETag');
+                if (etag) {
+                    this.etagCache.set(path, etag);
+                    this.responseCache.set(path, data);
+                    this.config.logger.debug('Cached ETag and response', { path, etag });
+                }
+            }
 
             this.config.logger.debug('API Response', {
                 status: response.status,

@@ -4,19 +4,26 @@
  * This component automatically displays a resource in a card-based layout with:
  * - Breadcrumb navigation (Home → Current page)
  * - Field display sections (Overview, Details)
- * - Template actions section
+ * - Template actions section with categorization
  * - Type-based field rendering
+ * - Form modals for update/edit templates
+ * - Confirmation dialogs for action templates
+ * - Filtered delete operations (only in list views)
  */
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Home, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useBreadcrumb } from '@/context/breadcrumb_context';
 import {
     extractResourceFields,
     humanizeLabel,
     type HalObject,
     type InferredColumn,
     type InferenceOptions,
+    categorizeTemplate,
+    buildTemplateData,
+    getConfirmationConfig,
+    type TemplateExecutionContext,
 } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +31,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { getFieldRenderer, type FieldRenderer } from '../hal_collection/field_renderers';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { TemplateForm } from '@/components/hal_forms/template_form';
+import { ConfirmationDialog } from '@/components/ui/confirmation_dialog';
+import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import { toast } from 'sonner';
 
 export interface HalResourceDetailProps {
     resource: HalObject | null | undefined;
@@ -64,6 +76,21 @@ export function HalResourceDetail({
     error = null,
 }: HalResourceDetailProps) {
     const [executingTemplate, setExecutingTemplate] = useState<string | null>(null);
+    const { setResourceTitle } = useBreadcrumb();
+
+    // State for form dialog
+    const [formState, setFormState] = useState<{
+        open: boolean;
+        template: HalTemplate | null;
+        templateKey: string | null;
+    }>({ open: false, template: null, templateKey: null });
+
+    // State for confirmation dialog
+    const [confirmationState, setConfirmationState] = useState<{
+        open: boolean;
+        template: HalTemplate | null;
+        context: TemplateExecutionContext | null;
+    }>({ open: false, template: null, context: null });
 
     // Extract and infer fields from resource
     const allFields = resource ? extractResourceFields(resource, fieldConfig) : [];
@@ -81,11 +108,18 @@ export function HalResourceDetail({
     const getPageTitle = (): string => {
         if (!resource) return 'Resource';
 
-        // Try common title fields
+        // First priority: self link title
+        const selfLink = resource._links?.self;
+        if (selfLink) {
+            const selfTitle = Array.isArray(selfLink) ? selfLink[0]?.title : selfLink.title;
+            if (selfTitle) return selfTitle;
+        }
+
+        // Second priority: common title fields
         const titleField = resource.title || resource.name || resource.label;
         if (titleField) return String(titleField);
 
-        // Fall back to first non-empty field
+        // Third priority: first non-empty field
         for (const field of overviewFields) {
             const value = resource[field.key];
             if (value) return String(value);
@@ -96,17 +130,134 @@ export function HalResourceDetail({
 
     const pageTitle = getPageTitle();
 
-    // Extract templates for actions
-    const templates = resource?._templates || {};
-    const templateEntries = Object.entries(templates).filter(([key]) => key !== 'default' && key !== 'self');
+    // Update breadcrumb with resource title
+    useEffect(() => {
+        if (resource) {
+            setResourceTitle(pageTitle);
+        }
+        return () => {
+            // Clear resource title when component unmounts
+            setResourceTitle(null);
+        };
+    }, [resource, pageTitle, setResourceTitle]);
 
-    // Handle template execution
-    const handleTemplateClick = async (templateKey: string, template: any) => {
+    // Extract templates for actions (filter out navigation and delete operations)
+    const templates = resource?._templates || {};
+    const templateEntries = Object.entries(templates).filter(([key, template]) => {
+        // Filter out navigation templates (self, default)
+        if (key === 'default' || key === 'self') return false;
+
+        // Filter out delete operations (they belong in list views only)
+        if (key === 'delete' || (template as HalTemplate).method === 'DELETE') return false;
+
+        return true;
+    });
+
+    // Execute template with context
+    const executeTemplate = async (
+        template: HalTemplate,
+        context: TemplateExecutionContext,
+        showToast: boolean = true
+    ) => {
         if (!onTemplateExecute) return;
 
-        setExecutingTemplate(templateKey);
         try {
-            await onTemplateExecute(template, {});
+            const data = buildTemplateData(context);
+            await onTemplateExecute(template, data);
+
+            // Refresh to get updated data (cache-busting handled by useHalResource)
+            if (onRefresh) {
+                await onRefresh();
+            }
+
+            // Only show success toast for non-navigation templates
+            if (showToast) {
+                toast.success(template.title || 'Action completed');
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Operation failed';
+            // Only show error toast for non-navigation templates
+            if (showToast) {
+                toast.error(message);
+            }
+            throw error;
+        }
+    };
+
+    // Handle template button click with categorization
+    const handleTemplateClick = async (templateKey: string, template: HalTemplate) => {
+        if (!onTemplateExecute) return;
+
+        const category = categorizeTemplate(templateKey, template);
+
+        // Categorize and handle accordingly
+        if (category === 'navigation') {
+            // Navigation templates: execute immediately (shouldn't happen in detail view)
+            const context: TemplateExecutionContext = {
+                template,
+                resource,
+            };
+            setExecutingTemplate(templateKey);
+            try {
+                // Don't show toast for navigation templates
+                await executeTemplate(template, context, false);
+            } finally {
+                setExecutingTemplate(null);
+            }
+        } else if (category === 'form') {
+            // Form templates: show form dialog
+            setFormState({
+                open: true,
+                template,
+                templateKey,
+            });
+        } else {
+            // Action templates: show confirmation dialog
+            const context: TemplateExecutionContext = {
+                template,
+                resource,
+            };
+            setConfirmationState({
+                open: true,
+                template,
+                context,
+            });
+        }
+    };
+
+    // Handle form dialog submit
+    const handleFormSubmit = async (formData: Record<string, any>) => {
+        if (!formState.template) return;
+
+        setExecutingTemplate(formState.templateKey || 'form');
+
+        try {
+            const context: TemplateExecutionContext = {
+                template: formState.template,
+                formData,
+                resource,
+            };
+
+            await executeTemplate(formState.template, context);
+            setFormState({ open: false, template: null, templateKey: null });
+        } finally {
+            setExecutingTemplate(null);
+        }
+    };
+
+    // Handle confirmation dialog confirm
+    const handleConfirmAction = async () => {
+        if (!confirmationState.template || !confirmationState.context) return;
+
+        const templateKey = Object.keys(templates).find(
+            key => templates[key] === confirmationState.template
+        );
+
+        setExecutingTemplate(templateKey || 'action');
+
+        try {
+            await executeTemplate(confirmationState.template, confirmationState.context);
+            setConfirmationState({ open: false, template: null, context: null });
         } finally {
             setExecutingTemplate(null);
         }
@@ -170,16 +321,6 @@ export function HalResourceDetail({
     if (error) {
         return (
             <div className="space-y-6">
-                {/* Breadcrumb */}
-                <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
-                        <Home className="h-4 w-4" />
-                        Home
-                    </Link>
-                    <span>/</span>
-                    <span className="text-foreground">Error</span>
-                </nav>
-
                 {/* Error alert */}
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -216,30 +357,31 @@ export function HalResourceDetail({
 
     return (
         <div className="space-y-6">
-            {/* Breadcrumb Navigation */}
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
-                    <Home className="h-4 w-4" />
-                    Home
-                </Link>
-                <span>/</span>
-                <span className="text-foreground">{pageTitle}</span>
-            </nav>
-
             {/* Page Header */}
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
-                    {resource._links?.self && (
+                    {resource.email && (
                         <p className="text-muted-foreground">
-                            {Array.isArray(resource._links.self)
-                                ? resource._links.self[0]?.title
-                                : resource._links.self.title}
+                            {resource.email}
                         </p>
                     )}
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Template action buttons */}
+                    {templateEntries.map(([key, template]) => (
+                        <Button
+                            key={key}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTemplateClick(key, template as HalTemplate)}
+                            disabled={executingTemplate === key}
+                        >
+                            {executingTemplate === key ? 'Executing...' : (template as any).title || humanizeLabel(key)}
+                        </Button>
+                    ))}
+
                     {onRefresh && (
                         <Button variant="outline" onClick={onRefresh} size="sm">
                             <RefreshCw className="mr-2 h-4 w-4" />
@@ -279,28 +421,48 @@ export function HalResourceDetail({
                 </Card>
             )}
 
-            {/* Actions Section (Templates) */}
-            {templateEntries.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Actions</CardTitle>
-                        <CardDescription>Available operations for this resource</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                            {templateEntries.map(([key, template]) => (
-                                <Button
-                                    key={key}
-                                    variant="default"
-                                    onClick={() => handleTemplateClick(key, template)}
-                                    disabled={executingTemplate === key}
-                                >
-                                    {executingTemplate === key ? 'Executing...' : (template as any).title || humanizeLabel(key)}
-                                </Button>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Form Dialog for update/edit templates */}
+            {formState.template && (
+                <Dialog open={formState.open} onOpenChange={(open) => {
+                    if (!open) {
+                        setFormState({ open: false, template: null, templateKey: null });
+                    }
+                }}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>
+                                {formState.template.title || humanizeLabel(formState.templateKey || '')}
+                            </DialogTitle>
+                            <DialogDescription>
+                                Fill out the form below and submit.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <TemplateForm
+                            key={`${formState.templateKey}-${resource?.userId || resource?.id || Date.now()}`}
+                            template={formState.template}
+                            onSubmit={handleFormSubmit}
+                            onCancel={() => setFormState({ open: false, template: null, templateKey: null })}
+                            loading={executingTemplate !== null}
+                            hideTitle={true}
+                            initialValues={resource || {}}
+                        />
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Confirmation Dialog for action templates */}
+            {confirmationState.template && confirmationState.context && (
+                <ConfirmationDialog
+                    open={confirmationState.open}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setConfirmationState({ open: false, template: null, context: null });
+                        }
+                    }}
+                    {...getConfirmationConfig(confirmationState.template, confirmationState.context)}
+                    onConfirm={handleConfirmAction}
+                    loading={executingTemplate !== null}
+                />
             )}
         </div>
     );

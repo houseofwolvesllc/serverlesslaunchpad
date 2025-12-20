@@ -26,6 +26,7 @@
     },
     "exports": {
         ".": "./dist/index.js",
+        "./enums": "./dist/enums/index.js",
         "./hal": "./dist/hal/index.js",
         "./pagination": "./dist/pagination/index.js"
     },
