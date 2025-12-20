@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { NavGroup } from '@/hooks/use_navigation';
 
 export type NavigationSource = 'menu' | 'link' | 'browser';
 
@@ -7,12 +8,16 @@ export interface NavigationHistoryItem {
   resource: HalObject;
   source: NavigationSource;
   timestamp: number;
+  /** Parent groups from sitemap (only when navigating via menu) */
+  parentGroups?: NavGroup[];
 }
 
 interface NavigationHistoryContextValue {
   history: NavigationHistoryItem[];
-  pushResource: (resource: HalObject, source: NavigationSource) => void;
-  resetHistory: (initialResource: HalObject, source?: NavigationSource) => void;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  pushResource: (resource: HalObject, source: NavigationSource, parentGroups?: NavGroup[]) => void;
+  resetHistory: (initialResource: HalObject, source?: NavigationSource, parentGroups?: NavGroup[]) => void;
   popHistory: () => NavigationHistoryItem | null;
   clearHistory: () => void;
   truncateHistory: (index: number) => void;
@@ -32,10 +37,11 @@ interface NavigationHistoryProviderProps {
 
 export function NavigationHistoryProvider({ children }: NavigationHistoryProviderProps) {
   const [history, setHistory] = useState<NavigationHistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const nextNavigationIsMenu = useRef(false);
   const skipNextNavigation = useRef(false);
 
-  const pushResource = useCallback((resource: HalObject, source: NavigationSource) => {
+  const pushResource = useCallback((resource: HalObject, source: NavigationSource, parentGroups?: NavGroup[]) => {
     setHistory((prev) => {
       // Helper to get href from link (handles both single link and array)
       const getHref = (link: any): string | undefined => {
@@ -57,6 +63,7 @@ export function NavigationHistoryProvider({ children }: NavigationHistoryProvide
         resource,
         source,
         timestamp: Date.now(),
+        parentGroups,
       };
 
       // Add new item and enforce max depth
@@ -68,11 +75,12 @@ export function NavigationHistoryProvider({ children }: NavigationHistoryProvide
     });
   }, []);
 
-  const resetHistory = useCallback((initialResource: HalObject, source: NavigationSource = 'menu') => {
+  const resetHistory = useCallback((initialResource: HalObject, source: NavigationSource = 'menu', parentGroups?: NavGroup[]) => {
     const newItem: NavigationHistoryItem = {
       resource: initialResource,
       source,
       timestamp: Date.now(),
+      parentGroups,
     };
     setHistory([newItem]);
   }, []);
@@ -121,6 +129,8 @@ export function NavigationHistoryProvider({ children }: NavigationHistoryProvide
 
   const value: NavigationHistoryContextValue = {
     history,
+    isLoading,
+    setIsLoading,
     pushResource,
     resetHistory,
     popHistory,

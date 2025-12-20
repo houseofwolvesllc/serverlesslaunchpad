@@ -23,25 +23,7 @@ import {
 import { AuthenticationContext } from '../../authentication';
 import { logger } from '../../../logging/logger';
 import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
-
-/**
- * HAL link structure
- */
-interface HalLink {
-    href: string;
-    title?: string;
-    [key: string]: any;
-}
-
-/**
- * HAL template structure
- */
-interface HalTemplate {
-    title: string;
-    method: string;
-    target: string;
-    [key: string]: any;
-}
+import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Sitemap API response structure (HAL format with _nav)
