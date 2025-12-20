@@ -79,9 +79,6 @@ describe("ApiConfigSchema", () => {
 
 describe("SecretsConfigSchema", () => {
     const validSecrets: SecretsConfig = {
-        cognito: {
-            client_secret: 'secret123'
-        },
         session_token_salt: 'test-salt-32-characters-long!!'
     };
 
@@ -89,34 +86,17 @@ describe("SecretsConfigSchema", () => {
         const result = SecretsConfigSchema.safeParse(validSecrets);
         expect(result.success).toBe(true);
         if (result.success) {
-            expect(result.data.cognito.client_secret).toBe('secret123');
             expect(result.data.session_token_salt).toBe('test-salt-32-characters-long!!');
         }
     });
 
-    it("should require required fields", () => {
-        const incompleteSecrets = {
-            cognito: {
-                client_secret: 'secret123'
-            }
-            // Missing session_token_salt
-        };
+    it("should require session_token_salt", () => {
+        const incompleteSecrets = {};
 
         const result = SecretsConfigSchema.safeParse(incompleteSecrets);
         expect(result.success).toBe(false);
         if (!result.success) {
             expect(result.error.issues.some(issue => issue.path.includes('session_token_salt'))).toBe(true);
         }
-    });
-
-    it("should allow optional fields", () => {
-        const secretsWithOptional = {
-            ...validSecrets,
-            encryption_key: 'optional-encryption-key',
-            jwt_secret: 'optional-jwt-secret'
-        };
-
-        const result = SecretsConfigSchema.safeParse(secretsWithOptional);
-        expect(result.success).toBe(true);
     });
 });

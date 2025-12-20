@@ -3,7 +3,7 @@ import * as amplify from 'aws-amplify/auth';
 import { useContext } from 'react';
 import WebConfigurationStore from '../../../configuration/web_config_store';
 import { apiClient } from '../../../services/api.client';
-import { getEntryPoint, refreshCapabilities, clearEntryPoint } from '../../../services/entry_point_provider';
+import { getEntryPoint, refreshCapabilities, clearEntryPoint, initializeEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
 import { logger } from '../../../logging/logger';
 
@@ -91,6 +91,8 @@ export const useAuth = function () {
 
     async function federateSession(authSession: amplify.AuthSession): Promise<User> {
         try {
+            // Ensure entry point is initialized (may have been cleared on logout)
+            await initializeEntryPoint();
             const entryPoint = getEntryPoint();
 
             // Debug: Check what templates are available

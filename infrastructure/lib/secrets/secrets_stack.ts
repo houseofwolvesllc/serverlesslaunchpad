@@ -59,7 +59,7 @@ export class SecretsStack extends BaseStack {
      */
     private getInitialSecretValue(): SecretValue {
         const initialConfiguration = {
-            STS: this.getSessionTokenSalt(),
+            session_token_salt: this.getSessionTokenSalt(),
         };
 
         return SecretValue.unsafePlainText(JSON.stringify(initialConfiguration));

@@ -79,17 +79,8 @@ export const ApiConfigSchema = z.object({
  * Contains only sensitive data that should be cached for a limited time (15 minutes).
  */
 export const SecretsConfigSchema = z.object({
-    // Cognito sensitive configuration
-    cognito: z.object({
-        client_secret: z.string(),
-    }),
-
     // Session token salt for signature generation
     session_token_salt: z.string(),
-
-    // Optional additional secrets
-    encryption_key: z.string().optional(),
-    jwt_secret: z.string().optional(),
 });
 
 export type ApiConfig = z.infer<typeof ApiConfigSchema>;
