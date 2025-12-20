@@ -14,6 +14,14 @@ export class AuthenticationCookieRepository {
     };
 
     /**
+     * Check if session cookie is set in the cookie header
+     */
+    static isSet(cookieHeader: string | undefined): boolean {
+        if (!cookieHeader) return false;
+        return cookieHeader.includes(this.COOKIE_NAME);
+    }
+
+    /**
      * Get session token from cookie
      */
     static get(event: ALBEvent): string | null {
