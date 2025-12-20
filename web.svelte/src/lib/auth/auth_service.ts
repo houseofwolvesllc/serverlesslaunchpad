@@ -2,7 +2,7 @@ import { Amplify } from 'aws-amplify';
 import * as amplify from 'aws-amplify/auth';
 import { authStore } from '$lib/stores/auth_store';
 import { apiClient } from '$lib/services/api_client';
-import { getEntryPoint, refreshCapabilities } from '$lib/services/entry_point_provider';
+import { getEntryPoint, refreshCapabilities, clearEntryPoint } from '$lib/services/entry_point_provider';
 import { logger } from '$lib/logging/logger';
 import { AuthError, SignInStep, type User } from './types';
 import type { SignInParams, SignUpParams, ConfirmSignUpParams, ResetPasswordParams, ConfirmResetPasswordParams } from './types';
@@ -425,4 +425,5 @@ export async function signOut() {
     }
 
     authStore.signOut();
+    clearEntryPoint(); // Clear cached capabilities for clean slate on next login
 }
