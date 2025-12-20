@@ -1,9 +1,9 @@
-import { Injectable, Role, UpsertUserMessage, UserRepository, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
+import { Injectable, Role, UpsertUserMessage, User, UserRepository, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
 import type { PagingInstructions } from "@houseofwolves/serverlesslaunchpad.types";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
 import { arrayToBitfield, enumLabelToValue } from "../content_types/enum_adapter_helpers.js";
-import { Cache, Log, Protected } from "../decorators/index.js";
+import { Log, Protected } from "../decorators/index.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Route, Router } from "../router.js";
@@ -33,21 +33,18 @@ export class UsersController extends BaseController {
      * Get user profile by ID
      * Example: GET /users/user-123
      *
-     * Cache Strategy: 600s TTL is appropriate because user profiles are
-     * relatively static data. Role and feature changes are infrequent
-     * enough to tolerate cache staleness.
+     * ETag Strategy: Uses userId + dateModified timestamp.
+     * Returns 304 Not Modified if client has current version.
      *
      * Authorization: AccountManager can view any profile (audit/support).
      * Users can view their own profile for self-service needs.
      *
      * Decorator execution order (bottom to top):
-     * 1. Cache - checks ETag first, may return 304
-     * 2. Protected - authenticates and validates authorization
-     * 3. Log - wraps entire execution with timing
+     * 1. Protected - authenticates and validates authorization
+     * 2. Log - wraps entire execution with timing
      */
     @Log()
     @Protected()
-    @Cache({ ttl: 600, vary: ["Authorization"] })
     @Route("GET", "/users/{userId}")
     async getUser(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request
@@ -68,10 +65,19 @@ export class UsersController extends BaseController {
             throw new NotFoundError(`User ${userId} not found`);
         }
 
+        // Generate ETag from entity
+        const etag = this.generateUserETag(user);
+
+        // Check if client has current version
+        const notModified = this.checkNotModified(event, etag);
+        if (notModified) return notModified;
+
         // Create HAL adapter with hypermedia links (pass currentUser for template generation)
         const adapter = new UserAdapter(user, currentUser, this.router);
 
-        return this.success(event, adapter);
+        return this.success(event, adapter, {
+            headers: { 'ETag': etag }
+        });
     }
 
     /**
@@ -173,20 +179,18 @@ export class UsersController extends BaseController {
      *
      * Security: Only Admin role can list all users (user management)
      *
-     * Cache Strategy: 300s TTL - users change frequently enough to warrant shorter cache
-     * than individual user profiles (which cache for 600s)
+     * ETag Strategy: Uses query hash + limit + first/last record identifiers.
+     * Returns 304 Not Modified if client has current version of this page.
      *
      * Note: This endpoint showcases pure HAL/HATEOAS architecture.
      * The collection will be rendered by generic frontend components with ZERO custom code.
      *
      * Decorator execution order (bottom to top):
-     * 1. Cache - checks ETag first
-     * 2. Protected - authenticates user and validates Admin role
-     * 3. Log - wraps entire execution
+     * 1. Protected - authenticates user and validates Admin role
+     * 2. Log - wraps entire execution
      */
     @Log()
     @Protected()
-    @Cache({ ttl: 300, vary: ["Authorization"] })
     @Route("POST", "/users/list")
     async getUsers(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
@@ -219,9 +223,54 @@ export class UsersController extends BaseController {
             (pagingInstructions.next as any).cursor = result.lastEvaluatedKey;
         }
 
+        // Generate ETag from collection
+        const etag = this.generateUsersListETag(
+            result.users,
+            { cursor: pagingInstruction?.cursor },
+            { limit: 50 }
+        );
+
+        // Check if client has current version
+        const notModified = this.checkNotModified(event, etag);
+        if (notModified) return notModified;
+
         // Return collection adapter with embedded user resources
         const adapter = new UserCollectionAdapter(result.users, currentUser, pagingInstructions, this.router);
 
-        return this.success(event, adapter);
+        return this.success(event, adapter, {
+            headers: { 'ETag': etag }
+        });
+    }
+
+    /**
+     * Generate ETag for a single user resource.
+     * Format: "{userId}-{dateModifiedTimestamp}"
+     */
+    private generateUserETag(user: User): string {
+        const timestamp = new Date(user.dateModified).getTime();
+        return `"${user.userId}-${timestamp}"`;
+    }
+
+    /**
+     * Generate ETag for a users list/collection.
+     * Based on query params, pagination, and first/last record identifiers.
+     */
+    private generateUsersListETag(
+        users: User[],
+        query: Record<string, any>,
+        pagination: { limit: number }
+    ): string {
+        if (users.length === 0) {
+            const queryHash = this.simpleHash(JSON.stringify(query));
+            return `"list-${queryHash}-${pagination.limit}-empty"`;
+        }
+
+        const first = users[0];
+        const last = users[users.length - 1];
+        const queryHash = this.simpleHash(JSON.stringify(query));
+        const firstTs = new Date(first.dateModified).getTime();
+        const lastTs = new Date(last.dateModified).getTime();
+
+        return `"list-${queryHash}-${pagination.limit}-${first.userId}-${firstTs}-${last.userId}-${lastTs}"`;
     }
 }
