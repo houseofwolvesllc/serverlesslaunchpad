@@ -1,16 +1,26 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth_store';
+	import { sitemapStore } from '$lib/stores/sitemap_store';
+	import { signOut } from '$lib/auth';
 	import { Key, Clock, LogOut, ArrowRight } from 'lucide-svelte';
 	import Card from '$lib/components/ui/card.svelte';
 	import CardHeader from '$lib/components/ui/card-header.svelte';
 	import CardContent from '$lib/components/ui/card-content.svelte';
 	import Button from '$lib/components/ui/button.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toastStore } from '$lib/stores/toast_store';
 
 	$: user = $authStore.user;
 	$: username = user?.username || user?.email || 'User';
 	$: firstName = user?.firstName;
+
+	// Get HATEOAS links/templates from sitemap - must be reactive
+	$: links = $sitemapStore.links;
+	$: templates = $sitemapStore.templates;
+
+	// Resolve hrefs reactively from links or templates (HATEOAS pattern)
+	$: sessionsHref = links?.['sessions']?.href || templates?.['sessions']?.target || null;
+	$: apiKeysHref = links?.['api-keys']?.href || templates?.['api-keys']?.target || null;
 
 	// Greeting based on time of day
 	function getGreeting(): string {
@@ -22,9 +32,9 @@
 
 	async function handleLogout() {
 		try {
-			await authStore.signOut();
+			await signOut();
 			toastStore.success('Logged out successfully');
-			goto('/auth/signin');
+			await goto('/auth/signin', { replaceState: true, invalidateAll: true });
 		} catch (error) {
 			toastStore.error('Failed to logout');
 		}
@@ -59,7 +69,7 @@
 					<p class="text-sm text-muted-foreground">
 						View and manage your active login sessions across devices.
 					</p>
-					<Button class="w-full" on:click={() => goto('/sessions')}>
+					<Button class="w-full" disabled={!sessionsHref} on:click={() => sessionsHref && goto(sessionsHref)}>
 						Manage Sessions
 						<ArrowRight class="ml-2 h-4 w-4" />
 					</Button>
@@ -79,7 +89,7 @@
 					<p class="text-sm text-muted-foreground">
 						Generate and manage API keys for programmatic access.
 					</p>
-					<Button class="w-full" on:click={() => goto('/api-keys')}>
+					<Button class="w-full" disabled={!apiKeysHref} on:click={() => apiKeysHref && goto(apiKeysHref)}>
 						Manage API Keys
 						<ArrowRight class="ml-2 h-4 w-4" />
 					</Button>

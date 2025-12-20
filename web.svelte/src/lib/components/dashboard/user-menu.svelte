@@ -17,7 +17,7 @@
 		try {
 			await signOut();
 			toastStore.success('Signed out successfully');
-			goto('/auth/signin');
+			await goto('/auth/signin', { replaceState: true, invalidateAll: true });
 		} catch (error) {
 			toastStore.error('Failed to sign out');
 			console.error('Sign out error:', error);

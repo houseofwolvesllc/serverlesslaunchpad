@@ -70,6 +70,7 @@ export const SignInForm = () => {
                         navigate(`/auth/reset-password`);
                         break;
                     case 'NotAuthorizedException':
+                    case 'InvalidPasswordException': // cognito-local uses this instead of NotAuthorizedException
                         form.setFieldError(
                             'password',
                             <>

@@ -72,7 +72,6 @@ export const ConfirmResetPasswordForm = () => {
                 }
             }
 
-            console.error('FORM Unexpected error:', error);
             throw error;
         }
     };

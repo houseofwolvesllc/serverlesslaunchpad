@@ -14,13 +14,10 @@ export class JoseJwtVerifier extends JwtVerifier {
 
             // Build JWKS URL (works for both local and production)
             const jwksUrl = this.buildJwksUrl(infraConfig);
-            console.log("[JwtVerifier] Fetching JWKS from:", jwksUrl);
-
             const JWKS = createRemoteJWKSet(new URL(jwksUrl));
 
             // Build expected issuer(s)
             const expectedIssuers = this.buildExpectedIssuers(infraConfig);
-            console.log("[JwtVerifier] Expected issuers:", expectedIssuers);
 
             // Verify token with issuer and audience validation
             await jwtVerify(accessToken, JWKS, {
@@ -28,17 +25,8 @@ export class JoseJwtVerifier extends JwtVerifier {
                 audience: infraConfig.cognito.client_id,
             });
 
-            console.log("[JwtVerifier] Token verified successfully");
             return true;
         } catch (error) {
-            console.error("[JwtVerifier] Error verifying JWT:", error);
-            if (error instanceof Error) {
-                console.error("[JwtVerifier] Error details:", {
-                    message: error.message,
-                    stack: error.stack,
-                    cause: (error as any).cause
-                });
-            }
             return false;
         }
     }
