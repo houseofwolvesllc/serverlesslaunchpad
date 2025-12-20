@@ -154,7 +154,7 @@ describe("CompositeConfigurationStore", () => {
 
         await compositeStore.get();
 
-        expect(consoleWarnSpy).toHaveBeenCalledWith("Configuration store failed:", expect.any(Error));
+        expect(consoleWarnSpy).toHaveBeenCalledWith("Configuration store failed:", "Store 1 failed");
 
         consoleWarnSpy.mockRestore();
     });

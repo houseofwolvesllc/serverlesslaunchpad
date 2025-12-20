@@ -3,7 +3,7 @@ import { ApiConfigSchema, ApiConfig, SecretsConfigSchema, SecretsConfig } from "
 
 describe("ApiConfigSchema", () => {
     const validConfig: ApiConfig = {
-        environment: 'local',
+        environment: 'moto',
         aws: {
             region: 'us-west-2',
             endpoint_url: 'http://localhost:5555'
@@ -18,7 +18,7 @@ describe("ApiConfigSchema", () => {
         const result = ApiConfigSchema.safeParse(validConfig);
         expect(result.success).toBe(true);
         if (result.success) {
-            expect(result.data.environment).toBe('local');
+            expect(result.data.environment).toBe('moto');
             expect(result.data.cognito.user_pool_id).toBe('us-west-2_test123');
         }
     });
@@ -38,7 +38,7 @@ describe("ApiConfigSchema", () => {
 
     it("should allow optional fields to be undefined", () => {
         const minimalConfig = {
-            environment: 'local',
+            environment: 'moto',
             aws: {
                 region: 'us-west-2'
             },
@@ -63,7 +63,7 @@ describe("ApiConfigSchema", () => {
     });
 
     it("should accept all valid environment values", () => {
-        const environments = ['local', 'development', 'staging', 'production'] as const;
+        const environments = ['moto', 'development', 'staging', 'production'] as const;
 
         for (const env of environments) {
             const config = {

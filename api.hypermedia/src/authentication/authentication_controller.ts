@@ -5,6 +5,7 @@ import { MessageAdapter } from "../content_types/message_adapter";
 import { UnauthorizedError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
 import { Route, Router } from "../router";
+import { getClientIp } from "../utils/get_client_ip";
 import { AuthContext, AuthContextAdapter } from "./auth_context_adapter";
 import { AuthenticationCookieRepository } from "./authentication_cookie_repository";
 import { AuthenticateSchema, SignoutSchema, VerifySchema } from "./schemas";
@@ -31,7 +32,7 @@ export class AuthenticationController extends BaseController {
 
         const authMessage = {
             accessToken: headers.authorization.replace("Bearer ", ""),
-            ipAddress: headers["x-forwarded-for"],
+            ipAddress: getClientIp(headers),
             userAgent: headers["user-agent"],
             sessionKey: body.sessionKey,
             email: body.email,
@@ -92,7 +93,7 @@ export class AuthenticationController extends BaseController {
 
         const verifyResult = await this.authenticator.verify({
             sessionToken,
-            ipAddress: headers["x-forwarded-for"],
+            ipAddress: getClientIp(headers),
             userAgent: headers["user-agent"],
         });
 
@@ -137,7 +138,7 @@ export class AuthenticationController extends BaseController {
 
         await this.authenticator.revoke({
             sessionToken,
-            ipAddress: headers["x-forwarded-for"],
+            ipAddress: getClientIp(headers),
             userAgent: headers["user-agent"],
         });
 

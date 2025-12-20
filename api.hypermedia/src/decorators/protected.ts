@@ -4,6 +4,7 @@ import { AuthenticationCookieRepository } from "../authentication/authentication
 import { getContainer } from "../container";
 import { UnauthorizedError, ValidationError } from "../errors";
 import { ExtendedALBEvent } from "../extended_alb_event";
+import { getClientIp } from "../utils/get_client_ip";
 
 // Schema for validating protected endpoint requirements (Authorization header now optional)
 const ProtectedEventSchema = z
@@ -110,7 +111,7 @@ export function Protected(options: ProtectedOptions = {}) {
                 const verifyResult = await authenticator.verify({
                     apiKey: authType === "ApiKey" ? token : undefined,
                     sessionToken: authType === "SessionToken" ? token : undefined,
-                    ipAddress: headers["x-forwarded-for"],
+                    ipAddress: getClientIp(headers),
                     userAgent: headers["user-agent"],
                 });
 
@@ -118,8 +119,6 @@ export function Protected(options: ProtectedOptions = {}) {
                     if (!options.allowAnonymous) {
                         throw new UnauthorizedError("Invalid authentication credentials");
                     }
-
-                    AuthenticationCookieRepository.remove(event as any);
                 } else {
                     // Valid token - inject into event
                     event.authContext = verifyResult.authContext;
