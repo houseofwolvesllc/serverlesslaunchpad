@@ -1,6 +1,6 @@
 import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
 import {
-    DeleteSessionMessage,
+    DeleteSessionBySignatureMessage,
     DeleteSessionsMessage,
     GetSessionByIdMessage,
     GetSessionBySignatureMessage,
@@ -159,11 +159,11 @@ export class AthenaSessionRepository extends SessionRepository {
         const sessionSql = `SELECT * FROM sessions WHERE sessionId = ? AND userId = ?`;
         const sessionParams = [message.sessionId, message.userId];
         const sessions = await this.athenaClient.query(sessionSql, sessionParams, this.mapToSession.bind(this));
-        
+
         if (sessions.length === 0) {
             throw new Error(`Failed to retrieve created session with id ${message.sessionId}`);
         }
-        
+
         return sessions[0];
     }
 
@@ -236,7 +236,7 @@ export class AthenaSessionRepository extends SessionRepository {
         return results.length > 0 ? results[0] : undefined;
     }
 
-    async deleteSession(message: DeleteSessionMessage): Promise<boolean> {
+    async deleteSessionBySignature(message: DeleteSessionBySignatureMessage): Promise<boolean> {
         const sql = `DELETE FROM sessions WHERE userId = ? AND sessionSignature = ?`;
         const params = [message.userId, message.sessionSignature];
 
@@ -250,7 +250,7 @@ export class AthenaSessionRepository extends SessionRepository {
     }
 
     async deleteSessions(message: DeleteSessionsMessage): Promise<boolean> {
-        const placeholders = message.sessionIds.map(() => '?').join(',');
+        const placeholders = message.sessionIds.map(() => "?").join(",");
         const sql = `DELETE FROM sessions WHERE userId = ? AND sessionId IN (${placeholders})`;
         const params = [message.userId, ...message.sessionIds];
 

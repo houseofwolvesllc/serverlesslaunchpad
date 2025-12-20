@@ -1,17 +1,16 @@
-import { Role, Features, User } from "@houseofwolves/serverlesslaunchpad.core";
+import { Features, Role, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ZodError, z } from "zod";
-import { ALBEvent } from "aws-lambda";
-import { ExtendedALBEvent, AuthenticatedALBEvent } from "./common/extended_alb_event";
-import { 
-    HttpError,
-    ValidationError,
-    UnauthorizedError,
-    ForbiddenError,
-    NotFoundError,
+import {
     ConflictError,
+    ForbiddenError,
+    HttpError,
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
     UnprocessableEntityError,
-    InternalServerError
+    ValidationError
 } from "./common/errors";
+import { AuthenticatedALBEvent, ExtendedALBEvent } from "./common/extended_alb_event";
 
 /**
  * Base controller class that provides common functionality
@@ -232,9 +231,10 @@ export abstract class BaseController {
      * Require that the authentication is via session (not API key).
      * Useful for sensitive operations.
      */
-    protected requireSessionAuth(event: ALBEvent): void {
+    protected requireSessionAuth(event: AuthenticatedALBEvent): void {
         if (!this.isSessionAuth(event)) {
             throw new ForbiddenError("This action requires session authentication");
         }
     }
+
 }

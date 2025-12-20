@@ -32,7 +32,14 @@ export type AuthenticateResult = {
     };
 };
 
+export type RevokeMessage = {
+    sessionToken: string;
+    ipAddress: string;
+    userAgent: string;
+};
+
 export abstract class Authenticator {
     abstract authenticate(message: AuthenticateMessage): Promise<AuthenticateResult>;
     abstract verify(message: VerifyMessage): Promise<AuthenticateResult>;
+    abstract revoke(message: RevokeMessage): Promise<void>;
 }
