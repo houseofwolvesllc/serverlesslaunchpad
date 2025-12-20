@@ -1,8 +1,8 @@
-import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
+import { ApiKey, ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
 import { BaseController } from "../base_controller.js";
 import { MessageAdapter } from "../content_types/message_adapter.js";
-import { Cache, Log, Protected } from "../decorators/index.js";
+import { Log, Protected } from "../decorators/index.js";
 import { AuthenticatedALBEvent } from "../extended_alb_event.js";
 import { Route, Router } from "../router.js";
 import { generateApiKey } from "../utils/api_key_generator.js";
@@ -27,17 +27,15 @@ export class ApiKeysController extends BaseController {
      * Security: API key management requires elevated privilege (AccountManager) due to
      * programmatic access implications. API keys bypass session-based security controls.
      *
-     * Cache Strategy: 600s TTL (vs 300s for sessions) is appropriate because API keys
-     * are semi-static credentials that tolerate staleness better than active auth sessions.
+     * ETag Strategy: Uses query hash + limit + first/last API key identifiers.
+     * Returns 304 Not Modified if client has current version of this page.
      *
      * Decorator execution order (bottom to top):
-     * 1. Cache - checks ETag first
-     * 2. Protected - authenticates user and validates role/owner access
-     * 3. Log - wraps entire execution
+     * 1. Protected - authenticates user and validates role/owner access
+     * 2. Log - wraps entire execution
      */
     @Log()
     @Protected()
-    @Cache({ ttl: 600, vary: ["Authorization"] })
     @Route("POST", "/users/{userId}/api-keys/list")
     async getApiKeys(event: AuthenticatedALBEvent): Promise<ALBResult> {
         // Parse and validate request data
@@ -58,10 +56,23 @@ export class ApiKeysController extends BaseController {
             pagingInstruction,
         });
 
+        // Generate ETag from collection
+        const etag = this.generateApiKeysListETag(
+            result.items,
+            { userId, cursor: pagingInstruction?.cursor },
+            { limit: pagingInstruction?.limit ?? 50 }
+        );
+
+        // Check if client has current version
+        const notModified = this.checkNotModified(event, etag);
+        if (notModified) return notModified;
+
         // Pass paging instructions as-is (no serialization needed)
         const adapter = new ApiKeyCollectionAdapter(userId, result.items, result.pagingInstructions, this.router);
 
-        return this.success(event, adapter);
+        return this.success(event, adapter, {
+            headers: { 'ETag': etag }
+        });
     }
 
     /**
@@ -193,5 +204,28 @@ export class ApiKeysController extends BaseController {
         });
 
         return this.success(event, adapter);
+    }
+
+    /**
+     * Generate ETag for an API keys list/collection.
+     * Based on query params, pagination, and first/last record identifiers.
+     */
+    private generateApiKeysListETag(
+        apiKeys: ApiKey[],
+        query: Record<string, any>,
+        pagination: { limit: number }
+    ): string {
+        if (apiKeys.length === 0) {
+            const queryHash = this.simpleHash(JSON.stringify(query));
+            return `"list-${queryHash}-${pagination.limit}-empty"`;
+        }
+
+        const first = apiKeys[0];
+        const last = apiKeys[apiKeys.length - 1];
+        const queryHash = this.simpleHash(JSON.stringify(query));
+        const firstTs = new Date(first.dateLastAccessed).getTime();
+        const lastTs = new Date(last.dateLastAccessed).getTime();
+
+        return `"list-${queryHash}-${pagination.limit}-${first.apiKeyId}-${firstTs}-${last.apiKeyId}-${lastTs}"`;
     }
 }

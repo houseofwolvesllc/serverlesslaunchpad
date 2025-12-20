@@ -12,6 +12,12 @@ export class SitemapController extends BaseController {
         super();
     }
 
+    /**
+     * Get sitemap with navigation links
+     *
+     * ETag Strategy: Hash entire payload since sitemap is derived data
+     * (not a stored entity). Returns 304 if payload hasn't changed.
+     */
     @Route("GET", "/sitemap")
     @Protected({ allowAnonymous: true })
     async getSitemap(event: ExtendedALBEvent): Promise<ALBResult> {
@@ -21,6 +27,26 @@ export class SitemapController extends BaseController {
         const user = event.authContext?.identity;
 
         const adapter = new SitemapAdapter(user, this.router);
-        return this.success(event, adapter);
+
+        // Generate ETag by hashing the entire payload
+        const etag = this.generateSitemapETag(adapter.toJSON());
+
+        // Check if client has current version
+        const notModified = this.checkNotModified(event, etag);
+        if (notModified) return notModified;
+
+        return this.success(event, adapter, {
+            headers: { 'ETag': etag }
+        });
+    }
+
+    /**
+     * Generate ETag for sitemap by hashing the entire payload.
+     * Sitemap is derived data (not a stored entity), so we hash the response.
+     */
+    private generateSitemapETag(sitemapPayload: any): string {
+        const payloadStr = JSON.stringify(sitemapPayload);
+        const hash = this.simpleHash(payloadStr);
+        return `"sitemap-${hash}"`;
     }
 }

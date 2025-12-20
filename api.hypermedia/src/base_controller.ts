@@ -163,6 +163,7 @@ export abstract class BaseController {
             statusCode: status,
             headers: {
                 "Content-Type": contentType,
+                "Cache-Control": "no-cache",
                 ...options.headers
             },
             body
@@ -312,6 +313,45 @@ export abstract class BaseController {
         if (!this.isSessionAuth(event)) {
             throw new ForbiddenError("This action requires session authentication");
         }
+    }
+
+    /**
+     * Check if client has current version via ETag.
+     * Returns 304 response if ETag matches, null otherwise.
+     *
+     * @param event - The ALB event with headers
+     * @param etag - The current resource ETag (must include quotes)
+     * @returns ALBResult for 304, or null to proceed with full response
+     */
+    protected checkNotModified(event: ExtendedALBEvent, etag: string): ALBResult | null {
+        const ifNoneMatch = event.headers?.['if-none-match'];
+
+        if (ifNoneMatch && ifNoneMatch === etag) {
+            return {
+                statusCode: 304,
+                headers: {
+                    'ETag': etag,
+                    'Cache-Control': 'no-cache',
+                },
+                body: '',
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * Simple hash function for generating collection ETags.
+     * Converts a string into a short base36 hash.
+     */
+    protected simpleHash(str: string): string {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(36);
     }
 
 }
