@@ -22,6 +22,7 @@ import {
     type UserContext,
 } from '../utils/transform_navigation';
 import { AuthenticationContext } from '../../authentication';
+import { logger } from '../../../logging/logger';
 
 /**
  * Sitemap API response structure
@@ -168,10 +169,11 @@ export function useSitemap(): UseSitemapResult {
 
                 // Retry logic
                 if (retryCount < MAX_RETRIES) {
-                    console.warn(
-                        `Sitemap fetch failed (attempt ${retryCount + 1}/${MAX_RETRIES}), retrying...`,
-                        err
-                    );
+                    logger.warn('Sitemap fetch failed, retrying', {
+                        attempt: retryCount + 1,
+                        maxRetries: MAX_RETRIES,
+                        error: err,
+                    });
 
                     // Wait before retrying
                     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
@@ -211,7 +213,7 @@ export function useSitemap(): UseSitemapResult {
 
                 setNavigation(transformed);
             } catch (err) {
-                console.error('Failed to load sitemap:', err);
+                logger.error('Failed to load sitemap', { error: err });
 
                 const error = err instanceof Error ? err : new Error('Failed to load sitemap');
                 setError(error);

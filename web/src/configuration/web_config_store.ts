@@ -38,9 +38,8 @@ class WebConfigurationStore {
      * Internal method to load configuration from infrastructure file.
      */
     private static async loadConfiguration(): Promise<WebConfig> {
-        // Get environment from Vite's mode (map moto to local)
-        const viteMode = import.meta.env.MODE || 'local';
-        const environment = viteMode === 'moto' ? 'local' : viteMode;
+        // Get environment from Vite's mode (default to moto for local development)
+        const environment = import.meta.env.MODE || 'moto';
 
         try {
             // Import the infrastructure configuration file
