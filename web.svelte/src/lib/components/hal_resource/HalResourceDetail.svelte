@@ -24,8 +24,10 @@
 		buildTemplateData,
 		getConfirmationConfig,
 		type TemplateExecutionContext,
-		FieldType
+		FieldType,
+		getEnumLabel
 	} from '@houseofwolves/serverlesslaunchpad.web.commons';
+	import { getEnumPropertyFromTemplates } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 	import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 	import Card from '$lib/components/ui/card.svelte';
 	import CardContent from '$lib/components/ui/card-content.svelte';
@@ -420,7 +422,9 @@
 										{/if}
 									{:else if field.type === FieldType.BADGE}
 										{#if value !== null && value !== undefined && value !== ''}
-											{@const lower = String(value).toLowerCase()}
+											{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
+											{@const displayValue = enumProperty ? getEnumLabel(value, enumProperty, String(value)) : String(value)}
+											{@const lower = displayValue.toLowerCase()}
 											{@const variant = lower.includes('active') || lower.includes('success') || lower.includes('enabled')
 												? 'default'
 												: lower.includes('error') || lower.includes('failed') || lower.includes('disabled')
@@ -429,7 +433,7 @@
 														? 'outline'
 														: 'secondary'}
 											<Badge {variant} class="text-xs">
-												{String(value)}
+												{displayValue}
 											</Badge>
 										{:else}
 											<span class="text-muted-foreground text-sm">{field.nullText || '—'}</span>
@@ -441,11 +445,19 @@
 										</Badge>
 									{:else if field.type === FieldType.NUMBER}
 										{#if value !== null && value !== undefined}
-											{@const num = Number(value)}
-											{#if !isNaN(num)}
-												<span class="text-sm tabular-nums">{num.toLocaleString()}</span>
+											{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
+											{#if enumProperty}
+												{@const displayValue = getEnumLabel(value, enumProperty, String(value))}
+												<Badge variant="secondary" class="text-xs">
+													{displayValue}
+												</Badge>
 											{:else}
-												<span class="text-sm">{String(value)}</span>
+												{@const num = Number(value)}
+												{#if !isNaN(num)}
+													<span class="text-sm tabular-nums">{num.toLocaleString()}</span>
+												{:else}
+													<span class="text-sm">{String(value)}</span>
+												{/if}
 											{/if}
 										{:else}
 											<span class="text-muted-foreground text-sm">{field.nullText || '—'}</span>
@@ -486,10 +498,12 @@
 												{#if value.length === 0}
 													<span class="text-muted-foreground text-sm">{field.nullText || 'None'}</span>
 												{:else}
+													{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
 													<div class="flex flex-wrap gap-1">
 														{#each value as val}
+															{@const displayVal = enumProperty ? getEnumLabel(val, enumProperty, String(val)) : String(val)}
 															<Badge variant="secondary" class="text-xs">
-																{String(val)}
+																{displayVal}
 															</Badge>
 														{/each}
 													</div>
@@ -579,7 +593,9 @@
 										{/if}
 									{:else if field.type === FieldType.BADGE}
 										{#if value !== null && value !== undefined && value !== ''}
-											{@const lower = String(value).toLowerCase()}
+											{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
+											{@const displayValue = enumProperty ? getEnumLabel(value, enumProperty, String(value)) : String(value)}
+											{@const lower = displayValue.toLowerCase()}
 											{@const variant = lower.includes('active') || lower.includes('success') || lower.includes('enabled')
 												? 'default'
 												: lower.includes('error') || lower.includes('failed') || lower.includes('disabled')
@@ -588,7 +604,7 @@
 														? 'outline'
 														: 'secondary'}
 											<Badge {variant} class="text-xs">
-												{String(value)}
+												{displayValue}
 											</Badge>
 										{:else}
 											<span class="text-muted-foreground text-sm">{field.nullText || '—'}</span>
@@ -600,11 +616,19 @@
 										</Badge>
 									{:else if field.type === FieldType.NUMBER}
 										{#if value !== null && value !== undefined}
-											{@const num = Number(value)}
-											{#if !isNaN(num)}
-												<span class="text-sm tabular-nums">{num.toLocaleString()}</span>
+											{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
+											{#if enumProperty}
+												{@const displayValue = getEnumLabel(value, enumProperty, String(value))}
+												<Badge variant="secondary" class="text-xs">
+													{displayValue}
+												</Badge>
 											{:else}
-												<span class="text-sm">{String(value)}</span>
+												{@const num = Number(value)}
+												{#if !isNaN(num)}
+													<span class="text-sm tabular-nums">{num.toLocaleString()}</span>
+												{:else}
+													<span class="text-sm">{String(value)}</span>
+												{/if}
 											{/if}
 										{:else}
 											<span class="text-muted-foreground text-sm">{field.nullText || '—'}</span>
@@ -645,10 +669,12 @@
 												{#if value.length === 0}
 													<span class="text-muted-foreground text-sm">{field.nullText || 'None'}</span>
 												{:else}
+													{@const enumProperty = getEnumPropertyFromTemplates(resource, field.key)}
 													<div class="flex flex-wrap gap-1">
 														{#each value as val}
+															{@const displayVal = enumProperty ? getEnumLabel(val, enumProperty, String(val)) : String(val)}
 															<Badge variant="secondary" class="text-xs">
-																{String(val)}
+																{displayVal}
 															</Badge>
 														{/each}
 													</div>
