@@ -3,7 +3,7 @@ import * as amplify from 'aws-amplify/auth';
 import { useContext } from 'react';
 import WebConfigurationStore from '../../../configuration/web_config_store';
 import { apiClient } from '../../../services/api.client';
-import { getEntryPoint, refreshCapabilities } from '../../../services/entry_point_provider';
+import { getEntryPoint, refreshCapabilities, clearEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
 import { logger } from '../../../logging/logger';
 
@@ -418,7 +418,6 @@ export const useAuth = function () {
                 case 'DONE':
                     const authSession = await amplify.fetchAuthSession();
                     setSignedInUser(await federateSession(authSession));
-
                     return SignInStep.COMPLETED;
                 default:
                     throw new Error(`Unexpected sign in step: ${nextStep.signInStep}`);
@@ -464,6 +463,7 @@ export const useAuth = function () {
 
         await amplify.signOut();
         setSignedInUser(undefined);
+        clearEntryPoint(); // Clear cached capabilities for clean slate on next login
     }
 
     return {
