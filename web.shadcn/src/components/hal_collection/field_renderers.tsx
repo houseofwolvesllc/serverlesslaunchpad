@@ -14,8 +14,14 @@ import {
     FieldType,
     type InferredColumn,
     getEnumLabel,
-    type HalTemplateProperty,
 } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import {
+    getEnumPropertyFromTemplates,
+    determineBadgeVariant,
+    formatDateValue,
+    evaluateBooleanValue,
+    shortenUrl,
+} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 
@@ -113,65 +119,35 @@ export const DateRenderer: FieldRenderer = (value, column) => {
         return <span className="text-muted-foreground text-xs">{column.nullText || 'Never'}</span>;
     }
 
-    try {
+    const { formatted, tooltip, isValid } = formatDateValue(value, column.key);
+
+    if (!isValid) {
+        return <span className="text-sm">{formatted}</span>;
+    }
+
+    // Relative time format (e.g., "2 hours ago") for 'last_*' fields
+    if (column.key.toLowerCase().includes('last')) {
         const date = new Date(value);
-
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-            return <span className="text-sm">{String(value)}</span>;
-        }
-
-        // Relative time format (e.g., "2 hours ago")
-        if (column.key.toLowerCase().includes('last')) {
-            return (
-                <span className="text-sm" title={date.toLocaleString()}>
-                    {formatDistanceToNow(date, { addSuffix: true })}
-                </span>
-            );
-        }
-
-        // Short format (e.g., "Jan 1, 2024")
+        const relativeTime = formatDistanceToNow(date, { addSuffix: true });
         return (
-            <span className="text-sm" title={date.toLocaleString()}>
-                {date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                })}
+            <span className="text-sm" title={tooltip}>
+                {relativeTime}
             </span>
         );
-    } catch (error) {
-        return <span className="text-sm">{String(value)}</span>;
     }
+
+    // Short format (e.g., "Jan 1, 2024")
+    return (
+        <span className="text-sm" title={tooltip}>
+            {formatted}
+        </span>
+    );
 };
-
-/**
- * Helper: Extract enum metadata from HAL templates
- * Looks for a template property matching the field name and returns it
- */
-function getEnumPropertyFromTemplates(item: any, fieldName: string): HalTemplateProperty | undefined {
-    if (!item?._templates) return undefined;
-
-    // Check all templates for a property matching this field
-    for (const template of Object.values(item._templates)) {
-        if (typeof template === 'object' && template !== null && 'properties' in template) {
-            const properties = (template as any).properties;
-            if (Array.isArray(properties)) {
-                const property = properties.find((p: any) => p.name === fieldName);
-                if (property?.options) {
-                    return property as HalTemplateProperty;
-                }
-            }
-        }
-    }
-
-    return undefined;
-}
 
 /**
  * Badge field renderer - Status/type badges with enum support
  *
- * This renderer now checks for enum metadata in HAL templates and uses
+ * This renderer checks for enum metadata in HAL templates and uses
  * the display label when available, falling back to the raw value.
  */
 export const BadgeRenderer: FieldRenderer = (value, column, item) => {
@@ -186,22 +162,10 @@ export const BadgeRenderer: FieldRenderer = (value, column, item) => {
         : String(value);
 
     // Determine badge variant based on display value
-    const getVariant = (val: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-        const lower = val.toLowerCase();
-        if (lower.includes('active') || lower.includes('success') || lower.includes('enabled')) {
-            return 'default';
-        }
-        if (lower.includes('error') || lower.includes('failed') || lower.includes('disabled')) {
-            return 'destructive';
-        }
-        if (lower.includes('pending') || lower.includes('warning')) {
-            return 'outline';
-        }
-        return 'secondary';
-    };
+    const variant = determineBadgeVariant(displayValue);
 
     return (
-        <Badge variant={getVariant(displayValue)} className="text-xs">
+        <Badge variant={variant as any} className="text-xs">
             {displayValue}
         </Badge>
     );
@@ -211,7 +175,7 @@ export const BadgeRenderer: FieldRenderer = (value, column, item) => {
  * Boolean field renderer - Yes/No badges
  */
 export const BooleanRenderer: FieldRenderer = (value) => {
-    const isTrue = value === true || value === 'true' || value === 1;
+    const isTrue = evaluateBooleanValue(value);
 
     return (
         <Badge variant={isTrue ? 'default' : 'secondary'} className="text-xs">
@@ -315,9 +279,7 @@ export const UrlRenderer: FieldRenderer = (value, column) => {
     }
 
     // Shorten long URLs for display
-    const displayUrl = String(value).length > 50
-        ? String(value).substring(0, 47) + '...'
-        : String(value);
+    const displayUrl = shortenUrl(String(value));
 
     return (
         <a

@@ -106,6 +106,8 @@ export function useSessions(): UseSessionsResult {
 
     /**
      * Extract sessions array from HAL response and mark current session
+     * Protect the session matching the active slp_session cookie from deletion
+     * This allows admins to delete other users' sessions but not their own active session
      */
     const sessions = useMemo(() => {
         if (!data?._embedded?.sessions) return [];

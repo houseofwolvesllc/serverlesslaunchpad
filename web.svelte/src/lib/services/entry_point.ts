@@ -69,6 +69,15 @@ export class ViteEntryPoint {
     }
 
     /**
+     * Get a template by name from the cached entry point
+     * Returns null if template doesn't exist
+     */
+    async getTemplate(templateName: string): Promise<any | null> {
+        const root = await this.fetch(false); // Use cached entry point
+        return root._templates?.[templateName] || null;
+    }
+
+    /**
      * Check if a template exists in the entry point
      */
     async hasTemplate(templateName: string): Promise<boolean> {
@@ -138,6 +147,10 @@ export const entryPoint = {
     async getTemplateTarget(templateName: string) {
         const ep = await getEntryPoint();
         return ep.getTemplateTarget(templateName);
+    },
+    async getTemplate(templateName: string) {
+        const ep = await getEntryPoint();
+        return ep.getTemplate(templateName);
     },
     async hasTemplate(templateName: string) {
         const ep = await getEntryPoint();

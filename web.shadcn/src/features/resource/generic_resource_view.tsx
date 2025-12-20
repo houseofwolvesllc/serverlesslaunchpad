@@ -72,6 +72,19 @@ export function GenericResourceView() {
     // Detect if this is a collection
     const isCollectionView = isCollection(data);
 
+    // Extract page title from self link or template
+    const pageTitle = useMemo(() => {
+        // First try self link title
+        const selfLink = data?._links?.self;
+        const selfTitle = Array.isArray(selfLink) ? selfLink[0]?.title : selfLink?.title;
+        if (selfTitle) return selfTitle;
+
+        // Then try template title
+        if (template?.title) return template.title;
+
+        return null;
+    }, [data, template]);
+
     /**
      * Handle template execution with HATEOAS-based navigation
      *
@@ -166,6 +179,7 @@ export function GenericResourceView() {
                 onRefresh={handleRefresh}
                 onTemplateExecute={handleTemplateExecute}
                 onRowClick={handleRowClick}
+                title={pageTitle || undefined}
             />
         );
     } else {

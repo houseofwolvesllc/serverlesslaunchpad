@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { sidebarStore } from '$lib/stores/sidebar_store';
-	import { Menu, Search, HelpCircle } from 'lucide-svelte';
+	import { Menu, Search, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
 	import Breadcrumbs from './breadcrumbs.svelte';
 	import ThemeToggle from './theme-toggle.svelte';
 	import Button from '$lib/components/ui/button.svelte';
@@ -8,6 +8,8 @@
 
 	let className: string | undefined = undefined;
 	export { className as class };
+
+	$: collapsed = $sidebarStore.collapsed;
 </script>
 
 <header
@@ -25,6 +27,21 @@
 		aria-label="Toggle menu"
 	>
 		<Menu class="h-5 w-5" />
+	</Button>
+
+	<!-- Sidebar Collapse Toggle (Desktop only) -->
+	<Button
+		variant="ghost"
+		size="icon"
+		class="hidden lg:flex"
+		on:click={() => sidebarStore.toggle()}
+		aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+	>
+		{#if collapsed}
+			<ChevronsRight class="h-5 w-5" />
+		{:else}
+			<ChevronsLeft class="h-5 w-5" />
+		{/if}
 	</Button>
 
 	<!-- Breadcrumbs -->

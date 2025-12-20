@@ -12,6 +12,7 @@ import { getFieldRenderer, type FieldRenderer } from './field_renderers';
 export interface HalResourceRowProps {
     item: HalObject;
     columns: InferredColumn[];
+    showCheckboxColumn?: boolean;
     selectable?: boolean;
     selected?: boolean;
     onToggleSelect?: () => void;
@@ -39,6 +40,7 @@ export interface HalResourceRowProps {
 export function HalResourceRow({
     item,
     columns,
+    showCheckboxColumn = false,
     selectable = false,
     selected = false,
     onToggleSelect,
@@ -56,7 +58,7 @@ export function HalResourceRow({
     };
 
     const handleCheckboxChange = () => {
-        if (onToggleSelect) {
+        if (onToggleSelect && selectable) {
             onToggleSelect();
         }
     };
@@ -66,14 +68,16 @@ export function HalResourceRow({
             style={{ cursor: onRowClick ? 'pointer' : 'default' }}
             onClick={handleRowClick}
         >
-            {/* Selection checkbox */}
-            {selectable && (
+            {/* Selection checkbox - always show column if bulk operations enabled */}
+            {showCheckboxColumn && (
                 <Table.Td w={60} onClick={handleCheckboxClick}>
-                    <Checkbox
-                        checked={selected}
-                        onChange={handleCheckboxChange}
-                        aria-label="Select row"
-                    />
+                    {selectable && (
+                        <Checkbox
+                            checked={selected}
+                            onChange={handleCheckboxChange}
+                            aria-label="Select row"
+                        />
+                    )}
                 </Table.Td>
             )}
 

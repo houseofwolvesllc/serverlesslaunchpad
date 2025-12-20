@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Code2, ChevronsLeft, ChevronsRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
-import { UserButton } from '@/components/user_button/user_button';
 import { ThemeToggle } from '@/components/theme_toggle';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { UserButton } from '@/components/user_button/user_button';
+import WebConfigurationStore from '@/configuration/web_config_store';
 import { useDisclosure } from '@/hooks/use_disclosure';
 import { useHeadroom } from '@/hooks/use_headroom';
-import WebConfigurationStore from '@/configuration/web_config_store';
+import { cn } from '@/lib/utils';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
+import { AlertCircle, ChevronsLeft, ChevronsRight, Code2, HelpCircle, Home, Menu, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { GenericResourceView } from '../resource/generic_resource_view';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
-import { GenericResourceView } from '../resource/generic_resource_view';
-import { Breadcrumbs } from '@/components/breadcrumbs';
 
 /**
  * Wrapper to force GenericResourceView to remount when path changes
@@ -126,7 +126,7 @@ function DashboardContent() {
                     </div>
                     <div className="flex flex-col">
                         <span className="font-semibold text-sm">Serverless Launchpad</span>
-                        <span className="text-xs text-muted-foreground">shadcn/ui Edition</span>
+                        <span className="text-xs text-muted-foreground">shadcn Edition</span>
                     </div>
                 </div>
             </div>

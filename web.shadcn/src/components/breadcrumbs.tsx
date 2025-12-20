@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBreadcrumbs } from '@/hooks/use_breadcrumbs_adapter';
 import { useNavigationHistory } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
@@ -51,7 +51,8 @@ export function Breadcrumbs() {
           <li key={index} className="flex items-center gap-1.5">
             {crumb.isLast ? (
               // Current page - not clickable, bold
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                {index === 0 && <Home className="h-4 w-4" />}
                 {crumb.label}
               </span>
             ) : crumb.isGroup ? (
@@ -67,9 +68,11 @@ export function Breadcrumbs() {
                 className={cn(
                   'text-sm text-muted-foreground hover:text-foreground',
                   'transition-colors duration-200',
-                  'focus:outline-none focus:underline'
+                  'focus:outline-none focus:underline',
+                  'flex items-center gap-1.5'
                 )}
               >
+                {index === 0 && <Home className="h-4 w-4" />}
                 {crumb.label}
               </a>
             )}

@@ -42,3 +42,31 @@ export {
 
 // Navigation adapters
 export type { SitemapAdapter } from './navigation/adapters/sitemap_adapter';
+
+// HAL Resource hooks and utilities
+export {
+  useHalResourceDetail,
+  type UseHalResourceDetailResult,
+  type UseHalResourceDetailParams,
+  type FieldRenderer,
+  type TemplateActionResult,
+  inferPageTitle,
+  organizeFields,
+  filterDisplayableTemplates,
+  type OrganizedFields
+} from './hal-resource';
+
+// Field rendering utilities
+export {
+  getEnumPropertyFromTemplates,
+  determineBadgeVariant,
+  formatDateValue,
+  evaluateBooleanValue,
+  shortenUrl,
+  getNullValuePlaceholder,
+  isArrayValue,
+  isNullish,
+  isEmpty,
+  isValidDate,
+  type BadgeVariant
+} from './field-rendering';

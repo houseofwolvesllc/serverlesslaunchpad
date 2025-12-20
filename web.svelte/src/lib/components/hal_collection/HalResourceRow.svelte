@@ -17,6 +17,7 @@
 	// Props
 	export let item: HalObject;
 	export let columns: InferredColumn[];
+	export let showCheckbox = false;
 	export let selectable = false;
 	export let selected = false;
 	export let onToggleSelect: (() => void) | undefined = undefined;
@@ -47,13 +48,14 @@
 
 <tr class={cn('border-b transition-colors', onRowClick && 'cursor-pointer hover:bg-muted/50')} on:click={handleRowClick}>
 	<!-- Selection checkbox -->
-	{#if selectable}
+	{#if showCheckbox}
 		<td class="p-4 align-middle w-12" on:click={handleCheckboxClick}>
 			<input
 				type="checkbox"
 				class="peer h-4 w-4 shrink-0 rounded-sm border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 				checked={selected}
 				on:change={handleCheckboxChange}
+				disabled={!selectable}
 				aria-label="Select row"
 			/>
 		</td>

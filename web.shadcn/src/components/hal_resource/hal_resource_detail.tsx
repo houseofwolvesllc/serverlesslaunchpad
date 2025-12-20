@@ -14,16 +14,16 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import {
-    extractResourceFields,
     humanizeLabel,
     type HalObject,
-    type InferredColumn,
     type InferenceOptions,
-    categorizeTemplate,
-    buildTemplateData,
-    getConfirmationConfig,
     type TemplateExecutionContext,
+    buildTemplateData,
+    type InferredColumn,
 } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import {
+    useHalResourceDetail,
+} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,7 +74,20 @@ export function HalResourceDetail({
     loading = false,
     error = null,
 }: HalResourceDetailProps) {
-    const [executingTemplate, setExecutingTemplate] = useState<string | null>(null);
+    // Use the hook for business logic
+    const {
+        pageTitle,
+        fields,
+        displayableTemplates,
+        executingTemplate,
+        setExecutingTemplate,
+        handleTemplateAction,
+        getTemplateConfirmation,
+    } = useHalResourceDetail({
+        resource,
+        fieldConfig,
+        fallbackTitle: 'Resource Details',
+    });
 
     // State for form dialog
     const [formState, setFormState] = useState<{
@@ -89,56 +102,6 @@ export function HalResourceDetail({
         template: HalTemplate | null;
         context: TemplateExecutionContext | null;
     }>({ open: false, template: null, context: null });
-
-    // Extract and infer fields from resource
-    const allFields = resource ? extractResourceFields(resource, fieldConfig) : [];
-
-    // Separate fields into overview (primary identifiers) and details (everything else)
-    const overviewFields = allFields.filter(field =>
-        /^(name|title|label)$/i.test(field.key) && !field.hidden
-    );
-
-    const detailFields = allFields.filter(field =>
-        !/^(name|title|label)$/i.test(field.key) && !field.hidden
-    );
-
-    // Extract page title from resource
-    const getPageTitle = (): string => {
-        if (!resource) return 'Resource';
-
-        // First priority: self link title
-        const selfLink = resource._links?.self;
-        if (selfLink) {
-            const selfTitle = Array.isArray(selfLink) ? selfLink[0]?.title : selfLink.title;
-            if (selfTitle) return selfTitle;
-        }
-
-        // Second priority: common title fields
-        const titleField = resource.title || resource.name || resource.label;
-        if (titleField) return String(titleField);
-
-        // Third priority: first non-empty field
-        for (const field of overviewFields) {
-            const value = resource[field.key];
-            if (value) return String(value);
-        }
-
-        return 'Resource Details';
-    };
-
-    const pageTitle = getPageTitle();
-
-    // Extract templates for actions (filter out navigation and delete operations)
-    const templates = resource?._templates || {};
-    const templateEntries = Object.entries(templates).filter(([key, template]) => {
-        // Filter out navigation templates (self, default)
-        if (key === 'default' || key === 'self') return false;
-
-        // Filter out delete operations (they belong in list views only)
-        if (key === 'delete' || (template as HalTemplate).method === 'DELETE') return false;
-
-        return true;
-    });
 
     // Execute template with context
     const executeTemplate = async (
@@ -175,23 +138,19 @@ export function HalResourceDetail({
     const handleTemplateClick = async (templateKey: string, template: HalTemplate) => {
         if (!onTemplateExecute) return;
 
-        const category = categorizeTemplate(templateKey, template);
+        const result = handleTemplateAction(templateKey, template);
 
         // Categorize and handle accordingly
-        if (category === 'navigation') {
+        if (result.category === 'navigation') {
             // Navigation templates: execute immediately (shouldn't happen in detail view)
-            const context: TemplateExecutionContext = {
-                template,
-                resource,
-            };
             setExecutingTemplate(templateKey);
             try {
                 // Don't show toast for navigation templates
-                await executeTemplate(template, context, false);
+                await executeTemplate(template, result.context!, false);
             } finally {
                 setExecutingTemplate(null);
             }
-        } else if (category === 'form') {
+        } else if (result.category === 'form') {
             // Form templates: show form dialog
             setFormState({
                 open: true,
@@ -200,14 +159,10 @@ export function HalResourceDetail({
             });
         } else {
             // Action templates: show confirmation dialog
-            const context: TemplateExecutionContext = {
-                template,
-                resource,
-            };
             setConfirmationState({
                 open: true,
                 template,
-                context,
+                context: result.context!,
             });
         }
     };
@@ -236,9 +191,9 @@ export function HalResourceDetail({
     const handleConfirmAction = async () => {
         if (!confirmationState.template || !confirmationState.context) return;
 
-        const templateKey = Object.keys(templates).find(
-            key => templates[key] === confirmationState.template
-        );
+        const templateKey = displayableTemplates.find(
+            ([, template]) => template === confirmationState.template
+        )?.[0];
 
         setExecutingTemplate(templateKey || 'action');
 
@@ -345,41 +300,40 @@ export function HalResourceDetail({
     return (
         <div className="space-y-6">
             {/* Page Header */}
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
-                    {resource.email && (
-                        <p className="text-muted-foreground">
-                            {resource.email}
-                        </p>
-                    )}
-                </div>
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
+                {resource.email && (
+                    <p className="text-muted-foreground">
+                        {resource.email}
+                    </p>
+                )}
+            </div>
 
-                <div className="flex items-center gap-2">
-                    {/* Template action buttons */}
-                    {templateEntries.map(([key, template]) => (
-                        <Button
-                            key={key}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTemplateClick(key, template as HalTemplate)}
-                            disabled={executingTemplate === key}
-                        >
-                            {executingTemplate === key ? 'Executing...' : (template as any).title || humanizeLabel(key)}
-                        </Button>
-                    ))}
+            {/* Action toolbar */}
+            <div className="flex items-center justify-end gap-2">
+                {/* Template action buttons */}
+                {displayableTemplates.map(([key, template]) => (
+                    <Button
+                        key={key}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTemplateClick(key, template as HalTemplate)}
+                        disabled={executingTemplate === key}
+                    >
+                        {executingTemplate === key ? 'Executing...' : (template as any).title || humanizeLabel(key)}
+                    </Button>
+                ))}
 
-                    {onRefresh && (
-                        <Button variant="outline" onClick={onRefresh} size="sm">
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Refresh
-                        </Button>
-                    )}
-                </div>
+                {onRefresh && (
+                    <Button variant="outline" onClick={onRefresh} size="sm">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh
+                    </Button>
+                )}
             </div>
 
             {/* Overview Section (Primary Fields) */}
-            {overviewFields.length > 0 && (
+            {fields.overview.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Overview</CardTitle>
@@ -387,14 +341,14 @@ export function HalResourceDetail({
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {overviewFields.map(renderField)}
+                            {fields.overview.map(renderField)}
                         </div>
                     </CardContent>
                 </Card>
             )}
 
             {/* Details Section (All Other Fields) */}
-            {detailFields.length > 0 && (
+            {fields.details.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Details</CardTitle>
@@ -402,7 +356,7 @@ export function HalResourceDetail({
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {detailFields.map(renderField)}
+                            {fields.details.map(renderField)}
                         </div>
                     </CardContent>
                 </Card>
@@ -446,7 +400,7 @@ export function HalResourceDetail({
                             setConfirmationState({ open: false, template: null, context: null });
                         }
                     }}
-                    {...getConfirmationConfig(confirmationState.template, confirmationState.context)}
+                    {...getTemplateConfirmation(confirmationState.template, confirmationState.context)}
                     onConfirm={handleConfirmAction}
                     loading={executingTemplate !== null}
                 />

@@ -40,31 +40,41 @@ export interface UseExecuteTemplateResult {
  * Fetches a HAL resource from the API and handles loading/error states.
  * The resource is fetched on mount and can be refetched manually.
  *
+ * Supports both GET (links) and POST (templates):
+ * - If template is provided, executes template with default values
+ * - Otherwise, performs GET request
+ *
  * @param url - The URL to fetch (or null to skip fetching)
+ * @param template - Optional HAL template to execute (POST) instead of GET
  * @returns UseHalResourceResult with data, loading, error, and refetch function
  *
  * @example
  * ```tsx
+ * // GET request (link)
  * function ResourceView({ url }) {
  *   const { data, loading, error, refetch } = useHalResource(url);
+ *   // ...
+ * }
  *
- *   if (loading) return <Loader />;
- *   if (error) return <Alert color="red">{error}</Alert>;
- *
- *   return (
- *     <div>
- *       <pre>{JSON.stringify(data, null, 2)}</pre>
- *       <Button onClick={refetch}>Refresh</Button>
- *     </div>
- *   );
+ * // POST request (template)
+ * function CollectionView({ url, template }) {
+ *   const { data, loading, error, refetch } = useHalResource(url, template);
+ *   // ...
  * }
  * ```
  */
-export function useHalResource(url: string | null): UseHalResourceResult {
+export function useHalResource(url: string | null, template?: HalTemplate): UseHalResourceResult {
     const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    /**
+     * Fetch resource - uses ETags automatically (handled by ApiClient)
+     * URL is the single source of truth - always fetch from URL
+     *
+     * If template is provided, executes it (POST) with default values.
+     * Otherwise, performs GET request.
+     */
     const fetchResource = useCallback(async () => {
         if (!url) {
             setData(null);
@@ -76,7 +86,27 @@ export function useHalResource(url: string | null): UseHalResourceResult {
         setError(null);
 
         try {
-            const resource = await halClient.fetch(url);
+            let resource: HalObject;
+
+            if (template) {
+                // Execute template (POST) with default/hidden field values
+                // Extract default values from template properties
+                const defaultData: Record<string, any> = {};
+
+                if (template.properties) {
+                    for (const prop of template.properties) {
+                        if (prop.value !== undefined) {
+                            defaultData[prop.name] = prop.value;
+                        }
+                    }
+                }
+
+                resource = await halClient.executeTemplate(template, defaultData);
+            } else {
+                // Fetch via GET
+                resource = await halClient.fetch(url);
+            }
+
             setData(resource);
         } catch (err: any) {
             setError(err.message || 'Failed to fetch resource');
@@ -84,17 +114,60 @@ export function useHalResource(url: string | null): UseHalResourceResult {
         } finally {
             setLoading(false);
         }
-    }, [url]);
+    }, [url, template]);
 
     useEffect(() => {
         fetchResource();
     }, [fetchResource]);
 
+    /**
+     * Refetch resource - bypasses cache
+     * Used after mutations or manual refresh to ensure fresh data
+     */
+    const refetch = useCallback(async () => {
+        if (!url) return;
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            let resource: HalObject;
+
+            if (template) {
+                // Re-execute template with default values
+                const defaultData: Record<string, any> = {};
+
+                if (template.properties) {
+                    for (const prop of template.properties) {
+                        if (prop.value !== undefined) {
+                            defaultData[prop.name] = prop.value;
+                        }
+                    }
+                }
+
+                resource = await halClient.executeTemplate(template, defaultData);
+            } else {
+                // Bypass all caches (client, server, CDN)
+                resource = await halClient.fetch(url, {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+            }
+
+            setData(resource);
+        } catch (err: any) {
+            setError(err.message || 'Failed to refetch resource');
+        } finally {
+            setLoading(false);
+        }
+    }, [url, template]);
+
     return {
         data,
         loading,
         error,
-        refetch: fetchResource,
+        refetch,
     };
 }
 
