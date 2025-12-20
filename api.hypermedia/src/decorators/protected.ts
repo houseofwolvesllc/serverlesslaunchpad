@@ -3,18 +3,20 @@ import { z } from "zod";
 import { UnauthorizedError, ValidationError } from "../common/errors";
 import { ExtendedALBEvent } from "../common/extended_alb_event";
 import { getContainer } from "../container";
+import { AuthenticationCookieRepository } from "../authentication/authentication_cookie_repository";
 
-// Schema for validating protected endpoint requirements
+// Schema for validating protected endpoint requirements (Authorization header now optional)
 const ProtectedEventSchema = z.object({
     headers: z.object({
-        'Authorization': z.string(),
+        'Authorization': z.string().optional(),
         'x-forwarded-for': z.string(),
         'user-agent': z.string()
     })
 }).superRefine((data, ctx) => {
     const authHeader = data.headers.Authorization;
     
-    if (!authHeader.startsWith('SessionToken ') && !authHeader.startsWith('ApiKey ')) {
+    // If Authorization header is present, validate it
+    if (authHeader && !authHeader.startsWith('SessionToken ') && !authHeader.startsWith('ApiKey ')) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Authorization header must start with 'SessionToken ' or 'ApiKey '",
@@ -60,7 +62,22 @@ export function Protected() {
             }
 
             const headers = validation.data.headers;
-            const [authType, token] = headers.Authorization.split(' ') || ["unknown", undefined];
+            let authType: string;
+            let token: string | undefined;
+
+            // Try Authorization header first
+            if (headers.Authorization) {
+                [authType, token] = headers.Authorization.split(' ') || ["unknown", undefined];
+            } else {
+                // Fall back to cookie for browser-based navigation
+                const cookieToken = AuthenticationCookieRepository.get(event as any);
+                if (cookieToken) {
+                    authType = "SessionToken";
+                    token = cookieToken;
+                } else {
+                    throw new UnauthorizedError("Authentication required - no token found in header or cookie");
+                }
+            }
 
             const verifyResult = await authenticator.verify({
                 apiKey: (authType === "ApiKey") ? token : undefined,
