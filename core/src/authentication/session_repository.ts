@@ -1,4 +1,5 @@
-import { Paginated, PagingInstruction, Session } from "@houseofwolves/serverlesslaunchpad.types";
+import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
+import { Session } from "./types";
 
 export interface SessionRepository {
     createSession(message: {
