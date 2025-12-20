@@ -66,6 +66,7 @@ export const ApiConfigSchema = z.object({
     cors: z
         .object({
             allowed_origin_suffix: z.string().optional(), // e.g., ".serverlesslaunchpad.com"
+            cookie_domain: z.string().optional(), // e.g., ".serverlesslaunchpad.com" for cross-subdomain cookies
         })
         .optional(),
 
