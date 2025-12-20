@@ -49,7 +49,7 @@ export class AuthContextAdapter extends HalResourceAdapter {
 
     get _links(): HalObject["_links"] {
         return {
-            User: this.createLink(`/users/${this.userId}`),
+            user: this.createLink(`/users/${this.userId}`),
         };
     }
 
