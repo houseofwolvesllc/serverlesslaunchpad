@@ -118,7 +118,7 @@ class AppContainer {
             const environment = AppContainer.getEnvironment();
             const baseStore = new FileConfigurationStore(
                 ApiConfigSchema,
-                path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
+                path.join(path.dirname(fileURLToPath(import.meta.url)), "config"),
                 `${environment}.infrastructure.json`
             );
             const cachedStore = new CachedConfigurationStore(baseStore, Infinity);

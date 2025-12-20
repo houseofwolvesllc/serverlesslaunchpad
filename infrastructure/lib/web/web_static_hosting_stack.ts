@@ -7,6 +7,7 @@ export type WebPackageName = "mantine" | "shadcn" | "daisyui" | "svelte";
 
 export interface WebStaticHostingStackProps extends BaseStackProps {
     webPackageName: WebPackageName;
+    webBaseUrl?: string;
 }
 
 /**
@@ -20,12 +21,17 @@ export class WebStaticHostingStack extends BaseStack {
     constructor(scope: Construct, id: string, props: WebStaticHostingStackProps) {
         super(scope, id, props);
 
-        const { webPackageName } = props;
+        const { webPackageName, webBaseUrl } = props;
         const isProduction = this.isProduction();
+
+        // Determine bucket name: use custom domain if WEB_BASE_URL is set, otherwise use default naming
+        const bucketName = webBaseUrl
+            ? `${webPackageName}.${webBaseUrl}`
+            : this.resourceName(`web-${webPackageName}-${this.account}`);
 
         // Create S3 bucket with website hosting enabled
         this.bucket = new s3.Bucket(this, this.constructId(`web-bucket-${webPackageName}`), {
-            bucketName: this.resourceName(`web-${webPackageName}-${this.account}`),
+            bucketName,
             websiteIndexDocument: "index.html",
             websiteErrorDocument: "index.html", // SPA routing
             publicReadAccess: true,

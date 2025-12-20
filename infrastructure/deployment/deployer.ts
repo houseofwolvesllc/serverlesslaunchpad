@@ -436,9 +436,21 @@ export class Deployer extends StackManager {
 
         if (apiBaseUrl) {
             config.api = {
-                url: apiBaseUrl,
+                base_url: apiBaseUrl,
             };
         }
+
+        // Add AWS region for web clients
+        const awsRegion = process.env.AWS_REGION || process.env.CDK_DEFAULT_REGION || 'us-west-2';
+        config.aws = {
+            region: awsRegion,
+        };
+
+        // Add CORS configuration based on WEB_BASE_URL
+        const webBaseUrl = process.env.WEB_BASE_URL?.trim();
+        config.cors = {
+            allowed_origin_suffix: webBaseUrl ? `.${webBaseUrl}` : undefined,
+        };
 
         // Show custom domain setup hint if no domain configured
         if (albDnsName && !albDomainName) {

@@ -3,15 +3,16 @@ import { IVpc } from "aws-cdk-lib/aws-ec2";
 import { ApplicationTargetGroup, TargetType } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LambdaTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { Effect, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Key } from "aws-cdk-lib/aws-kms";
 import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
+import { ISecret, Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
 
 export interface ApiLambdaStackProps extends BaseStackProps {
-    configurationSecret: Secret;
+    encryptionKey?: Key;
     userPoolId: string;
     userPoolClientId: string;
     vpc: IVpc;
@@ -26,9 +27,18 @@ export class ApiLambdaStack extends BaseStack {
     public readonly targetGroup: ApplicationTargetGroup;
     public readonly executionRole: Role;
     private readonly logGroup: LogGroup;
+    private readonly configurationSecret: ISecret;
 
     constructor(scope: Construct, id: string, props: ApiLambdaStackProps) {
         super(scope, id, props);
+
+        // Look up secret by name to avoid cross-stack export dependencies
+        // This allows secret name changes without CloudFormation blocking due to exports in use
+        this.configurationSecret = Secret.fromSecretNameV2(
+            this,
+            this.constructId("config-secret-lookup"),
+            this.configuration.secrets.secretName
+        );
 
         this.logGroup = this.createLogGroup();
         this.executionRole = this.createExecutionRole();
@@ -81,11 +91,13 @@ export class ApiLambdaStack extends BaseStack {
      * Add necessary IAM policies to the execution role
      */
     private addExecutionRolePolicies(props: ApiLambdaStackProps): void {
-        const { configurationSecret, userPoolId } = props;
+        const { encryptionKey, userPoolId } = props;
 
         this.addBasicLambdaPolicy();
-        this.addSecretsManagerPolicy(configurationSecret);
+        this.addSecretsManagerPolicy();
+        this.addKmsPolicy(encryptionKey);
         this.addCognitoPolicy(userPoolId);
+        this.addDynamoDbPolicy();
     }
 
     /**
@@ -104,12 +116,29 @@ export class ApiLambdaStack extends BaseStack {
     /**
      * Add Secrets Manager policy for configuration access
      */
-    private addSecretsManagerPolicy(configurationSecret: Secret): void {
+    private addSecretsManagerPolicy(): void {
         this.executionRole.addToPolicy(
             new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
-                resources: [configurationSecret.secretArn],
+                resources: [this.configurationSecret.secretArn],
+            })
+        );
+    }
+
+    /**
+     * Add KMS policy for decrypting secrets (production only)
+     */
+    private addKmsPolicy(encryptionKey?: Key): void {
+        if (!encryptionKey) {
+            return; // No KMS key in non-production environments
+        }
+
+        this.executionRole.addToPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ["kms:Decrypt", "kms:GenerateDataKey"],
+                resources: [encryptionKey.keyArn],
             })
         );
     }
@@ -134,6 +163,31 @@ export class ApiLambdaStack extends BaseStack {
                     "cognito-idp:ListUsersInGroup",
                 ],
                 resources: [`arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${userPoolId}`],
+            })
+        );
+    }
+
+    /**
+     * Add DynamoDB policy for data access
+     * Grants access to all tables with prefix slp_{environment}_*
+     */
+    private addDynamoDbPolicy(): void {
+        const tablePattern = `arn:aws:dynamodb:${this.region}:${this.account}:table/slp_${this.appEnvironment}_*`;
+
+        this.executionRole.addToPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:BatchGetItem",
+                ],
+                resources: [tablePattern],
             })
         );
     }
@@ -174,8 +228,12 @@ export class ApiLambdaStack extends BaseStack {
                             `cd ${apiDir} && npx tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && cp -r config dist/`,
                         ];
                     },
-                    afterBundling(): string[] {
-                        return [];
+                    afterBundling(inputDir: string, outputDir: string): string[] {
+                        // Copy config files to Lambda package (esbuild only bundles JS)
+                        const apiDir = `${inputDir}/api.hypermedia`;
+                        return [
+                            `cp -r ${apiDir}/config ${outputDir}/`,
+                        ];
                     },
                     beforeInstall(): string[] {
                         return [];
@@ -200,7 +258,7 @@ export class ApiLambdaStack extends BaseStack {
                 // The Lambda code can read these and build its config object
                 COGNITO_USER_POOL_ID: props.userPoolId,
                 COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
-                CONFIGURATION_SECRET_ARN: props.configurationSecret.secretArn,
+                CONFIGURATION_SECRET_ARN: this.configurationSecret.secretArn,
                 // Feature flags
                 ENABLE_ANALYTICS: String(this.appEnvironment === "production"),
                 ENABLE_RATE_LIMITING: String(this.appEnvironment !== "development"),
