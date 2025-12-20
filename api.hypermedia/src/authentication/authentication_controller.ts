@@ -56,9 +56,12 @@ export class AuthenticationController extends BaseController {
 
         // Set secure cookie if client accepts HTML for hypermedia browsing
         if (this.shouldSetAuthCookie(event)) {
+            // Construct sessionToken from sessionKey + userId for cookie storage
+            const sessionToken = body.sessionKey ? body.sessionKey + authResult.authContext.identity!.userId : "";
+
             AuthenticationCookieRepository.set(
                 response,
-                authResult.authContext.access.sessionToken || "",
+                sessionToken,
                 authResult.authContext.access.dateExpires
                     ? Math.floor(authResult.authContext.access.dateExpires.getTime() / 1000)
                     : 60 * 60 * 24 * 7

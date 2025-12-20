@@ -40,8 +40,11 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
             sessions: this.sessions.map(session => ({
                 sessionId: session.sessionId,
                 userId: session.userId,
+                ipAddress: session.ipAddress,
+                userAgent: session.userAgent,
                 dateCreated: session.dateCreated.toISOString(),
                 dateExpires: session.dateExpires.toISOString(),
+                dateLastAccessed: session.dateLastAccessed.toISOString(),
                 _links: {
                     self: this.createLink(`/users/${this.userId}/sessions/${session.sessionId}`)
                 }
@@ -49,8 +52,8 @@ export class SessionCollectionAdapter extends HalResourceAdapter {
         };
     }
 
+    // Return cursor-based paging instructions for client navigation
     get paging() {
-        // Return paging instructions as-is (objects, not serialized strings)
         return this.pagingData;
     }
 

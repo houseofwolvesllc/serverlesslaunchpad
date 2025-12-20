@@ -6,7 +6,7 @@ import WebConfigurationStore from '../configuration/web_config_store';
  *
  * @see https://datatracker.ietf.org/doc/html/draft-kelly-json-hal-11
  */
-export interface ApiResponse<T = any> {
+export type ApiResponse<T = Record<string, any>> = T & {
     /** HAL hypermedia links */
     _links?: Record<string, { href: string; title?: string; templated?: boolean }>;
 
@@ -15,10 +15,7 @@ export interface ApiResponse<T = any> {
 
     /** HAL action templates (HAL-FORMS) */
     _templates?: Record<string, any>;
-
-    /** Resource properties (merged with this interface) */
-    [key: string]: any;
-}
+};
 
 export interface ApiError {
     code: string;
@@ -38,20 +35,29 @@ export class ApiClientError extends Error {
 }
 
 export class ApiClient {
-    private config: any = null;
-    private baseURL: string = '';
+    private config: Promise<any> | null = null;
 
     constructor() {
-        this.initializeConfig();
+        // No initialization needed - config is lazy loaded on first request
     }
 
-    private async initializeConfig() {
-        this.config = await WebConfigurationStore.getConfig();
-        this.baseURL = this.config.api.base_url;
+    /**
+     * Lazy loads and caches configuration.
+     * On first call, stores the config promise. Concurrent calls await the same promise.
+     * After resolution, the promise is cached and returns the value immediately on subsequent awaits.
+     * @returns The loaded configuration object
+     */
+    private async getConfig() {
+        if (!this.config) {
+            this.config = WebConfigurationStore.getConfig();
+        }
+        return await this.config;
     }
 
     async request<T = any>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-        const url = `${this.baseURL}${path}`;
+        // Lazy load config - will be cached after first call
+        const config = await this.getConfig();
+        const url = `${config.api.base_url}${path}`;
 
         const defaultHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -59,7 +65,7 @@ export class ApiClient {
         };
 
         // Add x-forwarded-for header for local development (typically set by load balancer)
-        if (this.config?.features?.debug_mode) {
+        if (config?.features?.debug_mode) {
             defaultHeaders['X-Forwarded-For'] = '127.0.0.1';
         }
 
@@ -74,11 +80,11 @@ export class ApiClient {
 
         // Add timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config?.api?.timeout || 30000);
+        const timeoutId = setTimeout(() => controller.abort(), config?.api?.timeout || 30000);
         requestOptions.signal = controller.signal;
 
         try {
-            if (this.config?.features?.debug_mode) {
+            if (config?.features?.debug_mode) {
                 console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, {
                     headers: requestOptions.headers,
                     body: options.body,
@@ -89,12 +95,12 @@ export class ApiClient {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                await this.handleErrorResponse(response);
+                await this.handleErrorResponse(response, config);
             }
 
             const data = await response.json();
 
-            if (this.config?.features?.debug_mode) {
+            if (config?.features?.debug_mode) {
                 console.log(`✅ API Response: ${response.status}`, data);
             }
 
@@ -122,7 +128,7 @@ export class ApiClient {
         }
     }
 
-    private async handleErrorResponse(response: Response): Promise<never> {
+    private async handleErrorResponse(response: Response, config: any): Promise<never> {
         let error: ApiError;
 
         try {
@@ -138,7 +144,7 @@ export class ApiClient {
             };
         }
 
-        if (this.config?.features?.debug_mode) {
+        if (config?.features?.debug_mode) {
             console.error(`❌ API Error: ${response.status}`, error);
         }
 
@@ -147,7 +153,9 @@ export class ApiClient {
 
     // Convenience methods
     async get<T = any>(path: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
-        const url = new URL(path, this.baseURL);
+        // Lazy load config for baseURL
+        const config = await this.getConfig();
+        const url = new URL(path, config.api.base_url);
         if (params) {
             Object.entries(params).forEach(([key, value]) => {
                 url.searchParams.append(key, value);

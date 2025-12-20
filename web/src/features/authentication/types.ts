@@ -13,7 +13,7 @@ export interface User {
         description?: string;
         ipAddress: string;
         userAgent: string;
-        sessionToken?: string;
+        sessionId?: string;
         dateLastAccessed?: string;
         dateExpires?: string;
     };

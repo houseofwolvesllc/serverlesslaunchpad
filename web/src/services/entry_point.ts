@@ -68,6 +68,7 @@ export class EntryPoint {
         // Fetch from API
         const response = await fetch(this.config.baseUrl, {
             method: 'GET',
+            credentials: 'include', // Include cookies for session management
             headers: {
                 'Accept': 'application/hal+json, application/json',
                 ...this.config.defaultHeaders,

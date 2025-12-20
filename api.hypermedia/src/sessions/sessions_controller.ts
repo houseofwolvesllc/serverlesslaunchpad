@@ -23,7 +23,10 @@ export class SessionsController extends BaseController {
      * Get paginated list of user sessions
      * Example: POST /users/123/sessions/list
      * Body: { "pagingInstruction": { ... } }
-     * 
+     *
+     * Cache Strategy: 300s TTL is appropriate for active authentication state that changes
+     * frequently with logins/logouts. Shorter than API keys (600s) which are more static.
+     *
      * Decorator execution order (bottom to top):
      * 1. Cache - checks ETag first
      * 2. Protected - authenticates user and validates role/owner access
