@@ -32,37 +32,41 @@ export function getTitle(link: HalLink | HalLink[] | undefined): string | undefi
 }
 
 /**
- * Extract title from a HAL resource
+ * Extract title from a HAL resource (HATEOAS-compliant)
  *
- * Attempts to find a suitable title from:
- * 1. self link title
- * 2. resource.title property
- * 3. resource.name property
- * 4. Fallback to path segment from href
+ * Attempts to find a suitable title from hypermedia controls only:
+ * 1. _links.self.title (for link-based resources)
+ * 2. _templates.self.title (for template-based resources)
+ * 3. Fallback to deriving from href path segments
  *
  * @param resource - HAL resource object
  * @param fallbackHref - Fallback href to extract title from
  * @returns Extracted title
  */
 export function extractTitleFromResource(resource: HalObject, fallbackHref: string): string {
-	// Try self link title
-	const selfTitle = getTitle(resource._links?.self);
-	if (selfTitle) {
-		return selfTitle;
+	// Try _links.self.title (for link-based resources)
+	const linkTitle = getTitle(resource._links?.self);
+	if (linkTitle) {
+		return linkTitle;
 	}
 
-	// Try resource properties
-	if ('title' in resource && typeof resource.title === 'string') {
-		return resource.title;
+	// Try _templates.self.title (for template-based resources)
+	// Note: Templates have title as a direct property, not nested in a link
+	const selfTemplate = (resource as Record<string, unknown>)._templates as
+		| Record<string, { title?: string }>
+		| undefined;
+	if (selfTemplate?.self?.title) {
+		return selfTemplate.self.title;
 	}
 
-	if ('name' in resource && typeof resource.name === 'string') {
-		return resource.name;
-	}
-
-	// Fallback: extract from href
+	// Fall back to deriving from href (only when API provides no title)
 	const pathSegments = fallbackHref.split('/').filter(Boolean);
-	const lastSegment = pathSegments[pathSegments.length - 1];
+	let lastSegment = pathSegments[pathSegments.length - 1];
+
+	// If last segment is "list", use the resource type from second-to-last segment
+	if (lastSegment === 'list' && pathSegments.length > 1) {
+		lastSegment = pathSegments[pathSegments.length - 2];
+	}
 
 	if (lastSegment) {
 		// Convert kebab-case or snake_case to Title Case

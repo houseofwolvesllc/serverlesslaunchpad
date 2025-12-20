@@ -92,6 +92,8 @@ export interface NavLink {
 	link: string;
 	/** Icon identifier (optional) */
 	icon?: string;
+	/** Relation name from sitemap (used for component registry lookup) */
+	rel?: string;
 }
 
 /**

@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { Key, Trash2 } from 'lucide-svelte';
 	import { HalCollectionList } from '$lib/components/hal_collection';
-	import type { BulkOperation } from '$lib/components/hal_collection';
-	import { createHalResource } from '$lib/hooks/use_hal_resource';
 	import { executeTemplate } from '$lib/hooks/use_template';
 	import { toastStore } from '$lib/stores/toast_store';
 	import TemplateForm from '$lib/components/hal_forms/template_form.svelte';
@@ -18,13 +15,21 @@
 	import AlertDialogDescription from '$lib/components/ui/alert-dialog-description.svelte';
 	import AlertDialogFooter from '$lib/components/ui/alert-dialog-footer.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
-	let resource = createHalResource('api-keys');
+	// Required prop - the HAL resource fetched by the generic route
+	// This resource contains the correct _templates with proper target URLs
+	export let resource: HalObject;
+
+	// Optional refresh callback - called after bulk operations
+	export let onRefresh: (() => void) | undefined = undefined;
+
 	let createModalOpen = false;
 	let deleteModalOpen = false;
 	let selectedIds: string[] = [];
 
-	$: data = $resource.data;
+	// Use the passed resource directly
+	$: data = resource;
 	$: createTemplate = data?._templates?.create || data?._templates?.default;
 
 	function handleCreate() {
@@ -37,7 +42,7 @@
 			await executeTemplate(createTemplate, formData);
 			toastStore.success('API key created successfully');
 			createModalOpen = false;
-			resource.refresh();
+			onRefresh?.();
 		} catch (error) {
 			toastStore.error('Failed to create API key');
 		}
@@ -49,6 +54,7 @@
 	}
 
 	async function confirmBulkDelete() {
+		// Use templates from the passed resource - these have the correct target URLs
 		const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
 		if (!bulkDeleteTemplate) return;
 
@@ -56,7 +62,7 @@
 			await executeTemplate(bulkDeleteTemplate, { apiKeyIds: selectedIds });
 			toastStore.success(`Deleted ${selectedIds.length} API key(s)`);
 			deleteModalOpen = false;
-			resource.refresh();
+			onRefresh?.();
 		} catch (error) {
 			toastStore.error('Failed to delete API keys');
 		}
@@ -74,7 +80,7 @@
 
 	<HalCollectionList
 		resource={data}
-		onRefresh={() => resource.refresh()}
+		onRefresh={onRefresh}
 		onCreate={handleCreate}
 		bulkOperations={[
 			{

@@ -232,13 +232,15 @@ export function transformNavStructure(
 						childLinks.push({
 							label: resolved.title,
 							link: resolved.href,
-							icon: navItem.icon
+							icon: navItem.icon,
+							rel: navItem.rel
 						});
 						logger.info('[transformNavStructure] Including in navigation', {
 							title: resolved.title,
 							type: resolved.type,
 							method: resolved.method,
-							href: resolved.href
+							href: resolved.href,
+							rel: navItem.rel
 						});
 					} else {
 						logger.info('[transformNavStructure] SKIPPING non-GET template', {
