@@ -16,7 +16,7 @@
 
 import { RouteObject } from 'react-router-dom';
 import { createElement } from 'react';
-import type { NavItem, NavGroup, ResolvedNavItem } from '../hooks/use_navigation';
+import type { NavItem, NavGroup, ResolvedNavItem } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { getComponentForId } from './component_registry';
 import { logger } from '../logging/logger';
 import { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';

@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SessionsList } from './components/sessions_list';
 import { useSessions } from './hooks/use_sessions';
-import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking_adapter';
 
 export const SessionsPage = () => {
     const { data } = useSessions();

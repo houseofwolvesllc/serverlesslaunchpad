@@ -1,3 +1,18 @@
+// Mock AWS Secrets Manager BEFORE any imports to ensure the mock is in place when container initializes
+import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import { mockClient } from "aws-sdk-client-mock";
+
+const mockSecretsManagerClient = mockClient(SecretsManagerClient);
+mockSecretsManagerClient.on(GetSecretValueCommand).resolves({
+    SecretString: JSON.stringify({
+        cognito: {
+            client_secret: "test-client-secret",
+        },
+        session_token_salt: "test-session-token-salt-for-testing-purposes-only",
+    }),
+});
+
+// Now import everything else
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { User, Role, Features, UserRepository, Authenticator } from "@houseofwolves/serverlesslaunchpad.core";
 import { UsersController } from "../../src/users/users_controller";
@@ -34,6 +49,7 @@ describe("UsersController", () => {
             path: `/users/${overrides?.pathParameters?.userId || "user-123"}`,
             headers: {
                 Authorization: "SessionToken test-token",
+                Accept: "application/hal+json",
                 "user-agent": "test-agent/1.0",
                 "x-forwarded-for": "127.0.0.1",
             },
@@ -89,12 +105,8 @@ describe("UsersController", () => {
             revoke: vi.fn(),
         };
 
-        // Bind mock authenticator (will override existing binding)
-        try {
-            container.bind(Authenticator).toFactory(() => mockAuthenticator as any).asSingleton();
-        } catch (e) {
-            // Already bound, that's fine
-        }
+        // Bind mock authenticator (replace existing binding)
+        container.bind(Authenticator, { factory: () => mockAuthenticator as any, replace: true }).asSingleton();
 
         mockUserRepository = {
             getUserById: vi.fn(),
@@ -102,12 +114,8 @@ describe("UsersController", () => {
             upsertUser: vi.fn(),
         };
 
-        // Bind mock UserRepository
-        try {
-            container.bind(UserRepository).toFactory(() => mockUserRepository as any).asSingleton();
-        } catch (e) {
-            // Already bound, that's fine
-        }
+        // Bind mock UserRepository (replace existing binding)
+        container.bind(UserRepository, { factory: () => mockUserRepository as any, replace: true }).asSingleton();
 
         mockRouter = {
             buildHref: vi.fn((controller, method, params) => {

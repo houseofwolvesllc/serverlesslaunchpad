@@ -13,7 +13,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import type { NavigateFunction } from 'react-router-dom';
-import type { NavGroup, NavItem, ResolvedNavItem } from '../../../hooks/use_navigation';
+import type { NavGroup, NavItem, ResolvedNavItem } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 import { getIcon } from './icon_mapper';
 import { createPostActionHandler } from './navigation_actions';
 

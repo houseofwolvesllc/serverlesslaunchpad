@@ -9,7 +9,7 @@ import {
     SignUpForm,
 } from '../features/authentication';
 import { NoMatch } from './no_match';
-import { NavigationHistoryProvider } from '@/context/navigation_history_context';
+import { NavigationHistoryProvider } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 
 export const Router = () => {
     return (

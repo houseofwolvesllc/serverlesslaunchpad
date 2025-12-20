@@ -1,32 +1,14 @@
 import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useNavigationHistory } from '@/context/navigation_history_context';
-import { useSitemap } from '@/features/sitemap/hooks/use_sitemap';
-import type { HalLink } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { HalLink, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { BreadcrumbItem, NavigationHistoryItem, NavItem, NavGroup } from '../types';
+import { getHref, getTitle } from '../utils/hal_helpers';
 
-/**
- * Helper to get href from a HalLink (handles both single link and array)
- */
-function getHref(link: HalLink | HalLink[] | undefined): string | undefined {
-  if (!link) return undefined;
-  if (Array.isArray(link)) return link[0]?.href;
-  return link.href;
-}
-
-/**
- * Helper to get title from a HalLink (handles both single link and array)
- */
-function getTitle(link: HalLink | HalLink[] | undefined): string | undefined {
-  if (!link) return undefined;
-  if (Array.isArray(link)) return link[0]?.title;
-  return link.title;
-}
-
-export interface BreadcrumbItem {
-  label: string;
-  href: string | null;
-  isLast: boolean;
-  isGroup: boolean;
+export interface UseBreadcrumbsDependencies {
+  history: NavigationHistoryItem[];
+  navStructure: (NavItem | NavGroup)[] | undefined;
+  links: Record<string, HalLink> | undefined;
+  templates: Record<string, HalTemplate> | undefined;
+  currentPathname: string;
 }
 
 /**
@@ -38,17 +20,36 @@ export interface BreadcrumbItem {
  *
  * NOTE: The current page should always appear in breadcrumbs, even if it hasn't
  * been added to history yet (timing issue during initial render).
+ *
+ * @param deps - Dependencies injected by the consumer
+ * @returns Array of breadcrumb items
+ *
+ * @example
+ * ```typescript
+ * // In a React project, wrap this with project-specific hooks:
+ * function useBreadcrumbs() {
+ *   const { history } = useNavigationHistory();
+ *   const { navStructure, links, templates } = useSitemap();
+ *   const location = useLocation();
+ *
+ *   return useBreadcrumbsCore({
+ *     history,
+ *     navStructure,
+ *     links,
+ *     templates,
+ *     currentPathname: location.pathname
+ *   });
+ * }
+ * ```
  */
-export function useBreadcrumbs(): BreadcrumbItem[] {
-  const { history } = useNavigationHistory();
-  const { navStructure, links, templates } = useSitemap();
-  const location = useLocation();
+export function useBreadcrumbs(deps: UseBreadcrumbsDependencies): BreadcrumbItem[] {
+  const { history, navStructure, links, templates, currentPathname } = deps;
 
   return useMemo(() => {
     const crumbs: BreadcrumbItem[] = [];
 
     // Always start with Dashboard (non-clickable if it's the current page)
-    const isDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+    const isDashboard = currentPathname === '/' || currentPathname === '/dashboard';
     const isOnlyDashboard = history.length === 0 || (history.length === 1 && isDashboard);
 
     crumbs.push({
@@ -66,7 +67,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
       // Check if current location is in history
       const currentPathInHistory = history.some(item => {
         const selfHref = getHref(item.resource._links?.self);
-        return selfHref === location.pathname;
+        return selfHref === currentPathname;
       });
 
       for (let i = 0; i < history.length; i++) {
@@ -106,7 +107,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
         // Determine if this is the last item
         // If current path is in history, use that to determine isLast
         // Otherwise, mark the last history item as not last (current page will be added below)
-        const isCurrentPage = selfHref === location.pathname;
+        const isCurrentPage = selfHref === currentPathname;
         const isLast = currentPathInHistory ? isCurrentPage : false;
 
         // Get label from self link (tracking hook already ensured this exists with proper title)
@@ -128,6 +129,5 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     }
 
     return crumbs;
-  }, [history, navStructure, links, templates, location.pathname]);
+  }, [history, navStructure, links, templates, currentPathname]);
 }
-

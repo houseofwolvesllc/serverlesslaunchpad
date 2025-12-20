@@ -3,9 +3,11 @@
 	import { cn } from "$lib/utils";
 	import { Check } from "lucide-svelte";
 
-	type $$Props = DropdownMenuPrimitive.CheckboxItemProps;
+	type $$Props = DropdownMenuPrimitive.CheckboxItemProps & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 </script>
 

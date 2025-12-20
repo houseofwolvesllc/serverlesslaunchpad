@@ -13,11 +13,8 @@ import { logger } from '$lib/logging';
 
 logger.info('[SvelteKit] Client hooks initialized - Moto shims loaded');
 
-// Initialize the entry point with the API base URL
-WebConfigurationStore.getConfig()
-	.then(config => {
-		return initializeEntryPoint(config.api.base_url);
-	})
+// Initialize the entry point (baseUrl comes from web_config_store)
+initializeEntryPoint()
 	.then(() => {
 		logger.info('[SvelteKit] Entry point initialized');
 	})

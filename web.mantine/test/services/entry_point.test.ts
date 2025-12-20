@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EntryPoint, createEntryPoint } from '../../src/services/entry_point';
+import { EntryPoint, createEntryPoint, createLinkNavigator } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import type { HalObject } from '../../src/types/hal';
 
 describe('EntryPoint', () => {
     let entryPoint: EntryPoint;
+    let linkNavigator: ReturnType<typeof createLinkNavigator>;
     const mockBaseUrl = 'https://api.example.com';
 
     const mockRootResponse: HalObject = {
@@ -26,6 +27,8 @@ describe('EntryPoint', () => {
             baseUrl: mockBaseUrl,
             cacheTtl: 1000, // 1 second for testing
         });
+
+        linkNavigator = createLinkNavigator();
     });
 
     afterEach(() => {
@@ -168,7 +171,7 @@ describe('EntryPoint', () => {
 
         it('should get link href from entry point', async () => {
             // Act
-            const href = await entryPoint.getLinkHref('user');
+            const href = await entryPoint.getLinkHref('user', linkNavigator);
 
             // Assert
             expect(href).toBe('/user');
@@ -176,7 +179,7 @@ describe('EntryPoint', () => {
 
         it('should return undefined for non-existent link', async () => {
             // Act
-            const href = await entryPoint.getLinkHref('nonexistent');
+            const href = await entryPoint.getLinkHref('nonexistent', linkNavigator);
 
             // Assert
             expect(href).toBeUndefined();
@@ -184,7 +187,7 @@ describe('EntryPoint', () => {
 
         it('should expand templated links with params', async () => {
             // Act
-            const href = await entryPoint.getLinkHref('sessions', { userId: '123' });
+            const href = await entryPoint.getLinkHref('sessions', linkNavigator, { userId: '123' });
 
             // Assert
             expect(href).toBe('/users/123/sessions');
@@ -192,7 +195,7 @@ describe('EntryPoint', () => {
 
         it('should handle multiple relation fallbacks', async () => {
             // Act
-            const href = await entryPoint.getLinkHref(['nonexistent', 'user']);
+            const href = await entryPoint.getLinkHref(['nonexistent', 'user'], linkNavigator);
 
             // Assert
             expect(href).toBe('/user');
@@ -209,7 +212,7 @@ describe('EntryPoint', () => {
 
         it('should return true for existing capability', async () => {
             // Act
-            const hasCapability = await entryPoint.hasCapability('user');
+            const hasCapability = await entryPoint.hasCapability('user', linkNavigator);
 
             // Assert
             expect(hasCapability).toBe(true);
@@ -217,7 +220,7 @@ describe('EntryPoint', () => {
 
         it('should return false for non-existent capability', async () => {
             // Act
-            const hasCapability = await entryPoint.hasCapability('admin');
+            const hasCapability = await entryPoint.hasCapability('admin', linkNavigator);
 
             // Assert
             expect(hasCapability).toBe(false);
@@ -225,7 +228,7 @@ describe('EntryPoint', () => {
 
         it('should check multiple relations', async () => {
             // Act
-            const hasCapability = await entryPoint.hasCapability(['admin', 'sitemap']);
+            const hasCapability = await entryPoint.hasCapability(['admin', 'sitemap'], linkNavigator);
 
             // Assert
             expect(hasCapability).toBe(true); // sitemap exists
@@ -242,7 +245,7 @@ describe('EntryPoint', () => {
 
         it('should return all available capabilities', async () => {
             // Act
-            const capabilities = await entryPoint.getCapabilities();
+            const capabilities = await entryPoint.getCapabilities(linkNavigator);
 
             // Assert
             expect(capabilities).toHaveLength(5);
@@ -261,7 +264,7 @@ describe('EntryPoint', () => {
             });
 
             // Act
-            const capabilities = await entryPoint.getCapabilities();
+            const capabilities = await entryPoint.getCapabilities(linkNavigator);
 
             // Assert
             expect(capabilities).toEqual([]);
@@ -482,8 +485,8 @@ describe('EntryPoint', () => {
 
             // Act
             entryPoint.setAuthToken('Bearer abc123');
-            const hasAdmin = await entryPoint.hasCapability('admin');
-            const adminHref = await entryPoint.getLinkHref('admin');
+            const hasAdmin = await entryPoint.hasCapability('admin', linkNavigator);
+            const adminHref = await entryPoint.getLinkHref('admin', linkNavigator);
 
             // Assert
             expect(hasAdmin).toBe(true);
@@ -507,8 +510,8 @@ describe('EntryPoint', () => {
             });
 
             // Act
-            const hasUser = await entryPoint.hasCapability('user');
-            const hasLogin = await entryPoint.hasCapability('login');
+            const hasUser = await entryPoint.hasCapability('user', linkNavigator);
+            const hasLogin = await entryPoint.hasCapability('login', linkNavigator);
 
             // Assert
             expect(hasUser).toBe(false);
@@ -523,10 +526,10 @@ describe('EntryPoint', () => {
             });
 
             // Act - Multiple operations
-            await entryPoint.hasCapability('user');
-            await entryPoint.hasCapability('sessions');
-            await entryPoint.getLinkHref('api-keys');
-            const capabilities = await entryPoint.getCapabilities();
+            await entryPoint.hasCapability('user', linkNavigator);
+            await entryPoint.hasCapability('sessions', linkNavigator);
+            await entryPoint.getLinkHref('api-keys', linkNavigator);
+            const capabilities = await entryPoint.getCapabilities(linkNavigator);
 
             // Assert - Should only fetch once due to caching
             expect(global.fetch).toHaveBeenCalledTimes(1);

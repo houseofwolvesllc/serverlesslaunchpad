@@ -30,29 +30,35 @@ export const UpdateUserSchema = z.object({
     }),
     body: z
         .object({
-            firstName: z.preprocess(
-                (val) => (val === "" ? undefined : val),
-                z.string()
-                    .min(1, "First name is required")
-                    .max(100, "First name must be less than 100 characters")
-                    .optional()
-            ),
-            lastName: z.preprocess(
-                (val) => (val === "" ? undefined : val),
-                z.string()
-                    .min(1, "Last name is required")
-                    .max(100, "Last name must be less than 100 characters")
-                    .optional()
-            ),
+            firstName: z
+                .string()
+                .min(1, "First name is required")
+                .max(100, "First name must be less than 100 characters")
+                .optional(),
+            lastName: z
+                .string()
+                .min(1, "Last name is required")
+                .max(100, "Last name must be less than 100 characters")
+                .optional(),
             role: z
-                .nativeEnum(Role, {
-                    errorMap: () => ({ message: "Invalid role value" }),
-                })
+                .union([
+                    z.nativeEnum(Role),
+                    z.string()
+                ], { errorMap: () => ({ message: "Invalid role value" }) })
                 .optional(),
             features: z
-                .array(z.string())
+                .union([
+                    z.number().int("Features must be an integer")
+                        .min(0, "Features cannot be negative")
+                        .max(15, "Invalid feature flags"),
+                    z.array(z.string())
+                ])
                 .optional(),
-        }),
+        })
+        .refine(
+            (data) => data.firstName !== undefined || data.lastName !== undefined || data.role !== undefined || data.features !== undefined,
+            { message: "At least one field must be provided for update" }
+        ),
 });
 
 export type UpdateUserRequest = z.infer<typeof UpdateUserSchema>;

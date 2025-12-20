@@ -1,27 +1,28 @@
 <script lang="ts">
-	import { toastStore } from '$lib/stores/toast_store';
+	import { toastStore, type Toast } from '$lib/stores/toast_store';
 	import { flip } from 'svelte/animate';
 	import { fly } from 'svelte/transition';
 	import {
-		CheckCircle,
-		AlertCircle,
-		AlertTriangle,
+		CircleCheckBig,
+		CircleAlert,
+		TriangleAlert,
 		Info,
 		X
 	} from 'lucide-svelte';
+	import type { ComponentType } from 'svelte';
 
-	const icons = {
-		success: CheckCircle,
-		error: AlertCircle,
-		warning: AlertTriangle,
+	const icons: Record<Toast['variant'], ComponentType> = {
+		success: CircleCheckBig,
+		error: CircleAlert,
+		warning: TriangleAlert,
 		info: Info,
 	};
 
-	const variants = {
-		success: 'variant-filled-success',
-		error: 'variant-filled-error',
-		warning: 'variant-filled-warning',
-		info: 'variant-filled-primary',
+	const variants: Record<Toast['variant'], string> = {
+		success: 'alert-success',
+		error: 'alert-error',
+		warning: 'alert-warning',
+		info: 'alert-info',
 	};
 </script>
 

@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { HalFormsClient } from '../../src/lib/hal_forms_client';
+import { HalFormsClient } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { ApiClient } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { HalTemplate } from '../../src/types/hal';
-import * as apiClientModule from '../../src/services/api.client';
 
 describe('HalFormsClient', () => {
     let client: HalFormsClient;
+    let mockApiClient: ApiClient;
     let mockRequest: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        client = new HalFormsClient();
         mockRequest = vi.fn();
-        vi.spyOn(apiClientModule.apiClient, 'request').mockImplementation(mockRequest);
+        mockApiClient = { request: mockRequest } as any;
+        client = new HalFormsClient(mockApiClient);
     });
 
     afterEach(() => {

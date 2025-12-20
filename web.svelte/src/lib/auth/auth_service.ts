@@ -7,6 +7,17 @@ import { logger } from '$lib/logging/logger';
 import { AuthError, SignInStep, type User } from './types';
 import type { SignInParams, SignUpParams, ConfirmSignUpParams, ResetPasswordParams, ConfirmResetPasswordParams } from './types';
 import WebConfigurationStore from '$lib/config/web_config_store';
+import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
+
+/**
+ * User response from API with HAL structure
+ */
+interface UserResponse extends HalObject {
+    userId?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+}
 
 // Amplify configuration will be loaded asynchronously
 let amplifyConfigured = false;
@@ -104,7 +115,7 @@ async function federateSession(authSession: amplify.AuthSession): Promise<User> 
 
         // Call the hypermedia API federate endpoint
         try {
-            const response = await apiClient.request(federateHref, {
+            const response = await apiClient.request<UserResponse>(federateHref, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${cognitoToken}`,
@@ -126,10 +137,10 @@ async function federateSession(authSession: amplify.AuthSession): Promise<User> 
             // HAL response: properties are at root level with _links and _embedded
             return {
                 username: response.userId || '',
-                email: response.email,
-                firstName: response.firstName,
-                lastName: response.lastName,
-                name: `${response.firstName} ${response.lastName}`,
+                email: response.email || '',
+                firstName: response.firstName || '',
+                lastName: response.lastName || '',
+                name: `${response.firstName || ''} ${response.lastName || ''}`,
                 links: response._links,
                 authContext: response._embedded?.access,
             };
@@ -185,7 +196,7 @@ export async function verifySession(): Promise<User> {
 
         logger.debug('Discovered verification endpoint', { verifyHref });
 
-        const response = await apiClient.request(verifyHref, {
+        const response = await apiClient.request<UserResponse>(verifyHref, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -200,10 +211,10 @@ export async function verifySession(): Promise<User> {
         // HAL response: properties are at root level with _links and _embedded
         const verifiedUser: User = {
             username: response.userId || '',
-            email: response.email,
-            firstName: response.firstName,
-            lastName: response.lastName,
-            name: `${response.firstName} ${response.lastName}`,
+            email: response.email || '',
+            firstName: response.firstName || '',
+            lastName: response.lastName || '',
+            name: `${response.firstName || ''} ${response.lastName || ''}`,
             links: response._links,
             authContext: response._embedded?.access,
         };

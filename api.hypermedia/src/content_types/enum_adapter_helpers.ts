@@ -262,6 +262,67 @@ export function arrayToBitfield(
 }
 
 /**
+ * Convert enum label string to numeric enum value.
+ *
+ * Transforms a human-readable enum label (from client submission) back into
+ * the numeric enum value format. This enables hypermedia clients to submit
+ * labels (which they see in the template) instead of numeric values.
+ *
+ * @param label - Human-readable label (e.g., "Account Manager", "Support")
+ * @param metadata - Enum metadata with label-to-value mappings
+ * @returns Numeric enum value, or undefined if label not found
+ *
+ * @example
+ * ```typescript
+ * const ROLE_METADATA: EnumMetadata = {
+ *   name: "role",
+ *   options: [
+ *     { value: 0, label: "Base" },
+ *     { value: 1, label: "Support" },
+ *     { value: 2, label: "Account Manager" }
+ *   ]
+ * };
+ *
+ * enumLabelToValue("Support", ROLE_METADATA);
+ * // Returns: 1
+ *
+ * enumLabelToValue("Account Manager", ROLE_METADATA);
+ * // Returns: 2
+ *
+ * enumLabelToValue("InvalidRole", ROLE_METADATA);
+ * // Returns: undefined
+ * ```
+ */
+export function enumLabelToValue(
+    label: string | number | undefined,
+    metadata: EnumMetadata
+): number | undefined {
+    // If already a number (direct enum value), return as-is
+    if (typeof label === "number") {
+        return label;
+    }
+
+    // If undefined or null, return undefined
+    if (label === undefined || label === null) {
+        return undefined;
+    }
+
+    // If it's a numeric string (e.g., "1"), parse it as a number
+    const parsedNumber = Number(label);
+    if (!isNaN(parsedNumber) && String(parsedNumber) === String(label).trim()) {
+        return parsedNumber;
+    }
+
+    // Find option by case-insensitive label match
+    const normalizedLabel = String(label).toLowerCase().trim();
+    const option = metadata.options.find(
+        (opt) => opt.label.toLowerCase() === normalizedLabel
+    );
+
+    return option ? Number(option.value) : undefined;
+}
+
+/**
  * Get a normalized string key for an enum option value.
  *
  * Internal helper that converts enum values to consistent lowercase keys.

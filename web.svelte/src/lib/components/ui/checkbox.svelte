@@ -3,9 +3,11 @@
 	import { Check, Minus } from "lucide-svelte";
 	import { cn } from "$lib/utils";
 
-	type $$Props = CheckboxPrimitive.Props;
+	type $$Props = CheckboxPrimitive.Props & {
+		class?: string | null | undefined;
+	};
 
-	let className: string | undefined = undefined;
+	let className: string | null | undefined = undefined;
 	export { className as class };
 	export let checked: boolean | "indeterminate" = false;
 
