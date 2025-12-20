@@ -53,37 +53,92 @@ export async function getApiClient(): Promise<ApiClient> {
 }
 
 /**
+ * Helper to handle 401 errors consistently
+ *
+ * When a 401 occurs, the server automatically clears the invalid session cookie
+ * via Set-Cookie header. We reload the page to let the router handle navigation:
+ * - On auth pages: stays on auth page (no cookie, no redirect)
+ * - On protected pages: ProtectedRoute redirects to /auth/signin
+ *
+ * This approach avoids hardcoding auth routes and trusts the architecture.
+ */
+function handle401Error(error: any): void {
+    if (error?.status === 401) {
+        logger.warn('Session expired or invalid, reloading page', {
+            path: window.location.pathname,
+        });
+        window.location.reload();
+    }
+}
+
+/**
  * Singleton API client for direct usage
  * Note: This is a proxy that lazy-loads the real client
+ * Includes 401 error handling to redirect to login on session expiration
  */
 export const apiClient = {
     async request<T>(path: string, options?: RequestInit) {
         const client = await getApiClient();
-        return client.request<T>(path, options);
+        try {
+            return await client.request<T>(path, options);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async get<T>(path: string, params?: Record<string, string>) {
         const client = await getApiClient();
-        return client.get<T>(path, params);
+        try {
+            return await client.get<T>(path, params);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async post<T>(path: string, data?: any) {
         const client = await getApiClient();
-        return client.post<T>(path, data);
+        try {
+            return await client.post<T>(path, data);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async put<T>(path: string, data?: any) {
         const client = await getApiClient();
-        return client.put<T>(path, data);
+        try {
+            return await client.put<T>(path, data);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async patch<T>(path: string, data?: any) {
         const client = await getApiClient();
-        return client.patch<T>(path, data);
+        try {
+            return await client.patch<T>(path, data);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async delete<T>(path: string) {
         const client = await getApiClient();
-        return client.delete<T>(path);
+        try {
+            return await client.delete<T>(path);
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
     async health() {
         const client = await getApiClient();
-        return client.health();
+        try {
+            return await client.health();
+        } catch (error) {
+            handle401Error(error);
+            throw error;
+        }
     },
 };
 

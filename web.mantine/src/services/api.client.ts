@@ -54,16 +54,20 @@ export async function getApiClient(): Promise<ApiClient> {
 
 /**
  * Helper to handle 401 errors consistently
+ *
+ * When a 401 occurs, the server automatically clears the invalid session cookie
+ * via Set-Cookie header. We reload the page to let the router handle navigation:
+ * - On auth pages: stays on auth page (no cookie, no redirect)
+ * - On protected pages: ProtectedRoute redirects to /auth/signin
+ *
+ * This approach avoids hardcoding auth routes and trusts the architecture.
  */
 function handle401Error(error: any): void {
     if (error?.status === 401) {
-        const isAuthPage = window.location.pathname.startsWith('/auth/');
-        if (!isAuthPage) {
-            logger.warn('Session expired or invalid, redirecting to login', {
-                path: window.location.pathname,
-            });
-            window.location.href = '/auth/signin';
-        }
+        logger.warn('Session expired or invalid, reloading page', {
+            path: window.location.pathname,
+        });
+        window.location.reload();
     }
 }
 
