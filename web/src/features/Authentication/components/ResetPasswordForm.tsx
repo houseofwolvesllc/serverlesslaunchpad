@@ -1,4 +1,4 @@
-import { TextInput, Button, Stack, Paper, Text, Center, Box } from '@mantine/core';
+import { TextInput, Button, Stack, Paper, Text, Center, Box, rem, Image } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '../../Authentication';
@@ -40,6 +40,12 @@ export const ResetPasswordForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
+                <Image
+                    src="/svg/serverless_launchpad_logo.svg"
+                    alt="Serverless Launchpad Logo"
+                    style={{ height: rem(100) }}
+                    fit="contain"
+                />
                 <Paper radius="md" p="xl" withBorder>
                     <Text size="lg" fw={500} mb="md">
                         Reset Your Password
