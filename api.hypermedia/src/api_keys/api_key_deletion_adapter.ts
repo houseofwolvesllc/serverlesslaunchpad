@@ -28,4 +28,12 @@ export class ApiKeyDeletionAdapter extends HalResourceAdapter {
     get deletedCount() {
         return this.count;
     }
+
+    toJSON() {
+        return {
+            message: this.message,
+            deletedCount: this.deletedCount,
+            _links: this._links,
+        };
+    }
 }

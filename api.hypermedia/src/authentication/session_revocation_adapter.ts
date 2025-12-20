@@ -14,4 +14,11 @@ export class SessionRevocationAdapter extends HalResourceAdapter {
     get message() {
         return "Session revoked successfully";
     }
+
+    toJSON() {
+        return {
+            message: this.message,
+            _links: this._links,
+        };
+    }
 }

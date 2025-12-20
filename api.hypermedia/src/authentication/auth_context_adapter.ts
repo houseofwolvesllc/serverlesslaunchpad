@@ -86,4 +86,20 @@ export class AuthContextAdapter extends HalResourceAdapter {
             ),
         };
     }
+
+    toJSON(): HalObject {
+        return {
+            userId: this.userId,
+            email: this.email,
+            firstName: this.firstName,
+            lastName: this.lastName,
+            role: this.role,
+            features: this.features,
+            dateCreated: this.dateCreated,
+            dateModified: this.dateModified,
+            _links: { ...this.getBaseLinks(), ...this._links },
+            _embedded: this._embedded,
+            _templates: this._templates,
+        };
+    }
 }
