@@ -18,6 +18,7 @@ export const ApiConfigSchema = z.object({
         user_pool_id: z.string(),
         client_id: z.string(),
         user_pool_provider_url: z.string().optional(),
+        endpoint_url: z.string().optional(), // For local/cognito-local development
     }),
 
     // Athena configuration - API needs full access for queries

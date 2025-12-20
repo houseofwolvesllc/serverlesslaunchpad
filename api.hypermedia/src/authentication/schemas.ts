@@ -14,8 +14,8 @@ export const AuthenticateSchema = z.object({
     body: z.object({
         sessionKey: z.string(),
         email: z.string().email(),
-        firstName: z.string(),
-        lastName: z.string(),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
     }),
 });
 

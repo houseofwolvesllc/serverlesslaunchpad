@@ -3,22 +3,24 @@ import {
     Authenticator,
     Container,
     Environment,
+    JwtVerifier,
     LogLevel,
     SessionRepository,
     UserRepository,
 } from "@houseofwolves/serverlesslaunchpad.core";
 import {
+    ApiConfigSchema,
+    ApplicationSecretsStore,
     AthenaApiKeyRepository,
     AthenaSessionRepository,
     AthenaUserRepository,
     AwsSecretsConfigurationStore,
-    FileConfigurationStore,
-    SystemAuthenticator,
     CachedConfigurationStore,
+    FileConfigurationStore,
     InfrastructureConfigurationStore,
-    ApplicationSecretsStore,
-    ApiConfigSchema,
+    JoseJwtVerifier,
     SecretsConfigSchema,
+    SystemAuthenticator,
 } from "@houseofwolves/serverlesslaunchpad.framework";
 import * as path from "path";
 import { fileURLToPath } from "url";
@@ -80,9 +82,8 @@ class AppContainer {
             .bind(ApplicationSecretsStore)
             .toFactory(() => {
                 const environment = AppContainer.getEnvironment();
-                const secretsConfig = environment === 'local'
-                    ? { endpoint: 'http://localhost:5555', region: 'us-west-2' }
-                    : undefined;
+                const secretsConfig =
+                    environment === "local" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
 
                 const baseStore = new AwsSecretsConfigurationStore(
                     SecretsConfigSchema,
@@ -96,6 +97,7 @@ class AppContainer {
             })
             .asSingleton();
 
+        container.bind(JwtVerifier).to(JoseJwtVerifier).asSingleton();
 
         container
             .bind(ApiLogger)
