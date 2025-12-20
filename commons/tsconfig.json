@@ -10,5 +10,9 @@
  ],
   "exclude": [
     "src/**/*.d.*"
-  ]  
+  ],
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "resolveFullExtension": ".js"
+  }
 }

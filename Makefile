@@ -33,6 +33,17 @@ help:
 
 # Start development environment
 dev-start:
+	@echo "🔍 Checking Docker availability..."
+	@if ! docker version >/dev/null 2>&1; then \
+		echo "❌ ERROR: Docker is not running or not available!"; \
+		echo ""; \
+		echo "Please start Docker Desktop and try again."; \
+		echo "You can start Docker by running: open -a Docker"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "✅ Docker is available"
+	@echo ""
 	@echo "🛑 Ensuring clean environment..."
 	@$(MAKE) dev-stop 2>/dev/null || true
 	@echo ""
@@ -55,8 +66,13 @@ dev-start:
 	@./moto/init/03-secrets.sh >> logs/moto.log 2>&1
 	@./moto/init/04-athena-glue.sh >> logs/moto.log 2>&1
 	@echo ""
-	@echo "🚀 Starting development servers..."
-	@npm run dev
+	@echo "🔧 Building workspace packages..."
+	@cd core && npm run build >/dev/null 2>&1
+	@cd framework && npm run build >/dev/null 2>&1
+	@cd commons && npm run build >/dev/null 2>&1
+	@echo ""
+	@echo "🚀 Starting development servers with file watching..."
+	@npm run dev:watch
 	@echo ""
 	@echo "✨ Development environment is ready!"
 	@echo ""
@@ -71,11 +87,19 @@ dev-start:
 dev-stop:
 	@echo "🛑 Stopping services..."
 	@echo "   Killing development processes..."
-	@pkill -f "concurrently" 2>/dev/null || true
-	@pkill -f "tsx watch" 2>/dev/null || true
-	@pkill -f "npm run local" 2>/dev/null || true
+	@# Kill any process using our development ports (except Docker on 5555)
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+	@# Kill specific process patterns
+	@pkill -f "concurrently.*WEB,API" 2>/dev/null || true
+	@pkill -f "concurrently.*COMMONS,CORE,FRAMEWORK" 2>/dev/null || true
+	@pkill -f "tsx.*dev_server" 2>/dev/null || true
+	@pkill -f "node.*dev_server" 2>/dev/null || true
+	@pkill -f "vite.*--mode" 2>/dev/null || true
+	@pkill -f "npm run (local|dev)" 2>/dev/null || true
+	@pkill -f "tsc.*--watch" 2>/dev/null || true
+	@pkill -f "tsc-alias.*--watch" 2>/dev/null || true
+	@# Clean up any stragglers
 	@npm run dev:clean 2>/dev/null || true
 	@echo "   ✓ Development servers stopped"
 	@docker-compose -f docker-compose.moto.yml stop 2>/dev/null || true
@@ -135,7 +159,6 @@ dev-status:
 	@echo "API Server:"
 	@if lsof -i :3001 >/dev/null 2>&1; then \
 		echo "  ✅ Running on port 3001"; \
-		curl -s http://localhost:3001/health >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
 	else \
 		echo "  ❌ Not running"; \
 	fi
