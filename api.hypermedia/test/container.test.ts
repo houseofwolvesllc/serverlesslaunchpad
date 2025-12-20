@@ -52,9 +52,9 @@ describe("AppContainer", () => {
     });
 
     it("should resolve ConfigurationStore based on environment", () => {
-        const config = container.resolve(ConfigurationStore, "configuration");
+        const config = container.resolve(ConfigurationStore);
         expect(config).toBeDefined();
-        expect(config.constructor.name).toBe("FileConfigurationStore");
+        expect(config.constructor.name).toBe("CompositeConfigurationStore");
     });
 
     it("should resolve concrete controllers without explicit binding", () => {

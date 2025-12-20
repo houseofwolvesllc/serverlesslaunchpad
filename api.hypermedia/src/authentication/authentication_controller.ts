@@ -25,6 +25,9 @@ export class AuthenticationController extends BaseController {
      */
     @Route("POST", "/auth/federate")
     async federate(event: ExtendedALBEvent): Promise<ALBResult> {
+        console.log("FEDERATE");
+        console.log("AUTHENTICATOR", this.authenticator);
+
         const { headers, body } = this.parseRequest(event, AuthenticateSchema);
 
         const authMessage = {
@@ -97,21 +100,25 @@ export class AuthenticationController extends BaseController {
         }
 
         // Create response with user info and hypermedia links
-        const response = this.success(event, {
-            authenticated: true,
-            user: verifyResult.authContext.identity,
-            authContext: {
-                type: verifyResult.authContext.access.type,
-                expiresAt: verifyResult.authContext.access.dateExpires,
+        const response = this.success(
+            event,
+            {
+                authenticated: true,
+                user: verifyResult.authContext.identity,
+                authContext: {
+                    type: verifyResult.authContext.access.type,
+                    expiresAt: verifyResult.authContext.access.dateExpires,
+                },
+                links: this.buildUserLinks(verifyResult.authContext.identity),
             },
-            links: this.buildUserLinks(verifyResult.authContext.identity),
-        }, {
-            metadata: {
-                title: "Authentication Verification",
-                description: "Current session status and user information",
-                resourceType: "SessionStatus",
+            {
+                metadata: {
+                    title: "Authentication Verification",
+                    description: "Current session status and user information",
+                    resourceType: "SessionStatus",
+                },
             }
-        });
+        );
 
         // Refresh cookie if using cookie authentication and client accepts HTML
         if (!headers.authorization && this.shouldSetAuthCookie(event)) {

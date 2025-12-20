@@ -1,4 +1,4 @@
-import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import { GetSecretValueCommand, SecretsManagerClient, SecretsManagerClientConfig } from "@aws-sdk/client-secrets-manager";
 import { Injectable } from "@houseofwolves/serverlesslaunchpad.core";
 import { ConfigurationStore, Environment } from "@houseofwolves/serverlesslaunchpad.core/src/configuration";
 import { z } from "zod";
@@ -10,7 +10,7 @@ export class AwsSecretsConfigurationStore<T extends z.ZodType> implements Config
     private readonly zodSchema: T;
     private readonly environment: Environment;
 
-    constructor(zodSchema: T, environment: Environment, awsConfig?: any, configurationName?: string) {
+    constructor(zodSchema: T, environment: Environment, awsConfig?: SecretsManagerClientConfig, configurationName?: string) {
         this.zodSchema = zodSchema;
         this.environment = environment;
         this.configurationName = configurationName ?? "serverlesslaunchpad.com";

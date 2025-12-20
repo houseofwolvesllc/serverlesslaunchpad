@@ -24,6 +24,7 @@ export class AthenaSessionRepository extends SessionRepository {
         this.athenaClient = athenaClient;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     protected mapToSession(row: Record<string, any>): Session {
         return {
             sessionId: row.sessionId,
@@ -53,6 +54,7 @@ export class AthenaSessionRepository extends SessionRepository {
     }
 
     async getSessions(message: GetSessionsMessage): Promise<Paginated<Session>> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: any[] = [];
 
         if (message.pagingInstruction && !this.isAthenaPagingInstruction(message.pagingInstruction)) {
@@ -208,6 +210,7 @@ export class AthenaSessionRepository extends SessionRepository {
             message.sessionSignature,
         ];
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const results = await this.athenaClient.query(sql, params, (row: Record<string, any>) => {
             const session: Session = {
                 sessionId: row["session.sessionId"],

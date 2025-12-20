@@ -33,9 +33,11 @@ export class AthenaClient {
     /**
      * Execute a query and return processed results
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async query<T = Record<string, any>>(
         sql: string,
         params: SqlParameterValue[] = [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mapper?: (row: Record<string, any>) => T
     ): Promise<T[]> {
         const queryExecutionId = await this.startQuery(sql, params);
@@ -94,12 +96,14 @@ export class AthenaClient {
     /**
      * Wait for query completion and fetch results
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async waitForQueryResults(queryExecutionId: string): Promise<Record<string, any>[]> {
         let queryStatus: QueryExecutionState | string = QueryExecutionState.RUNNING;
         let retries = 0;
 
         while (
             (queryStatus === QueryExecutionState.RUNNING || queryStatus === QueryExecutionState.QUEUED) &&
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             retries < this.config.maxRetries!
         ) {
             await new Promise((resolve) => setTimeout(resolve, this.config.pollingIntervalMs));
@@ -119,6 +123,7 @@ export class AthenaClient {
             }
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         if (retries >= this.config.maxRetries!) {
             throw new Error(`Query timed out after ${retries} retries`);
         }
@@ -132,6 +137,7 @@ export class AthenaClient {
     /**
      * Process raw query results into usable objects
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private processQueryResults(resultsResponse: any): Record<string, any>[] {
         if (!resultsResponse.ResultSet?.Rows || resultsResponse.ResultSet.Rows.length <= 1) {
             return [];
@@ -141,6 +147,7 @@ export class AthenaClient {
         const dataRows = resultsResponse.ResultSet.Rows.slice(1); // Skip header row
 
         return dataRows.map((row) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data: Record<string, any> = {};
 
             row.Data?.forEach((cell, index) => {

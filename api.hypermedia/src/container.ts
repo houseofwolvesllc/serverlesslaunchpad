@@ -13,13 +13,14 @@ import {
     AthenaSessionRepository,
     AthenaUserRepository,
     AwsSecretsConfigurationStore,
+    CompositeConfigurationStore,
     FileConfigurationStore,
     SystemAuthenticator,
 } from "@houseofwolves/serverlesslaunchpad.framework";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { z } from "zod";
 import { ApiLogger } from "./logging";
-import { getAWSConfig } from "./config/aws.config";
 
 /**
  * Singleton container instance for the API.Hypermedia application.
@@ -60,6 +61,7 @@ class AppContainer {
             .bind(
                 ConfigurationStore<{
                     auth: { cognito: { userPoolId: string; userPoolClientId: string } };
+                    session_token_salt: string;
                 }>
             )
             .toFactory(() => {
@@ -70,38 +72,26 @@ class AppContainer {
                             userPoolClientId: z.string(),
                         }),
                     }),
-                });
-
-                return new FileConfigurationStore(
-                    configSchema,
-                    path.join(__dirname, "../config"),
-                    `${AppContainer.getEnvironment()}.config.json`
-                );
-            })
-            .asSingleton()
-            .named("configuration");
-
-        container
-            .bind(
-                ConfigurationStore<{
-                    session_token_salt: string;
-                }>
-            )
-            .toFactory(() => {
-                const configSchema = z.object({
                     session_token_salt: z.string(),
                 });
-                
-                // Use Moto-compatible configuration in development
-                const awsConfig = getAWSConfig();
-                return new AwsSecretsConfigurationStore(
-                    configSchema, 
-                    AppContainer.getEnvironment(),
-                    awsConfig
+
+                const compositeConfigurationStore = new CompositeConfigurationStore(configSchema);
+
+                compositeConfigurationStore.addStore(
+                    new FileConfigurationStore(
+                        configSchema,
+                        path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
+                        `${AppContainer.getEnvironment()}.config.json`
+                    )
                 );
+
+                compositeConfigurationStore.addStore(
+                    new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment())
+                );
+
+                return compositeConfigurationStore;
             })
-            .asSingleton()
-            .named("secrets");
+            .asSingleton();
 
         container
             .bind(ApiLogger)
@@ -141,4 +131,6 @@ class AppContainer {
  * Export a function to get the container instance.
  * This ensures the singleton is properly initialized before use.
  */
-export const getContainer = (): Container => AppContainer.getInstance();
+export const getContainer = (): Container => {
+    return AppContainer.getInstance();
+};

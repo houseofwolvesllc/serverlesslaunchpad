@@ -23,6 +23,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
         this.athenaClient = athenaClient;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     protected mapToApiKey(row: Record<string, any>): ApiKey {
         return {
             apiKeyId: row.apiKeyId,
@@ -40,6 +41,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
         }
 
         let sql = `SELECT * FROM api_keys WHERE userId = ?`;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: any[] = [message.userId];
 
         if (message.pagingInstruction?.cursor) {
@@ -161,6 +163,7 @@ export class AthenaApiKeyRepository extends ApiKeyRepository {
 
         const params = [this.athenaClient.formatTimestamp(dateLastAccessed), message.apiKey, message.apiKey];
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const results = await this.athenaClient.query(sql, params, (row: Record<string, any>) => {
             const apiKey: ApiKey = {
                 apiKeyId: row["apiKey.apiKeyId"],
