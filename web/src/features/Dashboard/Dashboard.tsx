@@ -1,7 +1,6 @@
-import { AppShell, Burger, Text } from '@mantine/core';
+import { AppShell, Burger, Text, Image } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
 import { AuthenticationContext, useAuth } from '../Authentication';
-import { Logo } from './Logo';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
 import {
     IconNotes,
@@ -88,7 +87,11 @@ export const Dashboard = () => {
                 <Group h="100%" px="md">
                     <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
                     <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
-                    <Logo style={{ width: rem(120) }} />
+                    <Image
+                        src="/svg/serverless_launchpad_logo.svg"
+                        alt="Serverless Launchpad Logo"
+                        style={{ height: rem(56) }}
+                    />
                 </Group>
             </AppShell.Header>
             <AppShell.Navbar p="md" pt="0" pb="0">
