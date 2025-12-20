@@ -2,9 +2,9 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
-import { HalObject } from '../../../types/hal';
+import { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, PageSize } from '../../../constants/pagination';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, PageSize } from '@houseofwolves/serverlesslaunchpad.types/pagination';
 
 const STORAGE_KEY = 'api_keys_page_size';
 

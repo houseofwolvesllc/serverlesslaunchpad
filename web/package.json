@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "local": "vite --mode moto 2>&1 | tee ../logs/web.log",
-        "local:watch": "nodemon --watch ../core/dist --watch ../framework/dist --watch ../commons/dist --exec \"vite --mode moto\" --delay 1 2>&1 | tee ../logs/web.log",
+        "local:watch": "nodemon --watch ../core/dist --watch ../framework/dist --watch ../types/dist --exec \"vite --mode moto\" --delay 1 2>&1 | tee ../logs/web.log",
         "local:development": "vite --mode development",
         "local:staging": "vite --mode staging",
         "local:production": "vite --mode production",
@@ -19,6 +19,7 @@
         "test:watch": "vitest"
     },
     "dependencies": {
+        "@houseofwolves/serverlesslaunchpad.types": "*",
         "@mantine/core": "^7.13.4",
         "@mantine/form": "^7.13.4",
         "@mantine/hooks": "^7.13.4",

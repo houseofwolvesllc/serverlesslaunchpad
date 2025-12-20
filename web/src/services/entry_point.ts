@@ -8,7 +8,7 @@
  * and caching the available links for the current user session.
  */
 
-import type { HalObject } from '../types/hal';
+import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { linkNavigator } from './link_navigator';
 
 /**

@@ -1,4 +1,10 @@
-import type { PageSize } from '../../constants/pagination';
+import type { PageSize, PaginationState } from '@houseofwolves/serverlesslaunchpad.types/pagination';
+
+/**
+ * Pagination types
+ * Re-export from centralized types package
+ */
+export type { PageSize, PaginationState };
 
 /**
  * Session resource from API (HAL format)
@@ -16,21 +22,6 @@ export interface Session {
         delete?: { href: string; method: string };
     };
 }
-
-/**
- * Cursor-based pagination state
- */
-export interface PaginationState {
-    hasNext: boolean;
-    hasPrevious: boolean;
-    pageSize: number; // Items per page
-}
-
-/**
- * Page size type
- * Re-export from shared pagination constants
- */
-export type { PageSize };
 
 /**
  * Paging instruction for cursor-based pagination

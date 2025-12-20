@@ -1,3 +1,5 @@
+import type { PageSize, PaginationState } from '@houseofwolves/serverlesslaunchpad.types/pagination';
+
 /**
  * API Key resource from API (HAL format)
  */
@@ -14,22 +16,11 @@ export interface ApiKey {
     };
 }
 
-import type { PageSize } from '../../constants/pagination';
-
 /**
- * Pagination state for cursor-based pagination
+ * Pagination types
+ * Re-export from centralized types package
  */
-export interface PaginationState {
-    hasNext: boolean;
-    hasPrevious: boolean;
-    pageSize: number;
-}
-
-/**
- * Page size type
- * Re-export from shared pagination constants
- */
-export type { PageSize };
+export type { PageSize, PaginationState };
 
 /**
  * API response for API keys list (HAL format with cursor pagination)
