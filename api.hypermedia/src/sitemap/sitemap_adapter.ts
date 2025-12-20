@@ -39,13 +39,11 @@ export class SitemapAdapter extends HalResourceAdapter {
             return [];
         }
 
-        // Admin section (if user has admin role)
-        if (this.hasRole(this.user, Role.Admin)) {
+        // Admin section
+        if (this.hasRole(this.user, Role.AccountManager)) {
             nav.push({
                 title: "Admin",
-                items: [
-                    { rel: "users", type: "template", title: "Users" },
-                ],
+                items: [{ rel: "users", type: "template", title: "Users" }],
             });
         }
 
@@ -139,7 +137,7 @@ export class SitemapAdapter extends HalResourceAdapter {
         };
 
         // Admin templates
-        if (this.hasRole(this.user, Role.Admin)) {
+        if (this.hasRole(this.user, Role.AccountManager)) {
             templates.users = this.createTemplate(
                 "Users",
                 "POST",

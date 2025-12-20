@@ -1,12 +1,8 @@
-import { Role, User, ROLE_METADATA, FEATURES_METADATA } from "@houseofwolves/serverlesslaunchpad.core";
-import { HalObject, HalResourceAdapter, HalTemplateProperty } from "../content_types/hal_adapter.js";
-import {
-    createEnumProperty,
-    createBitfieldProperty,
-    bitfieldToArray,
-} from "../content_types/enum_adapter_helpers.js";
-import { Router } from "../router.js";
+import { FEATURES_METADATA, Role, ROLE_METADATA, User } from "@houseofwolves/serverlesslaunchpad.core";
 import { ApiKeysController } from "../api_keys/api_keys_controller.js";
+import { bitfieldToArray, createBitfieldProperty, createEnumProperty } from "../content_types/enum_adapter_helpers.js";
+import { HalObject, HalResourceAdapter, HalTemplateProperty } from "../content_types/hal_adapter.js";
+import { Router } from "../router.js";
 import { SessionsController } from "../sessions/sessions_controller.js";
 import { UsersController } from "./users_controller.js";
 
@@ -20,12 +16,7 @@ import { UsersController } from "./users_controller.js";
  * - edit: template to update user profile (conditional on permissions)
  */
 export class UserAdapter extends HalResourceAdapter {
-
-    constructor(
-        private user: User,
-        private currentUser: User,
-        private router: Router
-    ) {
+    constructor(private user: User, private currentUser: User, private router: Router) {
         super();
     }
 
@@ -69,7 +60,7 @@ export class UserAdapter extends HalResourceAdapter {
         return {
             self: this.createLink(
                 this.router.buildHref(UsersController, "getUser", {
-                    userId: this.userId
+                    userId: this.userId,
                 }),
                 { title }
             ),
@@ -82,7 +73,7 @@ export class UserAdapter extends HalResourceAdapter {
                 "Sessions",
                 "POST",
                 this.router.buildHref(SessionsController, "getSessions", {
-                    userId: this.userId
+                    userId: this.userId,
                 }),
                 {
                     contentType: "application/json",
@@ -99,7 +90,7 @@ export class UserAdapter extends HalResourceAdapter {
                 "API Keys",
                 "POST",
                 this.router.buildHref(ApiKeysController, "getApiKeys", {
-                    userId: this.userId
+                    userId: this.userId,
                 }),
                 {
                     contentType: "application/json",
@@ -132,7 +123,7 @@ export class UserAdapter extends HalResourceAdapter {
         }
 
         // Admins can edit any profile
-        return this.currentUser.role >= Role.Admin;
+        return this.currentUser.role >= Role.AccountManager;
     }
 
     /**
