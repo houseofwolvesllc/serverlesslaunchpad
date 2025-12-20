@@ -7,11 +7,7 @@
  * @module enum_adapter_helpers
  */
 
-import type {
-    HalTemplateProperty,
-    EnumMetadata,
-    BitfieldMetadata,
-} from "@houseofwolves/serverlesslaunchpad.types";
+import type { BitfieldMetadata, EnumMetadata, HalTemplateProperty } from "@houseofwolves/serverlesslaunchpad.types";
 
 /**
  * Create options array for HAL template property from enum metadata.
@@ -39,9 +35,7 @@ import type {
  * // ]
  * ```
  */
-export function createEnumOptions(
-    metadata: EnumMetadata
-): Array<{ value: any; prompt: string }> {
+export function createEnumOptions(metadata: EnumMetadata): Array<{ value: any; prompt: string }> {
     return metadata.options.map((option) => ({
         value: option.value,
         prompt: option.label,
@@ -148,10 +142,7 @@ export function createBitfieldProperty(
     }
 ): HalTemplateProperty {
     // Convert numeric bitfield to array if value provided
-    const valueArray =
-        options?.value !== undefined
-            ? bitfieldToArray(options.value, metadata)
-            : undefined;
+    const valueArray = options?.value !== undefined ? bitfieldToArray(options.value, metadata) : undefined;
 
     // Create string-based options for bitfield (not numeric)
     // Filter out the "none" value (0) as it doesn't make sense in a multi-select checkbox
@@ -191,23 +182,21 @@ export function createBitfieldProperty(
  *   name: "features",
  *   isBitfield: true,
  *   options: [
- *     { value: 1, label: "Contact Management" },  // Contacts
- *     { value: 2, label: "Campaign Builder" },    // Campaigns
- *     { value: 4, label: "Link Tracking" }        // Links
+ *     { value: 1, label: "Feature A" },  // Feature A
+ *     { value: 2, label: "Feature B" },    // Feature B
+ *     { value: 4, label: "Feature C" }        // Feature C
+ *     { value: 8, label: "Feature D" }        // Feature D
  *   ]
  * };
  *
  * bitfieldToArray(5, FEATURES_METADATA);
- * // Returns: ["contacts", "links"]  (1 + 4 = 5)
+ * // Returns: ["featureA", "featureC"]  (1 + 4 = 5)
  *
  * bitfieldToArray(0, FEATURES_METADATA);
- * // Returns: []  (no flags set)
+ * // Returns: []  (no features set)
  * ```
  */
-export function bitfieldToArray(
-    value: number,
-    metadata: BitfieldMetadata
-): string[] {
+export function bitfieldToArray(value: number, metadata: BitfieldMetadata): string[] {
     const result: string[] = [];
 
     for (const option of metadata.options) {
@@ -233,26 +222,21 @@ export function bitfieldToArray(
  *
  * @example
  * ```typescript
- * arrayToBitfield(["contacts", "links"], FEATURES_METADATA);
+ * arrayToBitfield(["featureA", "featureC"], FEATURES_METADATA);
  * // Returns: 5  (1 | 4)
  *
  * arrayToBitfield([], FEATURES_METADATA);
  * // Returns: 0  (none selected)
  *
- * arrayToBitfield(["contacts", "campaigns", "links"], FEATURES_METADATA);
+ * arrayToBitfield(["featureA", "featureB", "featureC"], FEATURES_METADATA);
  * // Returns: 7  (1 | 2 | 4)
  * ```
  */
-export function arrayToBitfield(
-    keys: string[],
-    metadata: BitfieldMetadata
-): number {
+export function arrayToBitfield(keys: string[], metadata: BitfieldMetadata): number {
     let result = metadata.none ?? 0;
 
     for (const key of keys) {
-        const option = metadata.options.find(
-            (opt) => getOptionKey(opt.value, metadata) === key.toLowerCase()
-        );
+        const option = metadata.options.find((opt) => getOptionKey(opt.value, metadata) === key.toLowerCase());
         if (option) {
             result |= Number(option.value);
         }
@@ -293,10 +277,7 @@ export function arrayToBitfield(
  * // Returns: undefined
  * ```
  */
-export function enumLabelToValue(
-    label: string | number | undefined,
-    metadata: EnumMetadata
-): number | undefined {
+export function enumLabelToValue(label: string | number | undefined, metadata: EnumMetadata): number | undefined {
     // If already a number (direct enum value), return as-is
     if (typeof label === "number") {
         return label;
@@ -315,9 +296,7 @@ export function enumLabelToValue(
 
     // Find option by case-insensitive label match
     const normalizedLabel = String(label).toLowerCase().trim();
-    const option = metadata.options.find(
-        (opt) => opt.label.toLowerCase() === normalizedLabel
-    );
+    const option = metadata.options.find((opt) => opt.label.toLowerCase() === normalizedLabel);
 
     return option ? Number(option.value) : undefined;
 }
@@ -340,7 +319,7 @@ function getOptionKey(value: string | number, metadata: EnumMetadata): string {
         const option = metadata.options.find((opt) => opt.value === value);
         if (option) {
             // Take first word of label and lowercase it
-            return option.label.split(" ")[0].toLowerCase();
+            return option.label.toLowerCase().replace(/ /g, "_");
         }
     }
 

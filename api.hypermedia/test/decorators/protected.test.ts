@@ -33,7 +33,7 @@ describe("@Protected Decorator", () => {
             firstName: "Test",
             lastName: "User",
             role: Role.Support,
-            features: Features.Contacts | Features.Campaigns,
+            features: Features.FeatureA | Features.FeatureB,
             dateCreated: new Date(),
             dateModified: new Date(),
         };
@@ -300,7 +300,7 @@ describe("@Protected Decorator", () => {
                 @Protected()
                 async testMethod(request: any) {
                     this.requireRole(request.authContext.identity, Role.Support);
-                    this.requireFeatures(request.authContext.identity, Features.Contacts);
+                    this.requireFeatures(request.authContext.identity, Features.FeatureA);
                     return { success: true };
                 }
             }
@@ -345,7 +345,7 @@ describe("@Protected Decorator", () => {
                 @Protected()
                 async testMethod(request: any) {
                     this.requireRole(request.authContext.identity, Role.Support);
-                    this.requireFeatures(request.authContext.identity, Features.Links);
+                    this.requireFeatures(request.authContext.identity, Features.FeatureC);
                     return { success: true };
                 }
             }

@@ -15,7 +15,7 @@ describe("ALB Handler", () => {
             path: "/",
             queryStringParameters: {},
             headers: {
-                "Accept": "application/json",
+                Accept: "application/json",
                 "x-forwarded-for": "127.0.0.1",
                 "user-agent": "test-agent",
             },
@@ -29,7 +29,7 @@ describe("ALB Handler", () => {
         expect(result.statusCode).toBe(200);
         expect(result.headers?.["Content-Type"]).toBe("application/json");
 
-        const body = JSON.parse(result.body);
+        const body = JSON.parse(result.body!);
         expect(body.authenticated).toBe(false);
         expect(body.version).toBeDefined();
         expect(body.environment).toBeDefined();
