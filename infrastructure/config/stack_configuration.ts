@@ -79,7 +79,7 @@ export const configurations: Record<
         },
         secrets: {
             rotationDays: 90,
-            kmsKeyAlias: "alias/serverlesslaunchpad-production",
+            kmsKeyAlias: "alias/slp-production",
         },
     },
 };

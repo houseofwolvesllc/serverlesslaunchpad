@@ -86,9 +86,32 @@ export abstract class StackManager {
 
         const selectedProfile = profiles[index];
 
-        // Verify profile works
+        // Verify profile works and capture account/region
         try {
-            await $`AWS_PROFILE=${selectedProfile} aws sts get-caller-identity`;
+            const { stdout: identityOutput } = await $`AWS_PROFILE=${selectedProfile} aws sts get-caller-identity`;
+            const callerIdentity = JSON.parse(identityOutput);
+            
+            // Get region from profile configuration or environment
+            let region: string;
+            try {
+                const { stdout: regionOutput } = await $`AWS_PROFILE=${selectedProfile} aws configure get region`;
+                region = regionOutput.trim();
+            } catch {
+                // Fall back to environment variable or default
+                region = process.env.AWS_DEFAULT_REGION || 'us-east-1';
+                console.log(chalk.yellow(`⚠️  No region configured for profile. Using: ${region}`));
+            }
+            
+            // Set environment variables for CDK
+            process.env.AWS_ACCOUNT_ID = callerIdentity.Account;
+            process.env.AWS_REGION = region;
+            process.env.AWS_PROFILE = selectedProfile;
+            
+            // Display confirmation to user
+            console.log(chalk.green(`✓ Profile verified: ${selectedProfile}`));
+            console.log(chalk.gray(`  Account: ${callerIdentity.Account}`));
+            console.log(chalk.gray(`  Region: ${region}`));
+            
             return selectedProfile;
         } catch (error) {
             console.log(chalk.red(`Profile "${selectedProfile}" appears to be invalid or lacks proper credentials.`));
@@ -233,7 +256,9 @@ export abstract class StackManager {
 
             if (stdout.includes("NOT_FOUND")) {
                 console.log(chalk.yellow("CDK bootstrap required. Running bootstrap..."));
-                await $`AWS_PROFILE=${awsProfile} npx cdk bootstrap`;
+                const awsAccountId = process.env.AWS_ACCOUNT_ID;
+                const awsRegion = process.env.AWS_REGION;
+                await $`AWS_PROFILE=${awsProfile} AWS_ACCOUNT_ID=${awsAccountId} AWS_REGION=${awsRegion} npx cdk bootstrap`;
                 console.log(chalk.green("✅ CDK bootstrap completed"));
             } else {
                 console.log(chalk.green("✅ CDK already bootstrapped"));

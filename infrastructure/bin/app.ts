@@ -1,89 +1,123 @@
 #!/usr/bin/env node
-import "source-map-support/register";
+import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
 import { App, Tags } from "aws-cdk-lib";
-import { getConfiguration, Environment } from "../config/stack_configuration";
-import { SecretsStack } from "../lib/secrets/secrets_stack";
-import { AthenaStack } from "../lib/data/athena_stack";
+import "source-map-support/register";
+import { getConfiguration } from "../config/stack_configuration";
 import { AlbStack } from "../lib/alb/alb_stack";
-import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
 import { CognitoStack } from "../lib/auth/cognito_stack";
+import { AthenaStack } from "../lib/data/athena_stack";
+import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
+import { NetworkStack } from "../lib/network/network_stack";
+import { SecretsStack } from "../lib/secrets/secrets_stack";
 
 // Get environment variables - use NODE_ENV as single source of truth
 const environment = (process.env.NODE_ENV || "development") as Environment;
 
 // AWS Profile is required - CDK will resolve account/region from profile
 if (!process.env.AWS_PROFILE) {
-  throw new Error("AWS_PROFILE environment variable is required. Set it to your AWS profile name.");
+    throw new Error("AWS_PROFILE environment variable is required. Set it to your AWS profile name.");
+}
+
+// For VPC lookups, CDK needs explicit account/region
+const account = process.env.AWS_ACCOUNT_ID || process.env.CDK_DEFAULT_ACCOUNT;
+const region = process.env.AWS_REGION || process.env.CDK_DEFAULT_REGION;
+
+// Ensure account and region are set
+if (!account || !region) {
+    console.error("❌ Error: Account and region must be set for CDK deployment");
+    console.error("Current values:");
+    console.error(`  Account: ${account || 'undefined'}`);
+    console.error(`  Region: ${region || 'undefined'}`);
+    console.error("Please ensure AWS_ACCOUNT_ID and AWS_REGION are set by the deployment script");
+    process.exit(1);
 }
 
 // Get configuration for environment
 const configuration = getConfiguration(environment);
 
 // Get VPC configuration from environment
-const vpcConfig = process.env.VPC_CONFIG ? {
-  type: process.env.VPC_CONFIG as 'default' | 'custom' | 'existing',
-  vpcId: process.env.VPC_ID,
-} : { type: 'custom' as const };
+// Default to using the default VPC unless specified otherwise
+const vpcConfig = process.env.VPC_CONFIG
+    ? {
+          type: process.env.VPC_CONFIG as "default" | "custom" | "existing",
+          vpcId: process.env.VPC_ID,
+      }
+    : { type: "default" as const };
 
 // Create CDK app
 const app = new App();
 
-// Define common props - CDK will resolve account/region from AWS_PROFILE
+// Set context for feature flags (must be before creating stacks)
+app.node.setContext("@aws-cdk/aws-iam:minimizePolicies", true);
+
+// Define common props - include account/region for CDK context lookups
 const commonProps = {
-  configuration,
-  description: `Serverless Launchpad ${environment} environment`,
+    configuration,
+    description: `Serverless Launchpad ${environment} environment`,
+    env: {
+        account,
+        region,
+    },
 };
 
-// Create stacks
-const secretsStack = new SecretsStack(app, `serverlesslaunchpad_secrets_stack_${environment}`, {
-  ...commonProps,
-  description: `Secrets and configuration for Serverless Launchpad ${environment}`,
+// Create stacks in dependency order
+const secretsStack = new SecretsStack(app, `slp-secrets-stack-${environment}`, {
+    ...commonProps,
+    description: `Secrets and configuration for Serverless Launchpad ${environment}`,
 });
 
-const athenaStack = new AthenaStack(app, `serverlesslaunchpad_data_stack_${environment}`, {
-  ...commonProps,
-  description: `Data infrastructure for Serverless Launchpad ${environment}`,
+const athenaStack = new AthenaStack(app, `slp-data-stack-${environment}`, {
+    ...commonProps,
+    description: `Data infrastructure for Serverless Launchpad ${environment}`,
 });
 
-const cognitoStack = new CognitoStack(app, `serverlesslaunchpad_cognito_stack_${environment}`, {
-  ...commonProps,
-  description: `Cognito User Pool for Serverless Launchpad ${environment}`,
+const cognitoStack = new CognitoStack(app, `slp-cognito-stack-${environment}`, {
+    ...commonProps,
+    description: `Cognito User Pool for Serverless Launchpad ${environment}`,
 });
 
-const albStack = new AlbStack(app, `serverlesslaunchpad_alb_stack_${environment}`, {
-  ...commonProps,
-  description: `Application Load Balancer for Serverless Launchpad ${environment}`,
-  vpcConfig,
+// Create network stack with shared VPC and target group
+const networkStack = new NetworkStack(app, `slp-network-stack-${environment}`, {
+    ...commonProps,
+    description: `Network infrastructure for Serverless Launchpad ${environment}`,
+    vpcConfig,
 });
 
-const apiLambdaStack = new ApiLambdaStack(app, `serverlesslaunchpad_lambda_stack_${environment}`, {
-  ...commonProps,
-  description: `API Lambda function for Serverless Launchpad ${environment}`,
-  targetGroup: albStack.targetGroup,
-  configurationSecret: secretsStack.configurationSecret,
-  queryResultsBucket: athenaStack.queryResultsBucket,
-  userPoolId: cognitoStack.userPool.userPoolId,
-  userPoolClientId: cognitoStack.userPoolClient.userPoolClientId,
-  vpc: albStack.vpc,
-  vpcConfig,
+// Create Lambda stack with pre-created VPC (creates its own target group)
+const apiLambdaStack = new ApiLambdaStack(app, `slp-lambda-stack-${environment}`, {
+    ...commonProps,
+    description: `API Lambda function for Serverless Launchpad ${environment}`,
+    configurationSecret: secretsStack.configurationSecret,
+    queryResultsBucket: athenaStack.queryResultsBucket,
+    userPoolId: cognitoStack.userPool.userPoolId,
+    userPoolClientId: cognitoStack.userPoolClient.userPoolClientId,
+    vpc: networkStack.vpc,
 });
 
-// Define stack dependencies
+// Create ALB stack with pre-created VPC, security group and Lambda's target group
+const albStack = new AlbStack(app, `slp-alb-stack-${environment}`, {
+    ...commonProps,
+    description: `Application Load Balancer for Serverless Launchpad ${environment}`,
+    vpc: networkStack.vpc,
+    securityGroup: networkStack.albSecurityGroup,
+    targetGroup: apiLambdaStack.targetGroup,
+});
+
+// Define stack dependencies - clean dependency chain
 athenaStack.addDependency(secretsStack);
 cognitoStack.addDependency(secretsStack);
-albStack.addDependency(secretsStack);
+networkStack.addDependency(secretsStack);
 apiLambdaStack.addDependency(secretsStack);
 apiLambdaStack.addDependency(athenaStack);
-apiLambdaStack.addDependency(albStack);
 apiLambdaStack.addDependency(cognitoStack);
+apiLambdaStack.addDependency(networkStack);
+albStack.addDependency(networkStack);
+albStack.addDependency(apiLambdaStack); // ALB needs Lambda's target group
 
 // Add tags to all stacks
 const tags = configuration.tags;
 Object.entries(tags).forEach(([key, value]) => {
-  Tags.of(app).add(key, value);
+    Tags.of(app).add(key, value);
 });
-
-// Set context for feature flags
-app.node.setContext("@aws-cdk/aws-iam:minimizePolicies", true);
 
 export { app };
