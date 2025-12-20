@@ -37,7 +37,7 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "@houseofwolves/serverlesslaunchpad.commons": "*",
+        "@houseofwolves/serverlesslaunchpad.types": "*",
         "reflect-metadata": "^0.2.2"
     }
 }
