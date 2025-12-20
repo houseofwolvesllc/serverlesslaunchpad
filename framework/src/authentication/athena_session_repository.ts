@@ -26,12 +26,34 @@ export class AthenaSessionRepository extends SessionRepository {
         };
     }
 
-    async getSession(message: { sessionId: string; userId: string }): Promise<Session | undefined> {
-        const sql = `SELECT * FROM ${this.tableName} WHERE sessionId = :sessionId AND userId = :userId`;
-        const params: SqlParameter[] = [
-            { name: "sessionId", value: message.sessionId },
-            { name: "userId", value: message.userId },
-        ];
+    async getSession(message: {
+        userId: string;
+        sessionId?: string;
+        sessionSignature?: string;
+    }): Promise<Session | undefined> {
+        const params: SqlParameter[] = [];
+
+        if (message.sessionId) {
+            params.push({ name: "sessionId", value: message.sessionId });
+        }
+
+        if (message.sessionSignature) {
+            params.push({ name: "sessionSignature", value: message.sessionSignature });
+        }
+
+        let sql = `SELECT * FROM ${this.tableName} WHERE userId = :userId`;
+        params.push({ name: "userId", value: message.userId });
+
+        if (message.sessionId) {
+            sql += " AND sessionId = :sessionId";
+            params.push({ name: "sessionId", value: message.sessionId });
+        }
+
+        if (message.sessionSignature) {
+            sql += " AND sessionSignature = :sessionSignature";
+            params.push({ name: "sessionSignature", value: message.sessionSignature });
+        }
+
         const result = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
         return result.length > 0 ? result[0] : undefined;
     }
@@ -56,12 +78,12 @@ export class AthenaSessionRepository extends SessionRepository {
 
         if (message.pagingInstruction) {
             sql += " LIMIT :limit";
-            params.push({ name: "limit", value: message.pagingInstruction.size + 1 });
+            params.push({ name: "limit", value: message.pagingInstruction.limit + 1 });
         }
 
         const sessions = await this.athenaClient.query(sql, params, this.mapToSession.bind(this));
 
-        const hasMore = message.pagingInstruction ? sessions.length > message.pagingInstruction.size : false;
+        const hasMore = message.pagingInstruction ? sessions.length > message.pagingInstruction.limit : false;
         if (hasMore) {
             sessions.pop();
         }
@@ -72,7 +94,7 @@ export class AthenaSessionRepository extends SessionRepository {
         if (hasMore && sessions.length > 0 && message.pagingInstruction) {
             next = {
                 cursor: sessions[sessions.length - 1].dateCreated.toISOString(),
-                size: message.pagingInstruction.size,
+                limit: message.pagingInstruction.limit,
                 direction: "forward",
             };
         }
@@ -80,7 +102,7 @@ export class AthenaSessionRepository extends SessionRepository {
         if (message.pagingInstruction?.cursor && sessions.length > 0) {
             previous = {
                 cursor: sessions[0].dateCreated.toISOString(),
-                size: message.pagingInstruction.size,
+                limit: message.pagingInstruction.limit,
                 direction: "backward",
             };
         }
@@ -151,9 +173,12 @@ export class AthenaSessionRepository extends SessionRepository {
         };
     }
 
-    async deleteSession(message: { sessionId: string }): Promise<void> {
-        const sql = `DELETE FROM ${this.tableName} WHERE sessionId = :sessionId`;
-        const params: SqlParameter[] = [{ name: "sessionId", value: message.sessionId }];
+    async deleteSession(message: { userId: string; sessionId: string }): Promise<void> {
+        const sql = `DELETE FROM ${this.tableName} WHERE userId = :userId AND sessionId = :sessionId`;
+        const params: SqlParameter[] = [
+            { name: "userId", value: message.userId },
+            { name: "sessionId", value: message.sessionId },
+        ];
 
         await this.athenaClient.query(sql, params);
     }
