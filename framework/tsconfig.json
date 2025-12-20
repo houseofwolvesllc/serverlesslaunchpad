@@ -7,7 +7,7 @@
   "extends": "../tsconfig.json",
   "include": [
     "src/**/*"
-  ],
+, "test/configuration/aws_secrets_configuration_store.test.ts", "test/configuration/env_configuration_store.test.ts"  ],
   "exclude": [
     "src/**/*.d.*"
   ],

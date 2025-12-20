@@ -1,14 +1,19 @@
 import { Paginated, PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
 import { Session } from "./types";
 
-export interface SessionRepository {
-    createSession(message: {
+export abstract class SessionRepository {
+    abstract createSession(message: {
         sessionId: string;
         userId: string;
         sessionSignature: string;
         ipAddress: string;
         userAgent: string;
     }): Promise<Session>;
-    getSessions(message: { sessionToken: string; pagingInstruction?: PagingInstruction }): Promise<Paginated<Session>>;
-    deleteSession(message: { sessionId: string }): Promise<void>;
+
+    abstract getSessions(message: {
+        sessionToken: string;
+        pagingInstruction?: PagingInstruction;
+    }): Promise<Paginated<Session>>;
+
+    abstract deleteSession(message: { sessionId: string }): Promise<void>;
 }

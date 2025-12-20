@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.712.0",
+        "@aws-sdk/client-secrets-manager": "^3.828.0",
         "@houseofwolves/serverlesslaunchpad.core": "*",
         "@houseofwolves/serverlesslaunchpad.types": "*",
         "aws-amplify": "^6.13.4",
@@ -32,6 +33,7 @@
         "@typescript-eslint/eslint-plugin": "~5.44",
         "@typescript-eslint/parser": "~5.44",
         "@vitest/coverage-c8": "^0.27.3",
+        "aws-sdk-client-mock-vitest": "^6.1.1",
         "eslint": "~8.28",
         "eslint-config-prettier": "~8.5",
         "eslint-import-resolver-typescript": "^3.7.0",

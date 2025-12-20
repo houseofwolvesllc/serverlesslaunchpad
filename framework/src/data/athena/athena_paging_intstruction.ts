@@ -1,5 +1,6 @@
-import { PagingInstruction } from "@houseofwolves/serverlesslaunchpad.types";
+import { PagingInstruction } from "@houseofwolves/serverlesslaunchpad.commons";
 
 export class AthenaPagingInstruction extends PagingInstruction {
-    page?: number;
+    cursor?: string;
+    direction?: "forward" | "backward";
 }
