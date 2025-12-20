@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { AuthError, passwordPolicyValidator, useAuth } from '../../Authentication';
+import { AuthError, passwordPolicyValidator, useAuth } from '../../authentication';
 import { notifications } from '@mantine/notifications';
 
 export const ConfirmResetPasswordForm = () => {

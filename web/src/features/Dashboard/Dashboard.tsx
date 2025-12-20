@@ -1,6 +1,6 @@
 import { AppShell, Burger, Text, Image } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { AuthenticationContext, useAuth } from '../Authentication';
+import { AuthenticationContext, useAuth } from '../authentication';
 import { Group, ScrollArea, rem, Button } from '@mantine/core';
 import {
     IconNotes,
@@ -11,11 +11,11 @@ import {
     IconAdjustments,
     IconLock,
 } from '@tabler/icons-react';
-import { UserButton } from '../../components/UserButton/UserButton';
-import { LinksGroup } from '../../components/NavbarLinksGroup/NavbarLinksGroup';
-import classes from './Dashboard.module.css';
+import { UserButton } from '../../components/user_button/user_button';
+import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
+import classes from './dashboard.module.css';
 import { useContext } from 'react';
-import { LoadingContext } from '../../context/LoadingContext';
+import { LoadingContext } from '../../context/loading_context';
 import { useNavigate } from 'react-router-dom';
 
 const mockdata = [

@@ -1,15 +1,15 @@
 import { Route, Routes } from 'react-router-dom';
-import { ProtectedRoute } from './ProtectedRoute';
-import { Dashboard } from '../features/Dashboard';
+import { ProtectedRoute } from './protected_route';
+import { Dashboard } from '../features/dashboard';
 import {
     ConfirmSignUpForm,
     ConfirmResetPasswordForm,
     ResetPasswordForm,
     SignInForm,
     SignUpForm,
-} from '../features/Authentication';
-import { Admin } from '../features/Admin';
-import { NoMatch } from './NoMatch';
+} from '../features/authentication';
+import { Admin } from '../features/admin';
+import { NoMatch } from './no_match';
 
 export const Router = () => {
     return (
