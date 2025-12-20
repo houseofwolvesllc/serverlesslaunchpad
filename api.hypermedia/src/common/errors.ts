@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+
 /**
  * Base error classes that map to HTTP status codes.
  * These errors are thrown by controllers and decorators,
@@ -19,7 +21,7 @@ export class HttpError extends Error {
 export class ValidationError extends HttpError {
     constructor(
         message: string,
-        public readonly zodError?: any
+        public readonly zodError?: ZodError
     ) {
         super(400, "Bad Request", message);
     }

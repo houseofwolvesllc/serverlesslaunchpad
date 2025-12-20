@@ -1,0 +1,50 @@
+{
+    "name": "@houseofwolves/serverlesslaunchpad.infrastructure",
+    "version": "1.0.0",
+    "author": "Keith Garcia",
+    "description": "Infrastructure for the Serverless Launchpad project.",
+    "license": "UNLICENSED",
+    "private": true,
+    "type": "module",
+    "bin": {
+        "infrastructure": "bin/app.ts"
+    },
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "test": "jest",
+        "cdk": "cdk",
+        "synth": "cdk synth",
+        "deploy": "tsx deployment/deploy.ts",
+        "destroy": "tsx deployment/destroy.ts",
+        "cdk:deploy": "cdk deploy --all --require-approval never",
+        "cdk:diff": "cdk diff --all"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.11",
+        "@types/node": "20.11.6",
+        "aws-cdk": "^2.1006.0",
+        "chalk": "^5.4.1",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.2",
+        "ts-node": "^10.9.2",
+        "tsx": "^4.19.3",
+        "typescript": "~5.3.3",
+        "zx": "^7.2.3"
+    },
+    "dependencies": {
+        "@houseofwolves/serverlesslaunchpad.api.hypermedia": "*",
+        "@houseofwolves/serverlesslaunchpad.commons": "*",
+        "@houseofwolves/serverlesslaunchpad.core": "*",
+        "@houseofwolves/serverlesslaunchpad.framework": "*",
+        "@inquirer/prompts": "^5.0.7",
+        "@types/aws-lambda": "^8.10.147",
+        "aws-cdk-lib": "^2.187.0",
+        "constructs": "^10.0.0",
+        "dotenv": "^16.4.5",
+        "esbuild": "^0.19.0",
+        "inquirer": "^8.2.6",
+        "source-map-support": "^0.5.21",
+        "zod": "^3.24.2"
+    }
+}

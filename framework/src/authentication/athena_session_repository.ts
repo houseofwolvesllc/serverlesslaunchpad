@@ -244,7 +244,7 @@ export class AthenaSessionRepository extends SessionRepository {
             await this.athenaClient.query(sql, params);
             return true;
         } catch (error) {
-            console.error("Error deleting session:", error);
+            // Session deletion failed
             return false;
         }
     }
@@ -258,7 +258,7 @@ export class AthenaSessionRepository extends SessionRepository {
             await this.athenaClient.query(sql, params);
             return true;
         } catch (error) {
-            console.error("Error deleting sessions:", error);
+            // Sessions deletion failed
             return false;
         }
     }

@@ -1,0 +1,49 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Coverage
+coverage
+
+# Transpiled files
+dist/
+
+# Environment variables
+.env*
+
+# VS Code
+.vscode
+!.vscode/tasks.js
+
+# JetBrains IDEs
+.idea/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Misc
+.DS_Store
+
+# User defined ignores
+*.csv
+*.prod.config.json
+working_dir/
+
+# VPC configuration cache
+environments/.vpc.*.json
+
+# Generated configuration files
+config/*.config.json
+
+# CDK Context
+cdk.context.json
+
+# CDK Output
+cdk.out/
