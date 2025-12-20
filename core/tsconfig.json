@@ -6,9 +6,11 @@
   },
   "extends": "../tsconfig.json",
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/**/*",
   ],
   "exclude": [
-    "src/**/*.d.*"
+    "src/**/*.d.*",
+    "test/**/*.d.*"
   ]  
 }

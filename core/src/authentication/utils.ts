@@ -1,1 +1,3 @@
-export function getUserIdFromSession(session: string);
+export function getUserIdFromSession(session: string): string {
+    return session.substring(32);
+}

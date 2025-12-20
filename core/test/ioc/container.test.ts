@@ -1,169 +1,156 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { Container, Inject } from "../../src/ioc/container";
+import "reflect-metadata";
+import { describe, expect, it } from "vitest";
+import { Container, Inject, Injectable } from "../../src/ioc";
 
 describe("Container", () => {
-    let container: Container;
+    interface UserRepository {
+        getUser(id: string): { id: string; name: string };
+    }
 
-    beforeEach(() => {
-        container = new Container();
-    });
+    abstract class AbstractUserRepository implements UserRepository {
+        abstract getUser(id: string): { id: string; name: string };
+    }
 
-    describe("registration and resolution", () => {
-        const TestService = Symbol("TestService");
-        interface TestService {
-            getValue(): string;
+    class MockUserRepository extends AbstractUserRepository {
+        getUser(id: string): { id: string; name: string } {
+            return { id, name: "John Doe" };
         }
+    }
+    describe("Binding", () => {
+        it("Should bind type to implementation", () => {
+            const container = new Container();
+            container.bind(AbstractUserRepository).to(MockUserRepository);
 
-        class TestServiceImplementation implements TestService {
-            getValue(): string {
-                return "test";
-            }
-        }
+            const userRepository = container.resolve(AbstractUserRepository);
 
-        it("should register and resolve a singleton service", () => {
-            container.register<TestService>(TestServiceImplementation, {
-                lifecycle: "singleton",
-                token: TestService,
-            });
-            const instance1 = container.get<TestService>(TestService);
-            const instance2 = container.get<TestService>(TestService);
-
-            expect(instance1).toBeInstanceOf(TestServiceImplementation);
-            expect(instance2).toBeInstanceOf(TestServiceImplementation);
-            expect(instance1).toBe(instance2); // Same instance
+            expect(userRepository).toBeInstanceOf(MockUserRepository);
         });
 
-        it("should register and resolve a transient service", () => {
-            container.register<TestService>(TestServiceImplementation, {
-                lifecycle: "transient",
-                token: TestService,
-            });
-            const instance1 = container.get<TestService>(TestService);
-            const instance2 = container.get<TestService>(TestService);
+        it("Should bind type to implementation with name", () => {
+            const container = new Container();
+            container.bind(AbstractUserRepository).to(MockUserRepository).named("userRepository");
 
-            expect(instance1).toBeInstanceOf(TestServiceImplementation);
-            expect(instance2).toBeInstanceOf(TestServiceImplementation);
-            expect(instance1).not.toBe(instance2); // Different instances
+            const userRepository = container.resolve(AbstractUserRepository, "userRepository");
+
+            expect(userRepository).toBeInstanceOf(MockUserRepository);
         });
 
-        it("should register and resolve a scoped service", () => {
-            container.register<TestService>(TestServiceImplementation, {
-                lifecycle: "scoped",
-                token: TestService,
-            });
-            const instance1 = container.get<TestService>(TestService);
-            const instance2 = container.get<TestService>(TestService);
+        it("Should bind type to implementation with singleton lifecycle", () => {
+            const container = new Container();
+            container.bind(AbstractUserRepository).to(MockUserRepository).asSingleton();
 
-            expect(instance1).toBeInstanceOf(TestServiceImplementation);
-            expect(instance2).toBeInstanceOf(TestServiceImplementation);
-            expect(instance1).toBe(instance2); // Same instance in same scope
+            const userRepository = container.resolve(AbstractUserRepository);
+            const userRepository2 = container.resolve(AbstractUserRepository);
 
-            const newScope = container.createScope();
-            const instance3 = newScope.get<TestService>(TestService);
-            expect(instance3).toBeInstanceOf(TestServiceImplementation);
-            expect(instance3).not.toBe(instance1); // Different instance in different scope
+            expect(userRepository).toBe(userRepository2);
         });
-    });
 
-    describe("named services", () => {
-        const Logger = Symbol("Logger");
-        interface Logger {
-            log(message?: string): void;
-        }
+        it("Should handle key collisions correctly with different named bindings", () => {
+            const container = new Container();
 
-        class ConsoleLoggerImplementation implements Logger {
-            log(message: string): void {
-                console.log(message);
+            // Create two different mock implementations
+            class MockUserRepositoryA extends AbstractUserRepository {
+                getUser(id: string): { id: string; name: string } {
+                    return { id, name: "User A" };
+                }
             }
-        }
 
-        class FileLoggerImplementation implements Logger {
-            log(): void {
-                // Simulate file logging
+            class MockUserRepositoryB extends AbstractUserRepository {
+                getUser(id: string): { id: string; name: string } {
+                    return { id, name: "User B" };
+                }
             }
-        }
 
-        it("should register and resolve named services", () => {
-            container.register<Logger>(ConsoleLoggerImplementation, {
-                lifecycle: "singleton",
-                token: "console",
-            });
-            container.register<Logger>(FileLoggerImplementation, {
-                lifecycle: "singleton",
-                token: "file",
-            });
+            container.bind(AbstractUserRepository).to(MockUserRepositoryA).named("repoA");
+            container.bind(AbstractUserRepository).to(MockUserRepositoryB).named("repoB");
 
-            const consoleLogger = container.get<Logger>("console");
-            const fileLogger = container.get<Logger>("file");
+            const repoA = container.resolve(AbstractUserRepository, "repoA");
+            const repoB = container.resolve(AbstractUserRepository, "repoB");
 
-            expect(consoleLogger).toBeInstanceOf(ConsoleLoggerImplementation);
-            expect(fileLogger).toBeInstanceOf(FileLoggerImplementation);
-            expect(consoleLogger).not.toBe(fileLogger);
+            expect(repoA).toBeInstanceOf(MockUserRepositoryA);
+            expect(repoB).toBeInstanceOf(MockUserRepositoryB);
+            expect(repoA).not.toBe(repoB);
+            expect(repoA.getUser("1").name).toBe("User A");
+            expect(repoB.getUser("1").name).toBe("User B");
+        });
+
+        it("Should throw error when binding with duplicate key/type composite", () => {
+            const container = new Container();
+
+            container.bind(AbstractUserRepository).to(MockUserRepository).named("duplicate");
+
+            expect(() => {
+                container.bind(AbstractUserRepository).to(MockUserRepository).named("duplicate");
+            }).toThrow("Service duplicate-AbstractUserRepository already registered");
         });
     });
 
-    describe("dependency injection", () => {
-        const Database = Symbol("Database");
-        interface Database {
-            query(): string;
-        }
+    describe("Resolving", () => {
+        it("Should resolve constructor parameters", () => {
+            const container = new Container();
 
-        const UserService = Symbol("UserService");
-        interface UserService {
-            getUsers(): string[];
-        }
-
-        class DatabaseImplementation implements Database {
-            query(): string {
-                return "data";
+            @Injectable()
+            class UserService {
+                constructor(private userRepository: AbstractUserRepository) {}
+                getUser(id: string) {
+                    return this.userRepository.getUser(id);
+                }
             }
-        }
 
-        class UserServiceImplementation implements UserService {
-            constructor(@Inject(Database) private readonly db: Database) {}
+            container.bind(AbstractUserRepository).to(MockUserRepository);
 
-            getUsers(): string[] {
-                return [this.db.query()];
-            }
-        }
+            const userService = container.resolve(UserService);
+            const user = userService.getUser("123");
 
-        it("should inject dependencies", () => {
-            container.register<Database>(DatabaseImplementation, { token: Database });
-            container.register<UserService>(UserServiceImplementation, { token: UserService });
-
-            const userService = container.get<UserService>(UserService);
-            expect(userService).toBeInstanceOf(UserServiceImplementation);
-            expect(userService.getUsers()).toEqual(["data"]);
+            expect(userService).toBeInstanceOf(UserService);
+            expect(user).toEqual({ id: "123", name: "John Doe" });
         });
 
-        it("should throw error when dependency is not registered", () => {
-            container.register<UserService>(UserServiceImplementation, { token: UserService });
+        it("Should resolve named constructor parameters", () => {
+            const container = new Container();
 
-            expect(() => container.get<UserService>(UserService)).toThrow();
-        });
-    });
-
-    describe("concrete class registration", () => {
-        const Config = Symbol("Config");
-        class ConfigImplementation {
-            constructor(public readonly apiKey: string = "test-key") {}
-        }
-
-        const ConcreteService = Symbol("ConcreteService");
-        class ConcreteServiceImplementation {
-            constructor(@Inject(Config) private readonly config: ConfigImplementation) {}
-            getApiKey(): string {
-                return this.config.apiKey;
+            class MockUserRepositoryUnnamed extends AbstractUserRepository {
+                getUser(id: string): { id: string; name: string } {
+                    return { id, name: "Not John Doe" };
+                }
             }
-        }
 
-        it("should register and resolve concrete classes without tokens", () => {
-            container.register(ConfigImplementation, { token: Config, lifecycle: "singleton" });
-            container.register(ConcreteServiceImplementation, { token: ConcreteService });
+            @Injectable()
+            class UserService {
+                constructor(@Inject("userRepository") private userRepository: AbstractUserRepository) {}
+                getUser(id: string) {
+                    return this.userRepository.getUser(id);
+                }
+            }
 
-            const service = container.get<ConcreteServiceImplementation>(ConcreteService);
-            expect(service).toBeInstanceOf(ConcreteServiceImplementation);
-            expect(service.getApiKey()).toBe("test-key");
+            container.bind(AbstractUserRepository).to(MockUserRepositoryUnnamed);
+            container.bind(AbstractUserRepository, { name: "userRepository" }).to(MockUserRepository);
+
+            const userService = container.resolve(UserService);
+            const user = userService.getUser("123");
+
+            expect(userService).toBeInstanceOf(UserService);
+            expect(user).toEqual({ id: "123", name: "John Doe" });
+        });
+
+        it("Should resolve constructor parameters with factory", () => {
+            const container = new Container();
+
+            @Injectable()
+            class UserService {
+                constructor(private userRepository: AbstractUserRepository) {}
+                getUser(id: string) {
+                    return this.userRepository.getUser(id);
+                }
+            }
+
+            container.bind(AbstractUserRepository).toFactory(() => new MockUserRepository());
+
+            const userService = container.resolve(UserService);
+            const user = userService.getUser("123");
+
+            expect(userService).toBeInstanceOf(UserService);
+            expect(user).toEqual({ id: "123", name: "John Doe" });
         });
     });
 });

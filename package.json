@@ -7,7 +7,7 @@
     "workspaces": [
         "./core",
         "./web",
-        "./types",
+        "./commons",
         "./framework"
     ],
     "engines": {
