@@ -67,9 +67,9 @@ describe("SitemapController", () => {
         expect(result.statusCode).toBe(200);
 
         const body = JSON.parse(result.body);
-        // Admin sees: Administration group + My Account group
+        // Admin sees: Admin group + My Account group
         expect(body._nav.length).toBe(2);
-        expect(body._nav[0].title).toBe("Administration");
+        expect(body._nav[0].title).toBe("Admin");
         expect(body._nav[1].title).toBe("My Account");
     });
 

@@ -38,9 +38,9 @@ describe("SitemapAdapter", () => {
 
         const nav = adapter._nav;
 
-        // Admin sees: Administration group + My Account group
+        // Admin sees: Admin group + My Account group
         expect(nav).toHaveLength(2);
-        expect(nav[0]).toMatchObject({ title: "Administration" });
+        expect(nav[0]).toMatchObject({ title: "Admin" });
         expect(nav[1]).toMatchObject({ title: "My Account" });
     });
 
@@ -73,10 +73,11 @@ describe("SitemapAdapter", () => {
         expect(myAccountGroup).toBeDefined();
         expect(myAccountGroup).toHaveProperty('items');
         const items = (myAccountGroup as any).items;
-        expect(items).toHaveLength(3); // sessions, api-keys, logout
-        expect(items[0]).toEqual({ rel: "sessions", type: "template", title: "Sessions" });
-        expect(items[1]).toEqual({ rel: "api-keys", type: "template", title: "API Keys" });
-        expect(items[2]).toEqual({ rel: "logout", type: "template", title: "Logout" });
+        expect(items).toHaveLength(4); // my-profile, sessions, api-keys, logout
+        expect(items[0]).toEqual({ rel: "my-profile", type: "link", title: "My Profile" });
+        expect(items[1]).toEqual({ rel: "sessions", type: "template", title: "Sessions" });
+        expect(items[2]).toEqual({ rel: "api-keys", type: "template", title: "API Keys" });
+        expect(items[3]).toEqual({ rel: "logout", type: "template", title: "Logout" });
     });
 
     it("should serialize to valid HAL JSON", () => {
@@ -108,7 +109,7 @@ describe("SitemapAdapter", () => {
         expect(myAccountGroup).toBeDefined();
         expect(myAccountGroup).toHaveProperty('items');
         const items = (myAccountGroup as any).items;
-        expect(items[2]).toEqual({ rel: "logout", type: "template", title: "Logout" });
+        expect(items[3]).toEqual({ rel: "logout", type: "template", title: "Logout" });
     });
 
     it("should include sessions and api-keys in templates", () => {

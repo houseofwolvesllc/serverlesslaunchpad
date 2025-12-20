@@ -50,7 +50,8 @@ describe("UserAdapter - HAL+JSON Format", () => {
         expect(json.firstName).toBe(user.firstName);
         expect(json.lastName).toBe(user.lastName);
         expect(json.role).toBe(user.role);
-        expect(json.features).toBe(user.features);
+        // Features are converted to human-readable array in toJSON
+        expect(json.features).toEqual(["contact", "campaign"]);
         expect(json.dateCreated).toBe("2024-01-15T10:30:00.000Z");
         expect(json.dateModified).toBe("2024-11-10T14:22:00.000Z");
     });
@@ -145,10 +146,12 @@ describe("UserAdapter - HAL+JSON Format", () => {
 
     it("should handle different feature flags correctly", () => {
         user.features = Features.Links | Features.Apps;
+        currentUser = { ...user }; // Update currentUser to match
         const adapter = new UserAdapter(user, currentUser, mockRouter);
         const json = adapter.toJSON();
 
-        expect(json.features).toBe(Features.Links | Features.Apps);
+        // Features are converted to human-readable array in toJSON
+        expect(json.features).toEqual(["link", "app"]);
     });
 
     it("should format dates as ISO strings in toJSON", () => {
@@ -233,12 +236,13 @@ describe("UserAdapter - HAL+JSON Format", () => {
         });
 
         describe("Template Properties - Regular User", () => {
-            it("should include firstName and lastName for regular user editing own profile", () => {
+            it("should include all properties with readOnly flags for regular user editing own profile", () => {
                 const adapter = new UserAdapter(user, currentUser, mockRouter);
                 const editTemplate = adapter._templates.edit;
 
                 expect(editTemplate).toBeDefined();
-                expect(editTemplate.properties).toHaveLength(2);
+                // All 4 properties are shown, with role/features marked readOnly for non-admins
+                expect(editTemplate.properties).toHaveLength(4);
 
                 const firstNameProp = editTemplate.properties.find((p: any) => p.name === "firstName");
                 expect(firstNameProp).toBeDefined();
@@ -257,16 +261,19 @@ describe("UserAdapter - HAL+JSON Format", () => {
                 expect(lastNameProp.maxLength).toBe(100);
             });
 
-            it("should NOT include role and features for regular user", () => {
+            it("should include role and features as readOnly for regular user", () => {
                 const adapter = new UserAdapter(user, currentUser, mockRouter);
                 const editTemplate = adapter._templates.edit;
 
                 expect(editTemplate).toBeDefined();
                 const roleProp = editTemplate.properties.find((p: any) => p.name === "role");
-                const featuresProp = editTemplate.properties.find((p: any) => p.name === "enabled_features");
+                const featuresProp = editTemplate.properties.find((p: any) => p.name === "features");
 
-                expect(roleProp).toBeUndefined();
-                expect(featuresProp).toBeUndefined();
+                // Both are included but marked as readOnly
+                expect(roleProp).toBeDefined();
+                expect(roleProp.readOnly).toBe(true);
+                expect(featuresProp).toBeDefined();
+                expect(featuresProp.readOnly).toBe(true);
             });
 
             it("should use 'Edit Profile' title for regular user", () => {
@@ -304,7 +311,7 @@ describe("UserAdapter - HAL+JSON Format", () => {
                 expect(propertyNames).toContain("firstName");
                 expect(propertyNames).toContain("lastName");
                 expect(propertyNames).toContain("role");
-                expect(propertyNames).toContain("enabled_features");
+                expect(propertyNames).toContain("features");
             });
 
             it("should include role property with correct configuration", () => {
@@ -326,11 +333,11 @@ describe("UserAdapter - HAL+JSON Format", () => {
                 expect(roleProp.options).toContainEqual({ value: Role.Admin, prompt: "Admin" });
             });
 
-            it("should include enabled_features property with correct configuration", () => {
+            it("should include features property with correct configuration", () => {
                 const adapter = new UserAdapter(user, adminUser, mockRouter);
                 const editTemplate = adapter._templates.edit;
 
-                const featuresProp = editTemplate.properties.find((p: any) => p.name === "enabled_features");
+                const featuresProp = editTemplate.properties.find((p: any) => p.name === "features");
                 expect(featuresProp).toBeDefined();
                 expect(featuresProp.prompt).toBe("Features");
                 expect(featuresProp.required).toBe(false);
@@ -375,7 +382,7 @@ describe("UserAdapter - HAL+JSON Format", () => {
                 const firstNameProp = editTemplate.properties.find((p: any) => p.name === "firstName");
                 const lastNameProp = editTemplate.properties.find((p: any) => p.name === "lastName");
                 const roleProp = editTemplate.properties.find((p: any) => p.name === "role");
-                const featuresProp = editTemplate.properties.find((p: any) => p.name === "enabled_features");
+                const featuresProp = editTemplate.properties.find((p: any) => p.name === "features");
 
                 expect(firstNameProp.value).toBe(user.firstName);
                 expect(lastNameProp.value).toBe(user.lastName);
@@ -409,7 +416,7 @@ describe("UserAdapter - HAL+JSON Format", () => {
                 const firstNameProp = editTemplate.properties.find((p: any) => p.name === "firstName");
                 const lastNameProp = editTemplate.properties.find((p: any) => p.name === "lastName");
                 const roleProp = editTemplate.properties.find((p: any) => p.name === "role");
-                const featuresProp = editTemplate.properties.find((p: any) => p.name === "enabled_features");
+                const featuresProp = editTemplate.properties.find((p: any) => p.name === "features");
 
                 expect(firstNameProp.value).toBe("Updated");
                 expect(lastNameProp.value).toBe("Name");

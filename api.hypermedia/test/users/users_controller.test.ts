@@ -38,11 +38,28 @@ describe("UsersController", () => {
         ...overrides
     });
 
+    // Store current event's authContext to be returned by mock authenticator
+    let currentEventAuthContext: any = null;
+
     const createAuthenticatedEvent = (overrides?: Partial<AuthenticatedALBEvent>): AuthenticatedALBEvent => {
         const user = overrides?.authContext?.identity || createMockUser({
             userId: "current-user",
             role: Role.AccountManager
         });
+
+        const authContext = overrides?.authContext || {
+            identity: user,
+            access: {
+                type: "session" as const,
+                sessionToken: "test-token",
+                dateExpires: new Date("2024-12-31T23:59:59Z"),
+                ipAddress: "127.0.0.1",
+                userAgent: "test-agent/1.0",
+            }
+        };
+
+        // Set the authContext for the mock authenticator to return
+        currentEventAuthContext = authContext;
 
         return {
             httpMethod: "GET",
@@ -63,16 +80,7 @@ describe("UsersController", () => {
             queryStringParameters: undefined,
             multiValueHeaders: {},
             multiValueQueryStringParameters: undefined,
-            authContext: {
-                identity: user,
-                access: {
-                    type: "session" as const,
-                    sessionToken: "test-token",
-                    dateExpires: new Date("2024-12-31T23:59:59Z"),
-                    ipAddress: "127.0.0.1",
-                    userAgent: "test-agent/1.0",
-                }
-            },
+            authContext,
             ...overrides,
         } as AuthenticatedALBEvent;
     };
@@ -81,23 +89,14 @@ describe("UsersController", () => {
         // Get container and set up mocks
         const container = getContainer();
 
-        // Mock Authenticator to bypass real authentication
+        // Mock Authenticator to return the authContext from the event
+        // This allows tests to specify custom users/roles via createAuthenticatedEvent
         const mockAuthenticator = {
             verify: vi.fn().mockImplementation(async ({ sessionToken }) => {
-                // Return a mock auth result based on token
-                if (sessionToken === "test-token") {
-                    return {
-                        authContext: {
-                            identity: createMockUser({ userId: "current-user", role: Role.AccountManager }),
-                            access: {
-                                type: "session" as const,
-                                sessionToken,
-                                dateExpires: new Date("2024-12-31T23:59:59Z"),
-                                ipAddress: "127.0.0.1",
-                                userAgent: "test-agent/1.0",
-                            }
-                        }
-                    };
+                // Return the authContext that was set on the current event
+                // This allows tests to control the authenticated user
+                if (sessionToken === "test-token" && currentEventAuthContext) {
+                    return { authContext: currentEventAuthContext };
                 }
                 return { authContext: { identity: null } };
             }),
