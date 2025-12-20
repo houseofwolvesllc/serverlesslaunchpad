@@ -1,7 +1,6 @@
 import {
     ApiKeyRepository,
     Authenticator,
-    ConfigurationStore,
     Container,
     Environment,
     LogLevel,
@@ -13,13 +12,16 @@ import {
     AthenaSessionRepository,
     AthenaUserRepository,
     AwsSecretsConfigurationStore,
-    CompositeConfigurationStore,
     FileConfigurationStore,
     SystemAuthenticator,
+    CachedConfigurationStore,
+    InfrastructureConfigurationStore,
+    ApplicationSecretsStore,
+    ApiConfigSchema,
+    SecretsConfigSchema,
 } from "@houseofwolves/serverlesslaunchpad.framework";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import { z } from "zod";
 import { ApiLogger } from "./logging";
 
 /**
@@ -57,41 +59,43 @@ class AppContainer {
         // User management bindings
         container.bind(UserRepository).to(AthenaUserRepository).asSingleton();
 
+        // Infrastructure configuration store (non-sensitive data with infinite caching)
         container
-            .bind(
-                ConfigurationStore<{
-                    auth: { cognito: { userPoolId: string; userPoolClientId: string } };
-                    session_token_salt: string;
-                }>
-            )
+            .bind(InfrastructureConfigurationStore)
             .toFactory(() => {
-                const configSchema = z.object({
-                    auth: z.object({
-                        cognito: z.object({
-                            userPoolId: z.string(),
-                            userPoolClientId: z.string(),
-                        }),
-                    }),
-                    session_token_salt: z.string(),
-                });
-
-                const compositeConfigurationStore = new CompositeConfigurationStore(configSchema);
-
-                compositeConfigurationStore.addStore(
-                    new FileConfigurationStore(
-                        configSchema,
-                        path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
-                        `${AppContainer.getEnvironment()}.config.json`
-                    )
+                const environment = AppContainer.getEnvironment();
+                const baseStore = new FileConfigurationStore(
+                    ApiConfigSchema,
+                    path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
+                    `${environment}.infrastructure.json`
                 );
-
-                compositeConfigurationStore.addStore(
-                    new AwsSecretsConfigurationStore(configSchema, AppContainer.getEnvironment())
-                );
-
-                return compositeConfigurationStore;
+                // Cache indefinitely - infrastructure config rarely changes
+                const cachedStore = new CachedConfigurationStore(baseStore, Infinity);
+                return new InfrastructureConfigurationStore(cachedStore);
             })
             .asSingleton();
+
+        // Application secrets store (sensitive data with 15-minute caching)
+        container
+            .bind(ApplicationSecretsStore)
+            .toFactory(() => {
+                const environment = AppContainer.getEnvironment();
+                const secretsConfig = environment === 'local'
+                    ? { endpoint: 'http://localhost:5555', region: 'us-west-2' }
+                    : undefined;
+
+                const baseStore = new AwsSecretsConfigurationStore(
+                    SecretsConfigSchema,
+                    environment,
+                    secretsConfig,
+                    "serverlesslaunchpad.secrets"
+                );
+                // Cache for 15 minutes - secrets may be rotated
+                const cachedStore = new CachedConfigurationStore(baseStore, 15);
+                return new ApplicationSecretsStore(cachedStore);
+            })
+            .asSingleton();
+
 
         container
             .bind(ApiLogger)

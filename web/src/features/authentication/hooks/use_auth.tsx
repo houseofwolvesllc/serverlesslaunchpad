@@ -1,43 +1,52 @@
 import { Amplify } from 'aws-amplify';
 import * as amplify from 'aws-amplify/auth';
 import { useContext } from 'react';
-import { getConfig } from '../../../config/environment';
+import WebConfigurationLoader from '../../../configuration/web_config_loader';
 import { apiClient } from '../../../services/api.client';
 import { CookieService } from '../../../services/cookie.service';
 import { AuthenticationContext, AuthError, SignInStep, User } from '../../authentication';
 
-const config = getConfig();
+// Amplify configuration will be loaded asynchronously
+let amplifyConfigured = false;
 
-// Configure Amplify v6 with environment config and Moto-specific settings
-const amplifyConfig: any = {
-    Auth: {
-        Cognito: {
-            region: config.cognito.region,
-            userPoolId: config.cognito.userPoolId,
-            userPoolClientId: config.cognito.userPoolClientId,
-            identityPoolId: config.cognito.identityPoolId,
-            loginWith: config.cognito.loginWith,
-            signUpVerificationMethod: config.cognito.signUpVerificationMethod,
-            userAttributes: config.cognito.userAttributes,
-            allowGuestAccess: true, 
-            passwordFormat: config.cognito.passwordFormat,
+async function ensureAmplifyConfigured() {
+    if (amplifyConfigured) return;
+
+    const config = await WebConfigurationLoader.load();
+
+    // Configure Amplify v6 with environment config and Moto-specific settings
+    const amplifyConfig: any = {
+        Auth: {
+            Cognito: {
+                region: config.aws.region,
+                userPoolId: config.cognito.user_pool_id,
+                userPoolClientId: config.cognito.client_id,
+                identityPoolId: config.cognito.identity_pool_id,
+                loginWith: { email: true },
+                signUpVerificationMethod: 'code',
+                userAttributes: { email: { required: true } },
+                allowGuestAccess: true,
+                passwordFormat: {
+                    minLength: 8,
+                    requireLowercase: true,
+                    requireUppercase: true,
+                    requireNumbers: true,
+                    requireSpecialCharacters: true,
+                },
+            },
         },
-    },
-};
+    };
 
-// Use simpler auth flow for Moto compatibility
-// if (config.cognito.endpoint) {
-//     console.log('🔧 Using USER_PASSWORD_AUTH for Moto compatibility');
-//     amplifyConfig.Auth.authenticationFlowType = 'USER_PASSWORD_AUTH';
-// }
-
-Amplify.configure(amplifyConfig);
+    Amplify.configure(amplifyConfig);
+    amplifyConfigured = true;
+}
 
 export const useAuth = function () {
     const { setSignedInUser } = useContext(AuthenticationContext);
 
     async function authorize(): Promise<User> {
         try {
+            await ensureAmplifyConfigured();
             await amplify.getCurrentUser();
 
             const authSession = await amplify.fetchAuthSession();
@@ -60,7 +69,8 @@ export const useAuth = function () {
 
     async function federateSession(authSession: amplify.AuthSession): Promise<User> {
         try {
-            if (config.features.debugMode) {
+            const config = await WebConfigurationLoader.load();
+            if (config.features.debug_mode) {
                 console.log('🔗 Federating Cognito session to hypermedia API', authSession);
                 console.log('ID Token:', authSession.tokens?.idToken?.toString());
                 console.log('Access Token:', authSession.tokens?.accessToken?.toString());
@@ -93,7 +103,7 @@ export const useAuth = function () {
                     body: JSON.stringify(federateRequest),
                 });
                 
-                if (config.features.debugMode) {
+                if (config.features.debug_mode) {
                     console.log('✅ Session federated with hypermedia API', response);
                 }
 
@@ -121,15 +131,17 @@ export const useAuth = function () {
 
     async function verifySession(): Promise<User> {
         try {
+            const config = await WebConfigurationLoader.load();
+
             // Check for session cookie first - fail fast if missing
             if (!CookieService.hasSessionCookie()) {
-                throw new AuthError({ 
-                    name: 'NoSessionCookie', 
-                    message: 'No session cookie found - user needs to authenticate' 
+                throw new AuthError({
+                    name: 'NoSessionCookie',
+                    message: 'No session cookie found - user needs to authenticate'
                 });
             }
 
-            if (config.features.debugMode) {
+            if (config.features.debug_mode) {
                 console.log('🔍 Verifying existing session cookie');
             }
 
@@ -142,7 +154,7 @@ export const useAuth = function () {
                 },
             });
 
-            if (config.features.debugMode) {
+            if (config.features.debug_mode) {
                 console.log('✅ Session verified with hypermedia API', response);
             }
 
@@ -166,7 +178,8 @@ export const useAuth = function () {
             return verifiedUser;
 
         } catch (error) {
-            if (config.features.debugMode) {
+            const currentConfig = await WebConfigurationLoader.load();
+            if (currentConfig.features.debug_mode) {
                 console.error('❌ Session verification failed:', error);
             }
 
@@ -196,7 +209,8 @@ export const useAuth = function () {
 
     async function revokeSession(authSession: amplify.AuthSession): Promise<void> {
         try {
-            if (config.features.debugMode) {
+            const config = await WebConfigurationLoader.load();
+            if (config.features.debug_mode) {
                 console.log('🔓 Revoking hypermedia API session', authSession);
             }
 
@@ -209,12 +223,11 @@ export const useAuth = function () {
                         'Content-Type': 'application/json',
                     },
                 });
-                
-                if (config.features.debugMode) {
+                if (config.features.debug_mode) {
                     console.log('✅ Session revoked with hypermedia API');
                 }
             } catch (error) {
-                if (config.features.debugMode) {
+                if (config.features.debug_mode) {
                     console.warn('⚠️ API revoke failed', error);
                 }
                 // Continue with local signout even if API fails
@@ -236,6 +249,7 @@ export const useAuth = function () {
         lastName: string;
     }): Promise<SignInStep | undefined> {
         try {
+            await ensureAmplifyConfigured();
             const { nextStep } = await amplify.signUp({
                 username: signUpMessage.email,
                 password: signUpMessage.password,
@@ -327,8 +341,9 @@ export const useAuth = function () {
 
     async function signIn(signInMessage: { username: string; password: string }): Promise<SignInStep | undefined> {
         try {
+            await ensureAmplifyConfigured();
             // Clear any existing session before signing in
-            // Note: Moto compatibility handled by revoke_token polyfill in environment.ts
+            // Note: Moto compatibility handled by revoke_token polyfill in moto_amplify_shims.ts
             await amplify.signOut();
 
             const { nextStep } = await amplify.signIn({

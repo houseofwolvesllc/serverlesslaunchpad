@@ -1,4 +1,4 @@
-import { ConfigurationStore } from "@houseofwolves/serverlesslaunchpad.core";
+import { ConfigurationStore, ConfigurationOptions } from "@houseofwolves/serverlesslaunchpad.core";
 import { z } from "zod";
 
 /**
@@ -20,10 +20,10 @@ export class CompositeConfigurationStore<T extends z.ZodType> implements Configu
         this.stores.push(store);
     }
 
-    async get(): Promise<z.infer<T>> {
+    async get(options?: ConfigurationOptions): Promise<z.infer<T>> {
         for (const store of this.stores) {
             try {
-                const config = await store.get();
+                const config = await store.get(options);
                 // Validate the configuration matches our schema
                 const validated = this.zodSchema.parse(config);
                 return validated;
@@ -33,7 +33,7 @@ export class CompositeConfigurationStore<T extends z.ZodType> implements Configu
                 continue;
             }
         }
-        
+
         // No valid configuration found - throw error
         throw new Error("No valid configuration found in any store");
     }

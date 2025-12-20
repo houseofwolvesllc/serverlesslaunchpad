@@ -1,4 +1,4 @@
-import { getConfig } from '../config/environment';
+import WebConfigurationLoader from '../configuration/web_config_loader';
 
 export interface ApiResponse<T = any> {
   data: T;
@@ -24,11 +24,16 @@ export class ApiClientError extends Error {
 }
 
 export class ApiClient {
-  private config = getConfig();
-  private baseURL: string;
+  private config: any = null;
+  private baseURL: string = '';
 
   constructor() {
-    this.baseURL = this.config.apiBaseUrl;
+    this.initializeConfig();
+  }
+
+  private async initializeConfig() {
+    this.config = await WebConfigurationLoader.load();
+    this.baseURL = this.config.api.base_url;
   }
 
   async request<T = any>(
@@ -43,7 +48,7 @@ export class ApiClient {
     };
 
     // Add x-forwarded-for header for local development (typically set by load balancer)
-    if (this.config.features.debugMode) {
+    if (this.config?.features?.debug_mode) {
       defaultHeaders['X-Forwarded-For'] = '127.0.0.1';
     }
 
@@ -83,11 +88,11 @@ export class ApiClient {
 
     // Add timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.api.timeout);
+    const timeoutId = setTimeout(() => controller.abort(), this.config?.api?.timeout || 30000);
     requestOptions.signal = controller.signal;
 
     try {
-      if (this.config.features.debugMode) {
+      if (this.config?.features?.debug_mode) {
         console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, {
           headers: requestOptions.headers,
           body: options.body
@@ -103,7 +108,7 @@ export class ApiClient {
 
       const data = await response.json();
 
-      if (this.config.features.debugMode) {
+      if (this.config?.features?.debug_mode) {
         console.log(`✅ API Response: ${response.status}`, data);
       }
 
@@ -151,7 +156,7 @@ export class ApiClient {
       };
     }
 
-    if (this.config.features.debugMode) {
+    if (this.config?.features?.debug_mode) {
       console.error(`❌ API Error: ${response.status}`, error);
     }
 
