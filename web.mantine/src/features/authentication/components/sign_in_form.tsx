@@ -1,4 +1,4 @@
-import { Center, Box, Paper, Group, Anchor, Button, TextInput, PasswordInput, Stack, Image, rem } from '@mantine/core';
+import { Center, Box, Paper, Group, Anchor, Button, TextInput, PasswordInput, Stack, Text, Divider, rem } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { AuthenticationContext, AuthError, SignInStep, useAuth } from '../../authentication';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -107,13 +107,29 @@ export const SignInForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
-                <Image
-                    src="/svg/serverless_launchpad_logo.svg"
-                    alt="Serverless Launchpad Logo"
-                    style={{ height: rem(100) }}
-                    fit="contain"
-                />
                 <Paper radius="md" p="xl" withBorder>
+                    <Group justify="center" mb="md">
+                        <Group gap="sm">
+                            <Box
+                                style={{
+                                    height: rem(48),
+                                    width: rem(48),
+                                    borderRadius: rem(8),
+                                    backgroundColor: 'var(--mantine-color-blue-light)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text c="blue" fw={700} size="xl">SL</Text>
+                            </Box>
+                            <Stack gap={0}>
+                                <Text fw={600} size="lg">Serverless Launchpad</Text>
+                                <Text c="dimmed" size="sm">Mantine Edition</Text>
+                            </Stack>
+                        </Group>
+                    </Group>
+                    <Divider mb="md" />
                     <form id="signin-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                         <Stack>
                             <TextInput

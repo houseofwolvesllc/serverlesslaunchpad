@@ -1,4 +1,4 @@
-import { TextInput, Button, Stack, Paper, Text, Center, Box, rem, Image } from '@mantine/core';
+import { TextInput, Button, Stack, Paper, Text, Center, Box, rem, Group, Divider } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '../../authentication';
@@ -40,13 +40,29 @@ export const ResetPasswordForm = () => {
     return (
         <Center h="100vh">
             <Box w={500}>
-                <Image
-                    src="/svg/serverless_launchpad_logo.svg"
-                    alt="Serverless Launchpad Logo"
-                    style={{ height: rem(100) }}
-                    fit="contain"
-                />
                 <Paper radius="md" p="xl" withBorder>
+                    <Group justify="center" mb="md">
+                        <Group gap="sm">
+                            <Box
+                                style={{
+                                    height: rem(48),
+                                    width: rem(48),
+                                    borderRadius: rem(8),
+                                    backgroundColor: 'var(--mantine-color-blue-light)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text c="blue" fw={700} size="xl">SL</Text>
+                            </Box>
+                            <Stack gap={0}>
+                                <Text fw={600} size="lg">Serverless Launchpad</Text>
+                                <Text c="dimmed" size="sm">Mantine Edition</Text>
+                            </Stack>
+                        </Group>
+                    </Group>
+                    <Divider mb="md" />
                     <Text size="lg" fw={500} mb="md">
                         Reset Your Password
                     </Text>

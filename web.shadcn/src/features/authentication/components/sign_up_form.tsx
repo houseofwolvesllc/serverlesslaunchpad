@@ -78,15 +78,20 @@ export const SignUpForm = () => {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <div className="w-full max-w-md">
-                <div className="flex justify-center mb-8">
-                    <img
-                        src="/svg/serverless_launchpad_logo.svg"
-                        alt="Serverless Launchpad Logo"
-                        className="h-24"
-                    />
-                </div>
                 <Card>
                     <CardContent className="pt-6">
+                        <div className="flex justify-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <span className="text-primary font-bold text-2xl">SL</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-semibold text-lg">Serverless Launchpad</span>
+                                    <span className="text-sm text-muted-foreground">shadcn Edition</span>
+                                </div>
+                            </div>
+                        </div>
+                        <hr className="mb-6 border-border" />
                         <form id="signup-form" onSubmit={form.onSubmit((values) => onSubmit(values))}>
                             <div className="flex flex-col space-y-4">
                                 <div>
