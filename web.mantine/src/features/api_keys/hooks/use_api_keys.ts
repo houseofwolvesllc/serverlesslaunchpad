@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { apiClient } from '../../../services/api.client';
+import { halClient } from '../../../lib/hal_forms_client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
@@ -58,7 +58,7 @@ export function useApiKeys() {
 
             if (userId) {
                 // Fetch user resource to discover API keys endpoint (HATEOAS)
-                const userResource = await apiClient.get(`/users/${userId}`);
+                const userResource = await halClient.get(`/users/${userId}`);
 
                 // Extract api-keys template from user resource
                 const apiKeysTemplate = userResource?._templates?.['api-keys'];
@@ -99,7 +99,7 @@ export function useApiKeys() {
 
             try {
                 // POST request to get API keys
-                const response = await apiClient.post(apiKeysEndpoint, {});
+                const response = await halClient.post(apiKeysEndpoint, {});
 
                 // Store full HAL object
                 setData(response as HalObject);

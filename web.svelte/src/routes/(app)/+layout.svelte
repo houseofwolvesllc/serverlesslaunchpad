@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { sidebarStore } from '$lib/stores/sidebar_store';
-	import { authStore } from '$lib/stores/auth_store';
+	import { authStore, authInitialized } from '$lib/stores/auth_store';
 	import { verifySession, AuthError } from '$lib/auth';
 	import { refreshCapabilities, getEntryPoint } from '$lib/services/entry_point_provider';
 	import { getInitializationPromise } from '$lib/init';
 	import { logger } from '$lib/logging';
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import AppSidebar from '$lib/components/dashboard/app-sidebar.svelte';
 	import AppHeader from '$lib/components/dashboard/app-header.svelte';
 	import { Root as SheetRoot } from '$lib/components/ui/sheet.svelte';
@@ -68,7 +69,11 @@
 						hasSessionId: !!user.authContext?.sessionId
 					});
 				} catch (error) {
-					logger.error('Session verification failed despite template existing', { error });
+					// Session verification failed (400, 401, etc.) - session is invalid
+					// Redirect to signin to get a fresh session
+					logger.error('Session verification failed - redirecting to signin', { error });
+					await goto('/auth/signin', { replaceState: true });
+					return; // Stop execution to prevent authStore.setInitialized
 				}
 			} else {
 				// No valid session - expected for new/logged-out users
@@ -98,7 +103,16 @@
 		<!-- Page Content -->
 		<main class="flex-1 overflow-y-auto bg-muted/30">
 			<div class="container mx-auto p-6">
-				<slot />
+				{#if $authInitialized}
+					<slot />
+				{:else}
+					<!-- Loading state while verifying auth -->
+					<div class="animate-pulse space-y-4">
+						<div class="h-8 bg-muted rounded w-1/4"></div>
+						<div class="h-4 bg-muted rounded w-1/2"></div>
+						<div class="h-64 bg-muted rounded"></div>
+					</div>
+				{/if}
 			</div>
 		</main>
 	</div>
