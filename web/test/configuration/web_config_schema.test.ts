@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WebConfigSchema, createViteEnvConfig, WebConfig } from "../../src/configuration/web_config_schema";
+import { WebConfigSchema, WebConfig } from "../../src/configuration/web_config_schema";
 
 describe("WebConfigSchema", () => {
     const validConfig: WebConfig = {
@@ -125,95 +125,5 @@ describe("WebConfigSchema", () => {
             const result = WebConfigSchema.safeParse(config);
             expect(result.success).toBe(true, `Environment ${env} should be valid`);
         }
-    });
-});
-
-describe("createViteEnvConfig", () => {
-    it("should transform web config to Vite environment variables format", () => {
-        const webConfig: WebConfig = {
-            environment: 'local',
-            aws: {
-                region: 'us-west-2'
-            },
-            cognito: {
-                user_pool_id: 'us-west-2_test123',
-                client_id: 'client123',
-                identity_pool_id: 'us-west-2:identity123'
-            },
-            api: {
-                base_url: 'http://localhost:3001',
-                timeout: 30000
-            },
-            features: {
-                enable_mfa: true,
-                enable_analytics: false,
-                enable_notifications: true,
-                enable_advanced_security: false,
-                mock_auth: false,
-                debug_mode: true,
-                enable_logging: true,
-                hot_reload: true
-            },
-            development: {
-                moto_url: 'http://localhost:5555',
-                node_env: 'development'
-            }
-        };
-
-        const viteEnvConfig = createViteEnvConfig(webConfig);
-
-        expect(viteEnvConfig).toEqual({
-            VITE_API_URL: 'http://localhost:3001',
-            VITE_API_TIMEOUT: '30000',
-            VITE_AWS_REGION: 'us-west-2',
-            VITE_COGNITO_USER_POOL_ID: 'us-west-2_test123',
-            VITE_COGNITO_CLIENT_ID: 'client123',
-            VITE_COGNITO_IDENTITY_POOL_ID: 'us-west-2:identity123',
-            VITE_FEATURE_MFA: 'true',
-            VITE_FEATURE_ANALYTICS: 'false',
-            VITE_FEATURE_NOTIFICATIONS: 'true',
-            VITE_MOCK_AUTH: 'false',
-            VITE_DEBUG_MODE: 'true',
-            VITE_ENABLE_LOGGING: 'true',
-            VITE_HOT_RELOAD: 'true',
-            VITE_NODE_ENV: 'development',
-            VITE_MOTO_URL: 'http://localhost:5555',
-            VITE_S3_UPLOAD_BUCKET: '',
-            VITE_S3_STATIC_BUCKET: ''
-        });
-    });
-
-    it("should handle missing optional fields gracefully", () => {
-        const minimalWebConfig: WebConfig = {
-            environment: 'production',
-            aws: {
-                region: 'us-east-1'
-            },
-            cognito: {
-                user_pool_id: 'us-east-1_prod123',
-                client_id: 'prod-client123'
-            },
-            api: {
-                base_url: 'https://api.example.com',
-                timeout: 30000
-            },
-            features: {
-                enable_mfa: true,
-                enable_analytics: true,
-                enable_notifications: false,
-                enable_advanced_security: true,
-                mock_auth: false,
-                debug_mode: false,
-                enable_logging: false,
-                hot_reload: false
-            }
-        };
-
-        const viteEnvConfig = createViteEnvConfig(minimalWebConfig);
-
-        expect(viteEnvConfig.VITE_API_URL).toBe('https://api.example.com');
-        expect(viteEnvConfig.VITE_COGNITO_IDENTITY_POOL_ID).toBe('');
-        expect(viteEnvConfig.VITE_MOTO_URL).toBe('');
-        expect(viteEnvConfig.VITE_NODE_ENV).toBe('development'); // Default
     });
 });
