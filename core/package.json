@@ -22,22 +22,21 @@
         "test:watch": "vitest --watch"
     },
     "devDependencies": {
-        "@types/node": "~18",
+        "@types/node": "^22.0.0",
+        "@types/reflect-metadata": "^0.0.5",
         "@typescript-eslint/eslint-plugin": "~5.44",
         "@typescript-eslint/parser": "~5.44",
-        "@vitest/coverage-c8": "^0.27.3",
+        "@vitest/coverage-v8": "^3.0.8",
         "eslint": "~8.28",
         "eslint-config-prettier": "~8.5",
         "eslint-plugin-vitest": "^0.0.29",
         "prettier": "~2.8",
         "rimraf": "~3.0",
         "tsc-alias": "^1.8.16",
-        "vite": "^5.0.0",
-        "vitest": "^3.0.8"
+        "vitest": "^3.2.4"
     },
     "dependencies": {
         "@houseofwolves/serverlesslaunchpad.commons": "*",
-        "@types/reflect-metadata": "^0.0.5",
         "reflect-metadata": "^0.2.2"
     }
 }
