@@ -130,6 +130,41 @@ fi
 
 echo ""
 echo "========================================="
+echo "Seeding Default Users"
+echo "========================================="
+
+# Seed admin user with all permissions
+# Only create if it doesn't already exist (idempotent)
+ADMIN_USER_ID="00000000000000000000000000000000"
+ADMIN_EMAIL="admin@example.com"
+CURRENT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
+echo "Seeding admin user..."
+
+# Use conditional put to avoid overwriting existing user
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
+    dynamodb put-item \
+    --table-name ${DDB_USERS_TABLE} \
+    --region ${AWS_REGION} \
+    --item "{
+        \"userId\": {\"S\": \"${ADMIN_USER_ID}\"},
+        \"email\": {\"S\": \"${ADMIN_EMAIL}\"},
+        \"firstName\": {\"S\": \"Admin\"},
+        \"lastName\": {\"S\": \"User\"},
+        \"role\": {\"N\": \"3\"},
+        \"features\": {\"N\": \"15\"},
+        \"dateCreated\": {\"S\": \"${CURRENT_TIMESTAMP}\"},
+        \"dateModified\": {\"S\": \"${CURRENT_TIMESTAMP}\"}
+    }" \
+    --condition-expression "attribute_not_exists(userId)" \
+    >/dev/null 2>&1 && echo "✓ Admin user created" || echo "✓ Admin user already exists"
+
+echo "  - Email: ${ADMIN_EMAIL}"
+echo "  - Role: Admin (3)"
+echo "  - Features: All (15 = Contacts | Campaigns | Links | Apps)"
+echo ""
+
+echo "========================================="
 echo "DynamoDB Tables Configuration Complete!"
 echo "========================================="
 echo ""
@@ -137,6 +172,9 @@ echo "Tables created:"
 echo "  - ${DDB_USERS_TABLE}"
 echo "  - ${DDB_SESSIONS_TABLE} (with TTL)"
 echo "  - ${DDB_API_KEYS_TABLE}"
+echo ""
+echo "Seed data:"
+echo "  - admin@example.com (userId: ${ADMIN_USER_ID}, role: Admin, features: All)"
 echo ""
 echo "Test with:"
 echo "  aws --endpoint-url=${AWS_ENDPOINT_URL} dynamodb list-tables --region ${AWS_REGION}"
