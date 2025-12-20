@@ -1,10 +1,10 @@
 import { ApiKeyRepository, Injectable, Role } from "@houseofwolves/serverlesslaunchpad.core";
 import { ALBResult } from "aws-lambda";
-import { BaseController } from "../base_controller.js";
-import { AuthenticatedALBEvent } from "../extended_alb_event.js";
-import { Cache, Log, Protected } from "../decorators/index.js";
-import { Route } from "../router.js";
-import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas.js";
+import { BaseController } from "../base_controller";
+import { AuthenticatedALBEvent } from "../extended_alb_event";
+import { Cache, Log, Protected } from "../decorators/index";
+import { Route } from "../router";
+import { DeleteApiKeysSchema, GetApiKeysSchema } from "./schemas";
 
 /**
  * API Keys endpoint controller
