@@ -277,36 +277,10 @@ export function transformNavStructure(
 
         // Handle NavGroups
         const group = item as NavGroup;
-        // Handle single-item groups (flatten to single LinksGroupProps)
-        if (group.items.length === 1 && 'rel' in group.items[0]) {
-            const navItem = group.items[0] as NavItem;
-            const resolved = resolveItem(navItem);
 
-            if (!resolved) continue;
-
-            // Map icon based on rel key
-            const icon = getIcon(navItem.rel);
-
-            result.push({
-                icon,
-                label: resolved.title,
-                link: resolved.type === 'link' ? resolved.href : undefined,
-                newTab: false,
-                // Template items get onClick handler
-                links:
-                    resolved.type === 'template' && resolved.method === 'POST'
-                        ? [
-                              {
-                                  label: resolved.title,
-                                  link: resolved.href,
-                                  onClick: createPostActionHandler(resolved.href, resolved.title),
-                              },
-                          ]
-                        : undefined,
-            });
-        }
-        // Handle multi-item groups
-        else {
+        // Always render groups as collapsible (don't flatten single-item groups)
+        // This preserves the group hierarchy (e.g., "Admin" > "Users")
+        {
             // For groups with multiple items, we need a parent icon
             // Use the first item's rel for icon, or default to the group title
             const firstNavItem = group.items.find((item) => 'rel' in item) as NavItem | undefined;

@@ -8,6 +8,9 @@ import {
     Stack,
     Title,
     Alert,
+    Switch,
+    Box,
+    Text,
 } from '@mantine/core';
 import { HalTemplate, HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { ValidationError } from '../../lib/hal_forms_client';
@@ -188,7 +191,47 @@ function TemplateField({ property, value, onChange, error, disabled }: TemplateF
         return <input type="hidden" name={property.name} value={value} />;
     }
 
-    // Select/dropdown for options
+    // Checkbox/Toggle switches for bitfield (multi-select)
+    if (property.type === 'checkbox' && property.options && property.options.length > 0) {
+        const selectedValues = Array.isArray(value) ? value : [];
+
+        const toggleOption = (optionValue: string) => {
+            const newValues = selectedValues.includes(optionValue)
+                ? selectedValues.filter((v) => v !== optionValue)
+                : [...selectedValues, optionValue];
+            onChange(newValues);
+        };
+
+        return (
+            <Stack gap="xs">
+                <Text size="sm" fw={500}>
+                    {label}
+                    {required && <span style={{ color: 'var(--mantine-color-red-6)', marginLeft: 4 }}>*</span>}
+                </Text>
+                <Box style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 'var(--mantine-radius-md)', padding: 'var(--mantine-spacing-md)' }}>
+                    <Stack gap="md">
+                        {property.options.map((opt) => {
+                            const optionValue = String(opt.value);
+                            const isChecked = selectedValues.includes(optionValue);
+
+                            return (
+                                <Switch
+                                    key={optionValue}
+                                    label={opt.prompt || optionValue}
+                                    checked={isChecked}
+                                    onChange={() => toggleOption(optionValue)}
+                                    disabled={disabled}
+                                />
+                            );
+                        })}
+                    </Stack>
+                </Box>
+                {error && <Text size="sm" c="red">{error}</Text>}
+            </Stack>
+        );
+    }
+
+    // Select/dropdown for single-select options (enums)
     if (property.options && property.options.length > 0) {
         const selectData = property.options.map((opt) => ({
             value: String(opt.value),

@@ -31,7 +31,19 @@ import { parseUserAgent } from '../utils/parse_user_agent';
  * ```
  */
 export function SessionsList() {
-    const { data, refresh } = useSessions();
+    const { data, sessions, refresh } = useSessions();
+
+    // Create enriched resource with isCurrent property on sessions
+    const enrichedResource = useMemo(() => {
+        if (!data) return null;
+        return {
+            ...data,
+            _embedded: {
+                ...data._embedded,
+                sessions: sessions,
+            },
+        };
+    }, [data, sessions]);
 
     // Template execution for bulk delete
     const { execute: execute_bulk_delete } = useExecuteTemplate(() => {
@@ -42,7 +54,7 @@ export function SessionsList() {
 
     // Handle bulk delete with confirmation
     const handle_bulk_delete = async (selectedIds: string[]) => {
-        const bulkDeleteTemplate = data?._templates?.bulkDelete;
+        const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulkDeleteTemplate) return;
 
         const count = selectedIds.length;
@@ -104,11 +116,14 @@ export function SessionsList() {
 
     return (
         <HalCollectionList
-            resource={data}
+            resource={enrichedResource}
             onRefresh={refresh}
             onBulkDelete={handle_bulk_delete}
             primaryKey="sessionId"
             columnConfig={{
+                sessionId: { hidden: true },
+                userId: { hidden: true },
+                isCurrent: { hidden: true },
                 userAgent: { label: 'Device & Browser' },
                 ipAddress: { label: 'IP Address' },
                 dateLastAccessed: { label: 'Last Accessed' },
@@ -120,6 +135,7 @@ export function SessionsList() {
             emptyMessage="No active sessions found."
             emptyIcon={<Clock className="w-12 h-12" />}
             showCreateButton={false} // Sessions don't have a create operation
+            selectableFilter={(item: any) => !item.isCurrent} // Prevent current session selection
         />
     );
 }

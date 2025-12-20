@@ -1,3 +1,6 @@
+// Pages
+export { SessionsPage } from './sessions_page';
+
 // Components
 export { SessionsList } from './components/sessions_list';
 export { SessionRow } from './components/session_row';

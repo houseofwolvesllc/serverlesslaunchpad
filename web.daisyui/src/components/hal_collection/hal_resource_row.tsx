@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 export interface HalResourceRowProps {
     item: HalObject;
     columns: InferredColumn[];
+    showCheckboxColumn?: boolean;
     selectable?: boolean;
     selected?: boolean;
     onToggleSelect?: () => void;
@@ -39,6 +40,7 @@ export interface HalResourceRowProps {
 export function HalResourceRow({
     item,
     columns,
+    showCheckboxColumn = false,
     selectable = false,
     selected = false,
     onToggleSelect,
@@ -56,7 +58,7 @@ export function HalResourceRow({
     };
 
     const handleCheckboxChange = () => {
-        if (onToggleSelect) {
+        if (onToggleSelect && selectable) {
             onToggleSelect();
         }
     };
@@ -66,16 +68,18 @@ export function HalResourceRow({
             className={cn(onRowClick && 'cursor-pointer hover:bg-base-200')}
             onClick={handleRowClick}
         >
-            {/* Selection checkbox */}
-            {selectable && (
+            {/* Selection checkbox - always show column if bulk operations enabled */}
+            {showCheckboxColumn && (
                 <td className="w-12" onClick={handleCheckboxClick}>
-                    <input
-                        type="checkbox"
-                        className="checkbox checkbox-sm"
-                        checked={selected}
-                        onChange={handleCheckboxChange}
-                        aria-label="Select row"
-                    />
+                    {selectable && (
+                        <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm"
+                            checked={selected}
+                            onChange={handleCheckboxChange}
+                            aria-label="Select row"
+                        />
+                    )}
                 </td>
             )}
 

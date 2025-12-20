@@ -32,6 +32,9 @@ export interface HalCollectionListProps {
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
     showBulkDelete?: boolean;
+    selectableFilter?: (item: HalObject) => boolean;
+    /** Page title to display in the header row */
+    title?: string;
 }
 
 /**
@@ -74,6 +77,8 @@ export function HalCollectionList({
     showCreateButton = true,
     showRefreshButton = true,
     showBulkDelete = true,
+    selectableFilter,
+    title,
 }: HalCollectionListProps) {
     const { items, columns, templates, isEmpty } = useHalCollection(resource, { columnConfig });
 
@@ -123,32 +128,57 @@ export function HalCollectionList({
         }
     };
 
-    // Handle select all checkbox
+    // Handle select all checkbox - only select selectable items
     const handleSelectAll = () => {
-        toggleAll();
+        if (selectableFilter) {
+            // Filter items to only include selectable ones
+            const selectableItems = items.filter(selectableFilter);
+            const selectableIds = selectableItems.map(item => item[detectedPrimaryKey]);
+
+            // Check if all selectable items are selected
+            const allSelectableSelected = selectableIds.every(id => isSelected(id));
+
+            if (allSelectableSelected) {
+                // Deselect all
+                clearSelection();
+            } else {
+                // Select all selectable items
+                selectableIds.forEach(id => {
+                    if (!isSelected(id)) {
+                        toggleSelection(id);
+                    }
+                });
+            }
+        } else {
+            toggleAll();
+        }
     };
 
     // Empty state
     if (isEmpty) {
         return (
             <div className="space-y-4">
-                {/* Toolbar for empty state */}
-                <div className="flex items-center justify-between">
-                    <div></div>
-                    <div className="flex items-center gap-2">
-                        {showCreateButton && createTemplate && (
-                            <button className="btn btn-primary btn-sm" onClick={handleCreate}>
-                                <Plus className="w-4 h-4 mr-2" />
-                                {createTemplate.title || 'Create'}
-                            </button>
-                        )}
-                        {showRefreshButton && (
-                            <button className="btn btn-ghost btn-sm" onClick={handleRefresh}>
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Refresh
-                            </button>
-                        )}
+                {/* Page title */}
+                {title && (
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
                     </div>
+                )}
+
+                {/* Action toolbar */}
+                <div className="flex items-center justify-end gap-2">
+                    {showCreateButton && createTemplate && (
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleCreate}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            {createTemplate.title || 'Create'}
+                        </button>
+                    )}
+                    {showRefreshButton && (
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh}>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh
+                        </button>
+                    )}
                 </div>
 
                 {/* Empty state card */}
@@ -158,7 +188,7 @@ export function HalCollectionList({
                         <h3 className="card-title">No Items</h3>
                         <p className="text-sm text-base-content/70 mb-6">{emptyMessage}</p>
                         {showCreateButton && createTemplate && (
-                            <button className="btn btn-primary" onClick={handleCreate}>
+                            <button className="btn border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleCreate}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 {createTemplate.title || 'Create First Item'}
                             </button>
@@ -171,11 +201,18 @@ export function HalCollectionList({
 
     return (
         <div className="space-y-4">
-            {/* Action Toolbar */}
+            {/* Page title */}
+            {title && (
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                </div>
+            )}
+
+            {/* Action toolbar */}
             <div className="flex items-center justify-between">
                 {hasSelection ? (
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">
+                        <span className="text-sm text-base-content/70">
                             {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
                         </span>
                         <button className="btn btn-ghost btn-xs" onClick={clearSelection}>
@@ -183,24 +220,24 @@ export function HalCollectionList({
                         </button>
                     </div>
                 ) : (
-                    <div></div>
+                    <div />
                 )}
 
                 <div className="flex items-center gap-2">
                     {hasSelection && canBulkDelete && (
-                        <button className="btn btn-error btn-sm" onClick={handleBulkDelete}>
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleBulkDelete}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete Selected
                         </button>
                     )}
                     {showCreateButton && createTemplate && (
-                        <button className="btn btn-primary btn-sm" onClick={handleCreate}>
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleCreate}>
                             <Plus className="w-4 h-4 mr-2" />
                             {createTemplate.title || 'Create'}
                         </button>
                     )}
                     {showRefreshButton && (
-                        <button className="btn btn-ghost btn-sm" onClick={handleRefresh}>
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Refresh
                         </button>
@@ -238,13 +275,15 @@ export function HalCollectionList({
                         <tbody>
                             {items.map((item) => {
                                 const itemId = item[detectedPrimaryKey];
+                                const isItemSelectable = canBulkDelete && (!selectableFilter || selectableFilter(item));
 
                                 return (
                                     <HalResourceRow
                                         key={itemId || Math.random()}
                                         item={item}
                                         columns={columns}
-                                        selectable={canBulkDelete}
+                                        showCheckboxColumn={canBulkDelete}
+                                        selectable={isItemSelectable}
                                         selected={isSelected(itemId)}
                                         onToggleSelect={() => toggleSelection(itemId)}
                                         onRowClick={onRowClick}

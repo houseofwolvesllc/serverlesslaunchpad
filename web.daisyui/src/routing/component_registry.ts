@@ -17,8 +17,8 @@
  */
 
 import { ComponentType } from 'react';
-import { SessionsList } from '../features/sessions';
-import { ApiKeysList } from '../features/api_keys';
+import { SessionsPage } from '../features/sessions';
+import { ApiKeysPage } from '../features/api_keys';
 import { Admin } from '../features/admin';
 
 /**
@@ -27,11 +27,13 @@ import { Admin } from '../features/admin';
  * This is the single source of truth for mapping navigation IDs to components.
  * When the API sitemap includes a navigation item with a given ID, the router
  * will look up the component here to render for that route.
+ *
+ * NOTE: Unregistered routes are handled by GenericResourceView catch-all
  */
 export const componentRegistry: Record<string, ComponentType> = {
     // User resources
-    sessions: SessionsList,
-    'api-keys': ApiKeysList,
+    sessions: SessionsPage,
+    'api-keys': ApiKeysPage,
 
     // Admin resources
     admin: Admin,

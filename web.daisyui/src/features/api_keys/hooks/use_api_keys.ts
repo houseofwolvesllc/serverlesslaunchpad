@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../services/api.client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
 import { AuthenticationContext } from '../../authentication/context/authentication_context';
@@ -33,6 +34,7 @@ import { type HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
  */
 export function useApiKeys() {
     const { signedInUser } = useContext(AuthenticationContext);
+    const { userId } = useParams<{ userId?: string }>();
 
     // State
     const [data, setData] = useState<HalObject | null>(null);
@@ -41,7 +43,10 @@ export function useApiKeys() {
     const [apiKeysEndpoint, setApiKeysEndpoint] = useState<string | null>(null);
 
     /**
-     * Discover API keys endpoint via hypermedia
+     * Discover API keys endpoint via HATEOAS
+     *
+     * For current user: Discover from entry point
+     * For other users: Fetch user resource, discover from _templates.api-keys
      */
     const discoverEndpoint = useCallback(async () => {
         if (!signedInUser) {
@@ -50,12 +55,30 @@ export function useApiKeys() {
         }
 
         try {
-            const entryPoint = getEntryPoint();
-            // Get API keys template target (now in templates for POST operations)
-            const apiKeysHref = await entryPoint.getTemplateTarget('api-keys');
+            let apiKeysHref: string;
 
-            if (!apiKeysHref) {
-                throw new Error('API keys endpoint not found');
+            if (userId) {
+                // Fetch user resource to discover API keys endpoint (HATEOAS)
+                const userResource = await apiClient.get(`/users/${userId}`);
+
+                // Extract api-keys template from user resource
+                const apiKeysTemplate = userResource?._templates?.['api-keys'];
+
+                if (!apiKeysTemplate?.target) {
+                    throw new Error('API keys not available for this user');
+                }
+
+                apiKeysHref = apiKeysTemplate.target;
+            } else {
+                // No userId - discover current user's API keys from entry point
+                const entryPoint = getEntryPoint();
+                const discoveredHref = await entryPoint.getTemplateTarget('api-keys');
+
+                if (!discoveredHref) {
+                    throw new Error('API keys endpoint not found');
+                }
+
+                apiKeysHref = discoveredHref;
             }
 
             setApiKeysEndpoint(apiKeysHref);
@@ -63,7 +86,7 @@ export function useApiKeys() {
             setError(err instanceof Error ? err.message : 'Failed to discover API keys endpoint');
             setLoading(false);
         }
-    }, [signedInUser]);
+    }, [signedInUser, userId]);
 
     /**
      * Fetch API keys HAL resource from API using POST

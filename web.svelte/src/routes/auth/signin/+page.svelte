@@ -1,8 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { signIn, SignInStep } from '$lib/auth';
+	import { signIn, SignInStep, verifySession } from '$lib/auth';
 	import { authStore } from '$lib/stores/auth_store';
 	import { logger } from '$lib/logging/logger';
+	import { getEntryPoint, refreshCapabilities } from '$lib/services/entry_point_provider';
+	import { getInitializationPromise } from '$lib/init';
 	import Input from '$lib/components/ui/input.svelte';
 	import Label from '$lib/components/ui/label.svelte';
 	import Button from '$lib/components/ui/button.svelte';
@@ -15,6 +18,44 @@
 	let password = '';
 	let loading = false;
 	let errorMessage = '';
+	let checkingAuth = true;
+
+	// Check for existing session on mount
+	onMount(async () => {
+		try {
+			// Wait for initialization
+			await getInitializationPromise();
+
+			// Refresh capabilities to discover templates
+			await refreshCapabilities();
+
+			// Check if verify template exists (indicates valid session)
+			const entryPoint = await getEntryPoint();
+			const verifyTemplate = await entryPoint.getTemplate('verify');
+
+			if (verifyTemplate) {
+				// Valid session exists - verify and redirect
+				logger.debug('Valid session found, verifying and redirecting');
+				try {
+					const user = await verifySession();
+					authStore.setUser(user);
+					authStore.setInitialized(true);
+					goto('/dashboard');
+					return;
+				} catch (error) {
+					logger.error('Session verification failed', { error });
+				}
+			}
+
+			// No valid session or verification failed
+			authStore.setInitialized(true);
+		} catch (error) {
+			logger.error('Error checking authentication', { error });
+			authStore.setInitialized(true);
+		} finally {
+			checkingAuth = false;
+		}
+	});
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -51,7 +92,12 @@
 		</CardHeader>
 
 		<CardContent>
-			<form on:submit={handleSubmit} class="space-y-4">
+			{#if checkingAuth}
+				<div class="flex justify-center py-8">
+					<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+				</div>
+			{:else}
+				<form on:submit={handleSubmit} class="space-y-4">
 				{#if errorMessage}
 					<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
 						<div class="flex items-start gap-3">
@@ -98,6 +144,7 @@
 					Don't have an account? <a href="/auth/signup" class="text-primary hover:underline">Sign Up</a>
 				</div>
 			</form>
+			{/if}
 		</CardContent>
 	</Card>
 </div>

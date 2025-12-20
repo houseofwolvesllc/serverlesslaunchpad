@@ -49,11 +49,11 @@ export function ApiKeysList() {
         refresh();
     };
 
-    const createTemplate = data?._templates?.default; // HAL-FORMS standard: 'default' is the primary create template
+    const createTemplate = data?._templates?.create || data?._templates?.default; // Try 'create' first, fallback to 'default'
 
     // Handle bulk delete with confirmation
     const handleBulkDelete = async (selectedIds: string[]) => {
-        const bulkDeleteTemplate = data?._templates?.bulkDelete;
+        const bulkDeleteTemplate = data?._templates?.['bulk-delete'] || data?._templates?.bulkDelete;
         if (!bulkDeleteTemplate) return;
 
         const count = selectedIds.length;

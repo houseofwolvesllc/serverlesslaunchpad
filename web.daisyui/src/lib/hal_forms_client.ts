@@ -21,9 +21,9 @@ class LazyHalFormsClient {
         }
     }
 
-    async fetch(url: string) {
+    async fetch(url: string, options?: { headers?: Record<string, string> }) {
         await this.ensureInitialized();
-        return this.client!.fetch(url);
+        return this.client!.fetch(url, options);
     }
 
     async executeTemplate(template: any, data: Record<string, any>) {

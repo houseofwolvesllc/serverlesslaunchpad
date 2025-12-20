@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
-import { Home, Code2, ChevronRight, Menu, AlertCircle, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Code2, ChevronRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme_toggle';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
-import { NoMatch } from '@/components/no_match';
 import { UserButton } from '@/components/user_button/user_button';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { cn } from '@/lib/utils';
 import { useDisclosure } from '@/hooks/use_disclosure';
 import { useHeadroom } from '@/hooks/use_headroom';
@@ -11,15 +12,44 @@ import WebConfigurationStore from '@/configuration/web_config_store';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
+import { GenericResourceView } from '../resource/generic_resource_view';
+
+/**
+ * Wrapper to force GenericResourceView to remount when path changes
+ * This prevents stale state issues when navigating between different resources
+ */
+function GenericResourceViewWrapper() {
+    // GenericResourceView will remount automatically when the route changes
+    // due to how React Router handles route elements
+    return <GenericResourceView />;
+}
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
     const { navigation, navStructure, links, templates, isLoading: isSitemapLoading, error: sitemapError, refetch } = useSitemap();
 
+    const location = useLocation();
+    const navigate = useNavigate();
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure(false);
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
     const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
+
+    // Track if this is the initial page load
+    const isInitialLoad = useRef(true);
+
+    // Redirect to dashboard on direct URL navigation (refresh, bookmark, direct entry)
+    // This enforces pure HATEOAS navigation - users must start from dashboard and follow links
+    useEffect(() => {
+        if (isInitialLoad.current) {
+            isInitialLoad.current = false;
+
+            // If initial load and not on dashboard, redirect
+            if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+                navigate('/dashboard', { replace: true });
+            }
+        }
+    }, [location.pathname, navigate]);
 
     // Load API base URL for documentation link
     useEffect(() => {
@@ -60,7 +90,7 @@ export const Dashboard = () => {
                         <h3 className="font-bold">Navigation Error</h3>
                         <div className="text-sm">
                             <p className="mb-2">Failed to load navigation menu.</p>
-                            <button onClick={refetch} className="btn btn-sm btn-outline gap-2">
+                            <button onClick={refetch} className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200 gap-2">
                                 <RefreshCw className="w-3 h-3" />
                                 Retry
                             </button>
@@ -132,26 +162,61 @@ export const Dashboard = () => {
                         </button>
                     </div>
 
-                    {/* Logo */}
-                    <div className="flex-1 px-2">
-                        <img src="/svg/serverless_launchpad_logo.svg" alt="Serverless Launchpad Logo" className="h-14" />
+                    {/* Breadcrumbs */}
+                    <div className="flex-1 px-2 hidden md:flex">
+                        <Breadcrumbs />
+                    </div>
+
+                    {/* Right side actions */}
+                    <div className="flex-none flex items-center gap-1">
+                        {/* Search Icon (disabled) */}
+                        <span
+                            className="w-12 h-12 flex items-center justify-center opacity-40 cursor-not-allowed"
+                            aria-label="Search"
+                            title="Search (coming soon)"
+                        >
+                            <Search className="h-5 w-5" />
+                        </span>
+
+                        {/* Help Icon (disabled) */}
+                        <span
+                            className="w-12 h-12 flex items-center justify-center opacity-40 cursor-not-allowed"
+                            aria-label="Help"
+                            title="Help (coming soon)"
+                        >
+                            <HelpCircle className="h-5 w-5" />
+                        </span>
+
+                        {/* Theme Toggle */}
+                        <ThemeToggle />
                     </div>
                 </div>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4">
-                    <Routes>
-                        {/* Home/default route */}
-                        <Route index element={<DashboardHome />} />
+                <main className="flex-1 p-4 bg-muted/30 min-h-[calc(100vh-64px)]">
+                    {isSitemapLoading ? (
+                        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                            <span className="loading loading-spinner loading-lg"></span>
+                            <div className="skeleton h-4 w-64"></div>
+                            <div className="skeleton h-4 w-48"></div>
+                        </div>
+                    ) : (
+                        <Routes key={location.pathname}>
+                            {/* Redirect root to dashboard */}
+                            <Route index element={<DashboardHome />} />
 
-                        {/* Dynamic routes from sitemap */}
-                        {dynamicRoutes.map((route, index) => (
-                            <Route key={route.path || index} path={route.path} element={route.element} />
-                        ))}
+                            {/* Dashboard home route */}
+                            <Route path="dashboard" element={<DashboardHome />} />
 
-                        {/* Fallback for unknown routes */}
-                        <Route path="*" element={<NoMatch />} />
-                    </Routes>
+                            {/* Dynamic routes from sitemap */}
+                            {dynamicRoutes.map((route, index) => (
+                                <Route key={route.path || index} path={route.path} element={route.element} />
+                            ))}
+
+                            {/* Catch-all for HAL resources (users, my-profile, etc.) */}
+                            <Route path="*" element={<GenericResourceViewWrapper />} />
+                        </Routes>
+                    )}
                 </main>
             </div>
 
@@ -164,8 +229,17 @@ export const Dashboard = () => {
                         desktopOpened ? 'w-[300px]' : 'lg:w-0 lg:overflow-hidden w-[300px]'
                     )}
                 >
+                    {/* Branding */}
                     <div className="p-4 border-b border-base-300">
-                        <img src="/svg/serverless_launchpad_logo.svg" alt="Serverless Launchpad Logo" className="h-14" />
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <span className="text-primary font-bold text-lg">SL</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-sm">Serverless Launchpad</span>
+                                <span className="text-xs text-base-content/70">DaisyUI Edition</span>
+                            </div>
+                        </div>
                     </div>
                     {navigationContent}
                 </aside>
