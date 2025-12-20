@@ -68,6 +68,7 @@ export async function executePostAction(
     const resourceName = title || extractResourceName(href);
 
     try {
+        console.log('[POST Action] Executing POST to:', href);
         // Execute POST request
         const response = await apiClient.post(href);
 
@@ -84,9 +85,16 @@ export async function executePostAction(
 
         // POST-only API: navigate to the href we just called
         // The POST endpoint IS the resource identifier (no self link needed)
-        // Pass response data via navigation state for performance
+        // Pass response data AND navigation source via state
+        console.log('[POST Action] Navigating to:', href, 'with state:', {
+            data: '(response data)',
+            navigationSource: 'menu'
+        });
         navigate(href, {
-            state: { data: response },
+            state: {
+                data: response,
+                navigationSource: 'menu'  // Mark as menu navigation for breadcrumb tracking
+            },
         });
     } catch (error) {
         // Handle errors with user-friendly messages

@@ -8,8 +8,15 @@
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SessionsList } from './components/sessions_list';
+import { useSessions } from './hooks/use_sessions';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
 
 export const SessionsPage = () => {
+    const { data } = useSessions();
+
+    // Track navigation for breadcrumbs
+    useHalResourceTracking(data);
+
     return (
         <div className="space-y-6">
             {/* Page Header */}

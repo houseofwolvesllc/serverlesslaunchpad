@@ -14,6 +14,7 @@ import { HalCollectionList } from '@/components/hal_collection';
 import { HalResourceDetail } from '@/components/hal_resource';
 import { NoMatch } from '@/components/no_match';
 import { useHalResource } from '@/hooks/use_hal_resource';
+import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking';
 import { halClient } from '@/lib/hal_forms_client';
 import { isCollection } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -64,6 +65,9 @@ export function GenericResourceView() {
     // Fetch resource using path
     // If template found in sitemap, use POST; otherwise use GET
     const { data, loading, error, refetch } = useHalResource(urlToFetch, template);
+
+    // Track this resource in navigation history
+    useHalResourceTracking(data);
 
     // Detect if this is a collection
     const isCollectionView = isCollection(data);
