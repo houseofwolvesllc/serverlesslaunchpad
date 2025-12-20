@@ -6,9 +6,9 @@
  * capability refresh lifecycle for the React/Vite application.
  */
 
-import { getEntryPoint as getConfiguredEntryPoint, type ViteEntryPoint } from './entry_point';
+import { getEntryPoint as getConfiguredEntryPoint, type EntryPoint } from './entry_point';
 
-let entryPointInstance: ViteEntryPoint | null = null;
+let entryPointInstance: EntryPoint | null = null;
 
 /**
  * Initialize the global entry point instance
@@ -30,7 +30,7 @@ export async function initializeEntryPoint(): Promise<void> {
  * @returns The initialized EntryPoint instance
  * @throws Error if entry point not initialized
  */
-export function getEntryPoint(): ViteEntryPoint {
+export function getEntryPoint(): EntryPoint {
     if (!entryPointInstance) {
         throw new Error('Entry point not initialized. Call initializeEntryPoint() first.');
     }
