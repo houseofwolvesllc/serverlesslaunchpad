@@ -1,6 +1,6 @@
 import { IconUser, IconLogout } from '@tabler/icons-react';
-import { LinksGroup } from '../NavbarLinksGroup/NavbarLinksGroup';
-import { AuthenticationContext, useAuth } from '../../features/Authentication';
+import { LinksGroup } from '../navbar_links_group/navbar_links_group';
+import { AuthenticationContext, useAuth } from '../../features/authentication';
 import { useContext } from 'react';
 
 export function UserButton() {
