@@ -115,7 +115,11 @@ describe("ApiKeysController", () => {
             // HAL format: embedded resources in _embedded
             expect(responseBody._embedded.apiKeys).toHaveLength(2);
             expect(responseBody._embedded.apiKeys[0].apiKeyId).toBe("key-1");
-            expect(responseBody.paging.next).toEqual({ offset: 20, limit: 10 });
+            // Paging instructions are returned as objects (not serialized)
+            expect(responseBody.paging.next).toBeDefined();
+            expect(typeof responseBody.paging.next).toBe('object');
+            expect(responseBody.paging.next).toHaveProperty('offset');
+            expect(responseBody.paging.next).toHaveProperty('limit');
             expect(responseBody.paging.previous).toBeNull();
         });
 

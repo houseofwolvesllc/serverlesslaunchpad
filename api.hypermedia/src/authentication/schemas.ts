@@ -21,6 +21,7 @@ export const AuthenticateSchema = z.object({
 
 export const SignoutSchema = z.object({
     headers: z.object({
+        // SessionToken in Authorization header (required - API keys cannot be revoked)
         authorization: z.string().startsWith("SessionToken "),
         "user-agent": z.string(),
         "x-forwarded-for": z.string(),

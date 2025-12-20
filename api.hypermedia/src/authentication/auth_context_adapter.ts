@@ -57,18 +57,25 @@ export class AuthContextAdapter extends HalResourceAdapter {
     }
 
     get _templates(): HalObject["_templates"] {
-        return {
+        const templates: HalObject["_templates"] = {
             verify: this.createTemplate(
                 "Verify current session",
                 "POST",
                 "/auth/verify"
             ),
-            revoke: this.createTemplate(
+        };
+
+        // Only allow session revocation for session-based authentication
+        // API keys cannot be revoked through this endpoint
+        if (this.authContext.access.type === "session") {
+            templates.revoke = this.createTemplate(
                 "Revoke current session",
                 "POST",
                 "/auth/revoke"
-            ),
-        };
+            );
+        }
+
+        return templates;
     }
 
     get _embedded(): HalObject["_embedded"] {

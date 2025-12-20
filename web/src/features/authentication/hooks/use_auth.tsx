@@ -62,7 +62,7 @@ async function ensureAmplifyConfigured() {
 }
 
 export const useAuth = function () {
-    const { setSignedInUser } = useContext(AuthenticationContext);
+    const { signedInUser, setSignedInUser } = useContext(AuthenticationContext);
 
     async function authorize(): Promise<User> {
         try {
@@ -125,19 +125,20 @@ export const useAuth = function () {
                 
                 if (config.features.debug_mode) {
                     console.log('✅ Session federated with hypermedia API', response);
+                    console.log('📦 _embedded.access:', response._embedded?.access);
+                    console.log('🎫 sessionToken from API:', response._embedded?.access?.sessionToken);
                 }
 
-                const { user, authContext, links } = response.data;
-                
+                // HAL response: properties are at root level with _links and _embedded
                 return {
                     sessionKey,
-                    username: user.userId || user.username || '',
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    name: user.name || `${user.firstName} ${user.lastName}`,
-                    links: links,
-                    authContext: authContext,
+                    username: response.userId || '',
+                    email: response.email,
+                    firstName: response.firstName,
+                    lastName: response.lastName,
+                    name: `${response.firstName} ${response.lastName}`,
+                    links: response._links,
+                    authContext: response._embedded?.access,
                 };
             } catch (error) {
                 console.error('❌ API federation failed:', error);
@@ -178,19 +179,17 @@ export const useAuth = function () {
                 console.log('✅ Session verified with hypermedia API', response);
             }
 
-            // Extract user data from hypermedia response
-            const { user, authContext, links } = response.data;
-
+            // HAL response: properties are at root level with _links and _embedded
             // Create user object compatible with existing interface
             const verifiedUser: User = {
-                username: user.userId || user.username || '',
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                name: user.name || `${user.firstName} ${user.lastName}`,
+                username: response.userId || '',
+                email: response.email,
+                firstName: response.firstName,
+                lastName: response.lastName,
+                name: `${response.firstName} ${response.lastName}`,
                 // Store hypermedia links for future navigation
-                links: links,
-                authContext: authContext,
+                links: response._links,
+                authContext: response._embedded?.access,
             };
 
             // Set user in context
@@ -227,19 +226,34 @@ export const useAuth = function () {
         }
     }
 
-    async function revokeSession(authSession: amplify.AuthSession): Promise<void> {
+    async function revokeSession(sessionToken: string | undefined): Promise<void> {
         try {
             const config = await WebConfigurationStore.getConfig();
             if (config.features.debug_mode) {
-                console.log('🔓 Revoking hypermedia API session', authSession);
+                console.log('🔓 Revoking hypermedia API session');
+                console.log('SessionToken:', sessionToken ? `${sessionToken.substring(0, 10)}...` : 'undefined');
             }
 
-            // Call the hypermedia API revoke endpoint
-            // Session cookie will be automatically sent and cleared by server
+            // Session revocation requires SessionToken in Authorization header
+            // API keys cannot be revoked through this endpoint
+            if (!sessionToken) {
+                if (config.features.debug_mode) {
+                    console.warn('⚠️ No session token available for revocation');
+                }
+                // Clean up client-side cookies
+                CookieService.removeSessionCookie();
+                return;
+            }
+
+            // Call the hypermedia API revoke endpoint with SessionToken
             try {
+                if (config.features.debug_mode) {
+                    console.log('🌐 Calling /auth/revoke with SessionToken');
+                }
                 await apiClient.request('/auth/revoke', {
                     method: 'POST',
                     headers: {
+                        'Authorization': `SessionToken ${sessionToken}`,
                         'Content-Type': 'application/json',
                     },
                 });
@@ -405,12 +419,26 @@ export const useAuth = function () {
 
     async function signOut() {
         try {
-            const authSession = await amplify.fetchAuthSession();
-            if (authSession) {
-                await revokeSession(authSession);
+            const config = await WebConfigurationStore.getConfig();
+            if (config.features.debug_mode) {
+                console.log('👤 Signed in user:', signedInUser);
+                console.log('🔑 Auth context:', signedInUser?.authContext);
+            }
+
+            // Get sessionToken from current user context
+            const sessionToken = signedInUser?.authContext?.sessionToken;
+            if (config.features.debug_mode) {
+                console.log('🎫 Extracted sessionToken:', sessionToken ? 'present' : 'missing');
+            }
+
+            if (sessionToken) {
+                await revokeSession(sessionToken);
+            } else if (config.features.debug_mode) {
+                console.warn('⚠️ No sessionToken found in user context, skipping revoke');
             }
         } catch (error) {
             // User might not be signed in, continue with signout
+            console.warn('⚠️ Error during signout revoke:', error);
         }
 
         await amplify.signOut();

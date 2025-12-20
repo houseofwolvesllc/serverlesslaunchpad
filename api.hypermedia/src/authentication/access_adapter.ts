@@ -34,6 +34,10 @@ export class AccessAdapter extends HalResourceAdapter {
         return this.access.userAgent;
     }
 
+    get sessionToken() {
+        return this.access.sessionToken;
+    }
+
     get dateLastAccessed() {
         return this.access.dateLastAccessed;
     }
