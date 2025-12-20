@@ -52,7 +52,7 @@ describe('executePostAction', () => {
 
         // Verify navigation occurred to self link
         expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
-            state: { data: mockResponse },
+            state: { data: mockResponse, navigationSource: 'menu' },
         });
     });
 
@@ -195,7 +195,7 @@ describe('executePostAction', () => {
         await executePostAction('/users/abc123/api-keys/create', 'Create', mockNavigate);
 
         expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/create', {
-            state: { data: mockResponse }
+            state: { data: mockResponse, navigationSource: 'menu' }
         });
     });
 
@@ -210,7 +210,7 @@ describe('executePostAction', () => {
         await executePostAction('/users/abc123/api-keys/list', 'API Keys', mockNavigate);
 
         expect(mockNavigate).toHaveBeenCalledWith('/users/abc123/api-keys/list', {
-            state: { data: mockResponse }
+            state: { data: mockResponse, navigationSource: 'menu' }
         });
     });
 });
