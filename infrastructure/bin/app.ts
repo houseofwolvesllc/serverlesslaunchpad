@@ -5,6 +5,7 @@ import "source-map-support/register";
 import { getConfiguration } from "../config/stack_configuration";
 import { AlbStack } from "../lib/alb/alb_stack";
 import { CognitoStack } from "../lib/auth/cognito_stack";
+import { DynamoDbStack } from "../lib/data/dynamodb_stack";
 import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
 import { NetworkStack } from "../lib/network/network_stack";
 import { SecretsStack } from "../lib/secrets/secrets_stack";
@@ -71,6 +72,11 @@ const cognitoStack = new CognitoStack(app, `slp-cognito-stack-${environment}`, {
     description: `Cognito User Pool for Serverless Launchpad ${environment}`,
 });
 
+const dynamoDbStack = new DynamoDbStack(app, `slp-dynamodb-stack-${environment}`, {
+    ...commonProps,
+    description: `DynamoDB tables for Serverless Launchpad ${environment}`,
+});
+
 // Create network stack with shared VPC and target group
 const networkStack = new NetworkStack(app, `slp-network-stack-${environment}`, {
     ...commonProps,
@@ -79,10 +85,11 @@ const networkStack = new NetworkStack(app, `slp-network-stack-${environment}`, {
 });
 
 // Create Lambda stack with pre-created VPC (creates its own target group)
+// Note: Lambda stack looks up the configuration secret by name to avoid cross-stack export dependencies
 const apiLambdaStack = new ApiLambdaStack(app, `slp-lambda-stack-${environment}`, {
     ...commonProps,
     description: `API Lambda function for Serverless Launchpad ${environment}`,
-    configurationSecret: secretsStack.configurationSecret,
+    encryptionKey: secretsStack.encryptionKey,
     userPoolId: cognitoStack.userPool.userPoolId,
     userPoolClientId: cognitoStack.userPoolClient.userPoolClientId,
     vpc: networkStack.vpc,
@@ -99,9 +106,11 @@ const albStack = new AlbStack(app, `slp-alb-stack-${environment}`, {
 
 // Define stack dependencies - clean dependency chain
 cognitoStack.addDependency(secretsStack);
+dynamoDbStack.addDependency(secretsStack);
 networkStack.addDependency(secretsStack);
 apiLambdaStack.addDependency(secretsStack);
 apiLambdaStack.addDependency(cognitoStack);
+apiLambdaStack.addDependency(dynamoDbStack);
 apiLambdaStack.addDependency(networkStack);
 albStack.addDependency(networkStack);
 albStack.addDependency(apiLambdaStack); // ALB needs Lambda's target group
@@ -114,6 +123,7 @@ webPackages.forEach((pkg) => {
         ...commonProps,
         description: `Static web hosting for web.${pkg} - ${environment}`,
         webPackageName: pkg,
+        webBaseUrl: configuration.web.baseUrl,
     });
     // Web stacks depend on secrets for potential future config needs
     stack.addDependency(secretsStack);

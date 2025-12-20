@@ -18,6 +18,7 @@ import { parseRequestBody } from "./content_types/body_parser";
 import { ExtendedALBEvent } from "./extended_alb_event";
 import { ApiLogger } from "./logging";
 import { HttpMethod, Router } from "./router";
+import { InfrastructureConfigurationStore } from "@houseofwolves/serverlesslaunchpad.framework";
 
 // Import controllers for route registration
 import { ApiKeysController } from "./api_keys/api_keys_controller";
@@ -68,6 +69,19 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
 
     const logger = container.resolve(ApiLogger);
 
+    // Handle OPTIONS preflight requests
+    if (event.httpMethod === "OPTIONS") {
+        const corsHeaders = await getCorsHeaders(event);
+        return {
+            statusCode: 204,
+            headers: {
+                ...getSecurityHeaders(),
+                ...corsHeaders,
+            },
+            body: "",
+        };
+    }
+
     try {
         // Parse request body to check for method override (_method field)
         const extendedEvent = event as ExtendedALBEvent;
@@ -110,7 +124,15 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
 
         logger.logRequestSuccess("Request completed successfully", extendedEvent, response.statusCode, totalDuration);
 
-        return response;
+        // Add CORS headers to successful response
+        const corsHeaders = await getCorsHeaders(event);
+        return {
+            ...response,
+            headers: {
+                ...response.headers,
+                ...corsHeaders,
+            },
+        };
     } catch (error) {
         const totalDuration = Date.now() - startTime;
         const extendedEvent = event as ExtendedALBEvent;
@@ -126,7 +148,7 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
         );
 
         // Global error handling with content-type aware responses
-        return handleError(error as Error, event, traceId);
+        return await handleError(error as Error, event, traceId);
     }
 };
 
@@ -155,10 +177,42 @@ function getSecurityHeaders(): Record<string, string> {
     };
 }
 
+// Cached CORS configuration
+let corsConfig: { allowed_origin_suffix?: string } | undefined;
+
+/**
+ * Get CORS headers based on the request origin and configuration.
+ * Allows origins that match the configured suffix (e.g., ".serverlesslaunchpad.com")
+ */
+async function getCorsHeaders(event: ALBEvent): Promise<Record<string, string>> {
+    const origin = event.headers?.origin || event.headers?.Origin;
+
+    // Load config once and cache it
+    if (corsConfig === undefined) {
+        try {
+            const configStore = container.resolve(InfrastructureConfigurationStore);
+            const config = await configStore.get();
+            corsConfig = config.cors || {};
+        } catch {
+            corsConfig = {};
+        }
+    }
+
+    const suffix = corsConfig.allowed_origin_suffix;
+    const isAllowed = suffix && origin?.endsWith(suffix);
+
+    return {
+        "Access-Control-Allow-Origin": isAllowed ? origin! : "",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie, Cache-Control",
+        "Access-Control-Allow-Credentials": "true",
+    };
+}
+
 /**
  * Handle errors and generate appropriate responses with comprehensive error mapping
  */
-function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult {
+async function handleError(error: Error, event: ALBEvent, traceId?: string): Promise<ALBResult> {
     const acceptedContentType = getAcceptedContentType(event);
     const jsonAdapter = new JsonAdapter();
     const xhtmlAdapter = new XhtmlAdapter();
@@ -249,11 +303,15 @@ function handleError(error: Error, event: ALBEvent, traceId?: string): ALBResult
             ? jsonAdapter.format(responseData)
             : xhtmlAdapter.format(responseData);
 
+    // Get CORS headers for error responses
+    const corsHeaders = await getCorsHeaders(event);
+
     const response: ALBResult = {
         statusCode: status,
         headers: {
             "Content-Type": acceptedContentType,
             ...getSecurityHeaders(),
+            ...corsHeaders,
         },
         body,
     };

@@ -32,6 +32,11 @@ export const StackConfigurationSchema = z.object({
 
     // Tags to apply to all resources
     tags: z.record(z.string()).default({}),
+
+    // Web static hosting configuration
+    web: z.object({
+        baseUrl: z.string().optional(),
+    }),
 });
 
 export type StackConfiguration = z.infer<typeof StackConfigurationSchema>;
@@ -117,7 +122,7 @@ export function getConfiguration(environment: Environment): StackConfiguration {
             ...(albCertificateArn && { certificateArn: albCertificateArn }),
         },
         secrets: {
-            secretName: `serverlesslaunchpad/${environment}`,
+            secretName: `${environment}.serverlesslaunchpad.com`,
             ...envConfig.secrets,
         },
         tags: {
@@ -125,6 +130,9 @@ export function getConfiguration(environment: Environment): StackConfiguration {
             Project: "ServerlessLaunchpad",
             ManagedBy: "CDK",
             ...envConfig.tags,
+        },
+        web: {
+            baseUrl: process.env.WEB_BASE_URL?.trim() || undefined,
         },
     };
 
