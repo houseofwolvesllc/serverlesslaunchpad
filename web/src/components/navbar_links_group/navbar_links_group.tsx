@@ -3,6 +3,7 @@ import { Group, Box, Collapse, ThemeIcon, Text, UnstyledButton, rem } from '@man
 import { IconCalendarStats, IconChevronRight } from '@tabler/icons-react';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import classes from './navbar_links_group.module.css';
+import { logger } from '../../logging/logger';
 
 interface LinksGroupProps {
     icon: React.FC<any>;
@@ -37,7 +38,7 @@ export function LinksGroup({ icon: Icon, label, initiallyOpened, links }: LinksG
                 } catch (error) {
                     // Error already handled by action handler with notifications
                     // This catch is just for safety to prevent unhandled promise rejections
-                    console.error('Navigation error:', error);
+                    logger.error('Navigation error', { error });
                 }
             }}
         >

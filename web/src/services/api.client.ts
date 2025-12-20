@@ -1,4 +1,5 @@
 import WebConfigurationStore from '../configuration/web_config_store';
+import { logger } from '../logging/logger';
 
 /**
  * HAL (Hypertext Application Language) response structure
@@ -65,7 +66,8 @@ export class ApiClient {
         };
 
         // Add x-forwarded-for header for local development (typically set by load balancer)
-        if (config?.features?.debug_mode) {
+        // Always set in development mode (determined by Vite MODE)
+        if (import.meta.env.MODE === 'development') {
             defaultHeaders['X-Forwarded-For'] = '127.0.0.1';
         }
 
@@ -84,25 +86,26 @@ export class ApiClient {
         requestOptions.signal = controller.signal;
 
         try {
-            if (config?.features?.debug_mode) {
-                console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, {
-                    headers: requestOptions.headers,
-                    body: options.body,
-                });
-            }
+            logger.debug('API Request', {
+                method: options.method || 'GET',
+                url,
+                headers: requestOptions.headers,
+                body: options.body,
+            });
 
             const response = await fetch(url, requestOptions);
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                await this.handleErrorResponse(response, config);
+                await this.handleErrorResponse(response);
             }
 
             const data = await response.json();
 
-            if (config?.features?.debug_mode) {
-                console.log(`✅ API Response: ${response.status}`, data);
-            }
+            logger.debug('API Response', {
+                status: response.status,
+                data,
+            });
 
             // HAL responses are returned directly with _links and _embedded at root
             // Return as-is for HAL compatibility (response IS the data + hypermedia controls)
@@ -128,7 +131,7 @@ export class ApiClient {
         }
     }
 
-    private async handleErrorResponse(response: Response, config: any): Promise<never> {
+    private async handleErrorResponse(response: Response): Promise<never> {
         let error: ApiError;
 
         try {
@@ -144,9 +147,10 @@ export class ApiClient {
             };
         }
 
-        if (config?.features?.debug_mode) {
-            console.error(`❌ API Error: ${response.status}`, error);
-        }
+        logger.error('API Error', {
+            status: response.status,
+            error,
+        });
 
         throw new ApiClientError(response.status, error, response);
     }

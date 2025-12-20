@@ -18,6 +18,7 @@ import { RouteObject } from 'react-router-dom';
 import { createElement } from 'react';
 import { NavigationItem } from '../features/sitemap/utils/transform_navigation';
 import { getComponentForId } from './component_registry';
+import { logger } from '../logging/logger';
 
 /**
  * Extract all navigable items from sitemap (recursive)
@@ -146,10 +147,11 @@ export function generateRoutesFromSitemap(items: NavigationItem[]): RouteObject[
 
         if (!Component) {
             // Log warning but don't fail - graceful degradation
-            console.warn(
-                `[Dynamic Routing] No component registered for navigation id: "${item.id}"`,
-                `href: ${item.href}`
-            );
+            logger.warn('No component registered for navigation id', {
+                context: 'Dynamic Routing',
+                navigationId: item.id,
+                href: item.href,
+            });
             continue;
         }
 
