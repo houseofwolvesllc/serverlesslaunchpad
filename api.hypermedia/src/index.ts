@@ -24,7 +24,6 @@ import { AuthenticationController } from "./authentication/authentication_contro
 import { RootController } from "./root_controller";
 import { SessionsController } from "./sessions/sessions_controller";
 
-// Initialize the container once at module load time
 const container = getContainer();
 const router = new Router();
 
@@ -45,6 +44,7 @@ router.registerRoutes([RootController, AuthenticationController, SessionsControl
 export const handler = async (event: ALBEvent): Promise<ALBResult> => {
     const startTime = Date.now();
     const traceId = generateTraceId();
+
     const logger = container.resolve(ApiLogger);
 
     try {

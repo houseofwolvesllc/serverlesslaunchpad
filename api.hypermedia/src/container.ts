@@ -11,11 +11,12 @@ import {
 import {
     ApiConfigSchema,
     ApplicationSecretsStore,
-    AthenaApiKeyRepository,
-    AthenaSessionRepository,
-    AthenaUserRepository,
     AwsSecretsConfigurationStore,
     CachedConfigurationStore,
+    DynamoDbApiKeyRepository,
+    DynamoDbClientFactory,
+    DynamoDbSessionRepository,
+    DynamoDbUserRepository,
     FileConfigurationStore,
     InfrastructureConfigurationStore,
     JoseJwtVerifier,
@@ -33,6 +34,7 @@ import { ApiLogger } from "./logging";
  */
 class AppContainer {
     private static instance: Container;
+    private static infraConfigStore: InfrastructureConfigurationStore | undefined;
 
     /**
      * Get the singleton container instance.
@@ -53,29 +55,28 @@ class AppContainer {
     private static bindServices(): void {
         const container = AppContainer.instance;
 
-        // Authentication bindings
-        container.bind(Authenticator).to(SystemAuthenticator).asSingleton();
-        container.bind(SessionRepository).to(AthenaSessionRepository).asSingleton();
-        container.bind(ApiKeyRepository).to(AthenaApiKeyRepository).asSingleton();
-
-        // User management bindings
-        container.bind(UserRepository).to(AthenaUserRepository).asSingleton();
-
-        // Infrastructure configuration store (non-sensitive data with infinite caching)
+        // Infrastructure configuration store binding - created synchronously
         container
             .bind(InfrastructureConfigurationStore)
+            .toFactory(() => AppContainer.getInfraConfigStore())
+            .asSingleton();
+
+        // Authentication bindings
+        container.bind(Authenticator).to(SystemAuthenticator).asSingleton();
+
+        // DynamoDB client factory - creates and manages DynamoDB client instances
+        container
+            .bind(DynamoDbClientFactory)
             .toFactory(() => {
-                const environment = AppContainer.getEnvironment();
-                const baseStore = new FileConfigurationStore(
-                    ApiConfigSchema,
-                    path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
-                    `${environment}.infrastructure.json`
-                );
-                // Cache indefinitely - infrastructure config rarely changes
-                const cachedStore = new CachedConfigurationStore(baseStore, Infinity);
-                return new InfrastructureConfigurationStore(cachedStore);
+                const configStore = AppContainer.getInfraConfigStore();
+                return new DynamoDbClientFactory(configStore);
             })
             .asSingleton();
+
+        // DynamoDB repository bindings - factory injected automatically
+        container.bind(SessionRepository).to(DynamoDbSessionRepository).asSingleton();
+        container.bind(ApiKeyRepository).to(DynamoDbApiKeyRepository).asSingleton();
+        container.bind(UserRepository).to(DynamoDbUserRepository).asSingleton();
 
         // Application secrets store (sensitive data with 15-minute caching)
         container
@@ -106,6 +107,24 @@ class AppContainer {
                 return new ApiLogger(logLevel);
             })
             .asSingleton();
+    }
+
+    /**
+     * Synchronously create and cache infrastructure config store
+     * No async operations - just creates the store object
+     */
+    private static getInfraConfigStore(): InfrastructureConfigurationStore {
+        if (!AppContainer.infraConfigStore) {
+            const environment = AppContainer.getEnvironment();
+            const baseStore = new FileConfigurationStore(
+                ApiConfigSchema,
+                path.join(path.dirname(fileURLToPath(import.meta.url)), "../config"),
+                `${environment}.infrastructure.json`
+            );
+            const cachedStore = new CachedConfigurationStore(baseStore, Infinity);
+            AppContainer.infraConfigStore = new InfrastructureConfigurationStore(cachedStore);
+        }
+        return AppContainer.infraConfigStore;
     }
 
     /**

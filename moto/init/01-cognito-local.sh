@@ -4,31 +4,34 @@
 
 set -e
 
-COGNITO_LOCAL_ENDPOINT=${COGNITO_LOCAL_ENDPOINT:-http://localhost:9229}
-AWS_REGION=${AWS_DEFAULT_REGION:-us-west-2}
-
-# Fixed IDs for consistent configuration
-POOL_ID="us-west-2_local001"
-CLIENT_ID="local_client_001"
+# Source centralized configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 
 echo "========================================="
 echo "Initializing Cognito-Local"
 echo "========================================="
+echo "Environment: ${ENVIRONMENT}"
+echo ""
 
-# Wait for cognito-local to be ready
-echo "Waiting for cognito-local to be ready..."
-for i in {1..60}; do
-    if curl -s ${COGNITO_LOCAL_ENDPOINT}/health >/dev/null 2>&1; then
-        echo "✓ cognito-local is ready!"
+# Wait for cognito-local service to be ready (service-level check, not pool-specific)
+echo "Waiting for cognito-local service to be ready..."
+
+for i in {1..30}; do
+    # Check if the service is responding (root endpoint or any valid HTTP response)
+    if curl -s ${COGNITO_LOCAL_ENDPOINT}/ >/dev/null 2>&1; then
+        echo "✓ cognito-local service is ready!"
         break
     fi
-    echo "   Waiting... ($i/60)"
+    echo "   Waiting... ($i/30)"
     sleep 2
 done
 
-# Check if we can reach cognito-local health endpoint
-if ! curl -s ${COGNITO_LOCAL_ENDPOINT}/health >/dev/null 2>&1; then
-    echo "❌ cognito-local is not responding. Please check if the service is running."
+# Final check - verify cognito-local service is responding
+if ! curl -s ${COGNITO_LOCAL_ENDPOINT}/ >/dev/null 2>&1; then
+    echo "❌ cognito-local service is not responding. Please check if the service is running."
+    echo "   Attempted endpoint: ${COGNITO_LOCAL_ENDPOINT}/"
+    echo "   Try: docker-compose logs cognito-local"
     exit 1
 fi
 
@@ -45,15 +48,16 @@ EXISTING_POOLS=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
   --region $AWS_REGION 2>/dev/null || echo "{}")
 
 # Try to find existing pool by name
-EXISTING_POOL_ID=$(echo "$EXISTING_POOLS" | jq -r '.UserPools[] | select(.Name=="serverlesslaunchpad-local") | .Id' 2>/dev/null || echo "")
+POOL_NAME="serverlesslaunchpad-${ENVIRONMENT}"
+EXISTING_POOL_ID=$(echo "$EXISTING_POOLS" | jq -r '.UserPools[] | select(.Name=="'"${POOL_NAME}"'") | .Id' 2>/dev/null || echo "")
 
 if [ -z "$EXISTING_POOL_ID" ]; then
     # Create the user pool via AWS CLI
     echo "Creating new user pool..."
-    POOL_RESPONSE=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+    POOL_RESPONSE=$(aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
       cognito-idp create-user-pool \
-      --pool-name "serverlesslaunchpad-local" \
-      --region $AWS_REGION \
+      --pool-name "${POOL_NAME}" \
+      --region ${AWS_REGION} \
       --policies "PasswordPolicy={MinimumLength=8,RequireUppercase=true,RequireLowercase=true,RequireNumbers=true,RequireSymbols=true}" \
       --auto-verified-attributes email \
       --mfa-configuration OFF \
@@ -80,21 +84,22 @@ else
 fi
 
 # Check if client already exists for this pool
-EXISTING_CLIENTS=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+EXISTING_CLIENTS=$(aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp list-user-pool-clients \
-  --user-pool-id $POOL_ID \
-  --region $AWS_REGION 2>/dev/null || echo "{}")
+  --user-pool-id ${POOL_ID} \
+  --region ${AWS_REGION} 2>/dev/null || echo "{}")
 
-EXISTING_CLIENT_ID=$(echo "$EXISTING_CLIENTS" | jq -r '.UserPoolClients[] | select(.ClientName=="serverlesslaunchpad-local-client") | .ClientId' 2>/dev/null || echo "")
+CLIENT_NAME="serverlesslaunchpad-${ENVIRONMENT}-client"
+EXISTING_CLIENT_ID=$(echo "$EXISTING_CLIENTS" | jq -r '.UserPoolClients[] | select(.ClientName=="'"${CLIENT_NAME}"'") | .ClientId' 2>/dev/null || echo "")
 
 if [ -z "$EXISTING_CLIENT_ID" ]; then
     # Create the user pool client
     echo "Creating new user pool client..."
-    CLIENT_RESPONSE=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+    CLIENT_RESPONSE=$(aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
       cognito-idp create-user-pool-client \
-      --user-pool-id $POOL_ID \
-      --client-name "serverlesslaunchpad-local-client" \
-      --region $AWS_REGION \
+      --user-pool-id ${POOL_ID} \
+      --client-name "${CLIENT_NAME}" \
+      --region ${AWS_REGION} \
       --generate-secret \
       --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH ALLOW_USER_SRP_AUTH \
       --supported-identity-providers COGNITO \
@@ -120,22 +125,24 @@ if [ -z "$EXISTING_CLIENT_ID" ]; then
 else
     CLIENT_ID="$EXISTING_CLIENT_ID"
     # Get the client secret
-    CLIENT_DETAILS=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+    CLIENT_DETAILS=$(aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
       cognito-idp describe-user-pool-client \
-      --user-pool-id $POOL_ID \
-      --client-id $CLIENT_ID \
-      --region $AWS_REGION 2>/dev/null)
+      --user-pool-id ${POOL_ID} \
+      --client-id ${CLIENT_ID} \
+      --region ${AWS_REGION} 2>/dev/null)
     CLIENT_SECRET=$(echo "$CLIENT_DETAILS" | jq -r '.UserPoolClient.ClientSecret' 2>/dev/null || echo "local_client_secret_001")
     echo "✓ Using existing client: ${CLIENT_ID}"
 fi
 
-# Also save configuration for reference
+# Also save configuration for reference (generated dynamically, not checked in)
 cat > ./.cognito/config.json << EOF
 {
+  "GeneratedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "UserPools": {
     "${POOL_ID}": {
       "Id": "${POOL_ID}",
       "Name": "serverlesslaunchpad-local",
+      "Region": "${AWS_REGION}",
       "Policies": {
         "PasswordPolicy": {
           "MinimumLength": 8,
@@ -219,77 +226,70 @@ cat > ./.cognito/config.json << EOF
         }
       ]
     }
+  },
+  "Endpoints": {
+    "CognitoLocal": "${COGNITO_LOCAL_ENDPOINT}",
+    "Moto": "http://localhost:5555",
+    "JWKS": "${COGNITO_LOCAL_ENDPOINT}/${POOL_ID}/.well-known/jwks.json"
   }
 }
 EOF
 
-# Test JWKS endpoint
-echo "Testing JWKS endpoint..."
+# Wait for Moto service to be ready for SSM operations
+wait_for_moto || exit 1
+
+# Validate JWKS endpoint now that we have the actual pool ID
+echo "Validating JWKS endpoint..."
 JWKS_URL="${COGNITO_LOCAL_ENDPOINT}/${POOL_ID}/.well-known/jwks.json"
 if curl -s "${JWKS_URL}" | jq . >/dev/null 2>&1; then
     echo "✓ JWKS endpoint is working: ${JWKS_URL}"
 else
-    echo "⚠️  JWKS endpoint may not be ready yet: ${JWKS_URL}"
+    echo "⚠️  JWKS endpoint validation failed: ${JWKS_URL}"
+    echo "   This may indicate a problem with the user pool configuration"
+    echo "   JWT verification may not work correctly"
 fi
-
-# Wait for Moto to be ready for SSM operations
-echo "Waiting for Moto SSM to be ready..."
-for i in {1..30}; do
-    if curl -s http://localhost:5555/moto-api/reset >/dev/null 2>&1; then
-        echo "✓ Moto is ready for SSM operations!"
-        break
-    fi
-    echo "   Waiting for Moto... ($i/30)"
-    sleep 2
-done
-
-# Set AWS credentials for Moto SSM operations
-export AWS_ACCESS_KEY_ID=testing
-export AWS_SECRET_ACCESS_KEY=testing
-export AWS_SECURITY_TOKEN=testing
-export AWS_SESSION_TOKEN=testing
 
 # Store configuration in Moto's SSM Parameter Store for application use
 echo "Storing configuration in SSM Parameter Store..."
 
-aws --endpoint-url=http://localhost:5555 \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/cognito/user-pool-id" \
-  --value "$POOL_ID" \
+  --name "${SSM_COGNITO_POOL_ID}" \
+  --value "${POOL_ID}" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=http://localhost:5555 \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/cognito/client-id" \
-  --value "$CLIENT_ID" \
+  --name "${SSM_COGNITO_CLIENT_ID}" \
+  --value "${CLIENT_ID}" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=http://localhost:5555 \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/cognito/client-secret" \
-  --value "$CLIENT_SECRET" \
+  --name "${SSM_COGNITO_CLIENT_SECRET}" \
+  --value "${CLIENT_SECRET}" \
   --type SecureString \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=http://localhost:5555 \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/cognito/identity-pool-id" \
-  --value "${AWS_REGION}:local-identity-pool-001" \
+  --name "${SSM_COGNITO_IDENTITY_POOL}" \
+  --value "${AWS_REGION}:${ENVIRONMENT}-identity-pool-001" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
-aws --endpoint-url=http://localhost:5555 \
+aws --endpoint-url=${AWS_ENDPOINT_URL} \
   ssm put-parameter \
-  --name "/serverlesslaunchpad/local/cognito/endpoint-url" \
-  --value "$COGNITO_LOCAL_ENDPOINT" \
+  --name "${SSM_COGNITO_ENDPOINT}" \
+  --value "${COGNITO_LOCAL_ENDPOINT}" \
   --type String \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --overwrite >/dev/null
 
 echo "✓ Configuration stored in SSM"
@@ -298,11 +298,11 @@ echo "✓ Configuration stored in SSM"
 echo "Creating test users..."
 
 # Admin user
-aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp admin-create-user \
-  --user-pool-id $POOL_ID \
+  --user-pool-id ${POOL_ID} \
   --username admin@example.com \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --user-attributes \
     Name=email,Value=admin@example.com \
     Name=email_verified,Value=true \
@@ -313,22 +313,22 @@ aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
   --message-action SUPPRESS >/dev/null 2>&1 || echo "   (User may already exist)"
 
 # Set permanent password for admin
-aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp admin-set-user-password \
-  --user-pool-id $POOL_ID \
+  --user-pool-id ${POOL_ID} \
   --username admin@example.com \
   --password "AdminPass123!" \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --permanent >/dev/null 2>&1 || echo "   (Password may already be set)"
 
 echo "✓ Created/verified admin@example.com (password: AdminPass123!)"
 
 # Test user
-aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp admin-create-user \
-  --user-pool-id $POOL_ID \
+  --user-pool-id ${POOL_ID} \
   --username testuser@example.com \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --user-attributes \
     Name=email,Value=testuser@example.com \
     Name=email_verified,Value=true \
@@ -339,24 +339,24 @@ aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
   --message-action SUPPRESS >/dev/null 2>&1 || echo "   (User may already exist)"
 
 # Set permanent password for test user
-aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp admin-set-user-password \
-  --user-pool-id $POOL_ID \
+  --user-pool-id ${POOL_ID} \
   --username testuser@example.com \
   --password "TestPass123!" \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --permanent >/dev/null 2>&1 || echo "   (Password may already be set)"
 
 echo "✓ Created/verified testuser@example.com (password: TestPass123!)"
 
 # Test authentication to verify everything works
 echo "Testing authentication flow..."
-AUTH_RESPONSE=$(aws --endpoint-url=$COGNITO_LOCAL_ENDPOINT \
+AUTH_RESPONSE=$(aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
   cognito-idp admin-initiate-auth \
-  --user-pool-id $POOL_ID \
-  --client-id $CLIENT_ID \
+  --user-pool-id ${POOL_ID} \
+  --client-id ${CLIENT_ID} \
   --auth-flow ADMIN_NO_SRP_AUTH \
-  --region $AWS_REGION \
+  --region ${AWS_REGION} \
   --auth-parameters \
     USERNAME=testuser@example.com \
     PASSWORD=TestPass123! \
