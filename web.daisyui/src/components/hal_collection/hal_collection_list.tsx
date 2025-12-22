@@ -248,7 +248,7 @@ export function HalCollectionList({
             {/* Table */}
             <div className="card bg-base-100 shadow-xl">
                 <div className="overflow-x-auto">
-                    <table className="table">
+                    <table className="table table-fixed">
                         <thead>
                             <tr>
                                 {/* Select all checkbox */}

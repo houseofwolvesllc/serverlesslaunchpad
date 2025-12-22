@@ -89,8 +89,16 @@ function CodeFieldComponent({ value, column }: { value: any; column: InferredCol
     };
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Code style={{ maxWidth: '400px', wordBreak: 'break-all' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <Code
+                style={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                }}
+                title={String(value)}
+            >
                 {String(value)}
             </Code>
             <ActionIcon

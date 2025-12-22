@@ -231,7 +231,7 @@
 		<!-- Table -->
 		<div class="rounded-xl border bg-card text-card-foreground shadow">
 			<div class="relative w-full overflow-auto">
-				<table class="w-full caption-bottom text-sm">
+				<table class="w-full caption-bottom text-sm table-fixed">
 					<thead class="[&_tr]:border-b">
 						<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
 							{#if showCheckboxes}

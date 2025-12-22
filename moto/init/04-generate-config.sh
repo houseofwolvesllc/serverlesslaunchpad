@@ -41,6 +41,9 @@ generate_infrastructure_config() {
     # Generate timestamp
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
+    # Ensure output directory exists
+    mkdir -p "$(dirname "$output_file")"
+
     # Generate the infrastructure configuration JSON
     cat > "$output_file" << EOF
 {
