@@ -245,7 +245,7 @@ export function HalCollectionList({
 
             {/* Table */}
             <Paper withBorder>
-                <Table highlightOnHover>
+                <Table highlightOnHover layout="fixed">
                     <Table.Thead>
                         <Table.Tr>
                             {/* Select all checkbox */}

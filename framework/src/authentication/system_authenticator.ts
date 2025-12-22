@@ -36,8 +36,8 @@ export class SystemAuthenticator implements Authenticator {
                     email: message.email,
                     firstName: message.firstName,
                     lastName: message.lastName,
-                    role: Role.AccountManager,
-                    features: Features.FeatureA,
+                    role: Role.Base,
+                    features: Features.None,
                     dateCreated: new Date(),
                     dateModified: new Date(),
                 });

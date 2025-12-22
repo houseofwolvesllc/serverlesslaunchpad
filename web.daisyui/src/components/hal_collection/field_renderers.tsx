@@ -84,8 +84,11 @@ function CodeFieldComponent({ value, column }: { value: any; column: InferredCol
     };
 
     return (
-        <div className="flex items-center gap-2">
-            <code className="text-xs font-mono bg-base-200 px-2 py-1 rounded break-all max-w-md">
+        <div className="flex items-center gap-2 min-w-0">
+            <code
+                className="text-xs font-mono bg-base-200 px-2 py-1 rounded truncate min-w-0"
+                title={String(value)}
+            >
                 {String(value)}
             </code>
             <button

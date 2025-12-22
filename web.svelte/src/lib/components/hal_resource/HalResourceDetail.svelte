@@ -377,8 +377,11 @@
 										{/if}
 									{:else if field.type === FieldType.CODE}
 										{#if value}
-											<div class="flex items-center gap-2">
-												<code class="text-xs font-mono bg-muted px-2 py-1 rounded break-all max-w-md">
+											<div class="flex items-center gap-2 min-w-0">
+												<code
+													class="text-xs font-mono bg-muted px-2 py-1 rounded truncate min-w-0"
+													title={String(value)}
+												>
 													{String(value)}
 												</code>
 												<button
@@ -548,8 +551,11 @@
 										{/if}
 									{:else if field.type === FieldType.CODE}
 										{#if value}
-											<div class="flex items-center gap-2">
-												<code class="text-xs font-mono bg-muted px-2 py-1 rounded break-all max-w-md">
+											<div class="flex items-center gap-2 min-w-0">
+												<code
+													class="text-xs font-mono bg-muted px-2 py-1 rounded truncate min-w-0"
+													title={String(value)}
+												>
 													{String(value)}
 												</code>
 												<button

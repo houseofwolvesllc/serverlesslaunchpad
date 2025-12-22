@@ -353,7 +353,7 @@ export function HalCollectionList({
 
             {/* Table */}
             <Card>
-                <Table>
+                <Table className="table-fixed">
                     <TableHeader>
                         <TableRow>
                             {/* Select all checkbox */}
