@@ -94,7 +94,7 @@ export function HalResourceRow({
                     <TableCell
                         key={column.key}
                         style={{ width: column.width }}
-                        className="align-middle"
+                        className="align-middle overflow-hidden"
                     >
                         {renderer(value, column, item)}
                     </TableCell>

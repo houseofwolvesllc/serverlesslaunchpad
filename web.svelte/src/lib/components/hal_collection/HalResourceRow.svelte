@@ -66,7 +66,7 @@
 	{#each columns as column (column.key)}
 		{@const value = item[column.key]}
 		{@const customRenderer = getFieldRenderer(column, customRenderers)}
-		<td style="width: {column.width}" class="p-4 align-middle">
+		<td style="width: {column.width}" class="p-4 align-middle overflow-hidden">
 			{#if customRenderer}
 				<!-- Custom renderer -->
 				{@const rendered = customRenderer(value, column, item)}
@@ -176,12 +176,13 @@
 					<span class="text-muted-foreground text-sm">{column.nullText || '—'}</span>
 				{/if}
 			{:else if column.type === FieldType.EMAIL}
-				<!-- Email field -->
+				<!-- Email field with truncation -->
 				{#if value}
 					<a
 						href="mailto:{value}"
-						class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+						class="text-sm font-medium text-primary underline-offset-4 hover:underline block truncate"
 						on:click={(e) => e.stopPropagation()}
+						title={String(value)}
 					>
 						{value}
 					</a>
@@ -197,7 +198,7 @@
 						href={value}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+						class="text-sm font-medium text-primary underline-offset-4 hover:underline block truncate"
 						on:click={(e) => e.stopPropagation()}
 						title={value}
 					>

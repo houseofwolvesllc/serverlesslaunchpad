@@ -259,7 +259,7 @@
 	<svelte:component this={DedicatedComponent} resource={resourceData} onRefresh={handleRefresh} />
 {:else if DedicatedComponent && resourceLoading}
 	<!-- Loading state for dedicated component -->
-	<div class="container mx-auto p-6">
+	<div class="p-6">
 		<div class="animate-pulse space-y-4">
 			<div class="h-8 bg-muted rounded w-1/4"></div>
 			<div class="h-4 bg-muted rounded w-1/2"></div>
@@ -273,7 +273,7 @@
 	<!-- Collection view -->
 	<!-- Note: No bulkOperations passed - generic view doesn't support bulk ops -->
 	<!-- For bulk operations, use dedicated feature pages (e.g., /sessions, /api-keys) -->
-	<div class="container mx-auto p-6">
+	<div class="p-6">
 		<HalCollectionList
 			resource={resourceData}
 			onRefresh={handleRefresh}

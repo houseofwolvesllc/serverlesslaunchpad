@@ -230,7 +230,7 @@ function DashboardContent() {
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto bg-muted/30">
-                    <div className="container mx-auto p-6">
+                    <div className="p-6">
                         {isSitemapLoading ? (
                             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                                 <Skeleton className="h-12 w-12 rounded-full" />
