@@ -89,7 +89,7 @@ export function HalResourceRow({
                 return (
                     <Table.Td
                         key={column.key}
-                        style={{ width: column.width, verticalAlign: 'middle' }}
+                        style={{ width: column.width, verticalAlign: 'middle', overflow: 'hidden' }}
                     >
                         {renderer(value, column, item)}
                     </Table.Td>

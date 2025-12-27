@@ -228,7 +228,7 @@ export const NumberRenderer: FieldRenderer = (value, column, item) => {
 };
 
 /**
- * Email field renderer - Mailto link
+ * Email field renderer - Mailto link with truncation
  */
 export const EmailRenderer: FieldRenderer = (value, column) => {
     if (!value) {
@@ -239,8 +239,9 @@ export const EmailRenderer: FieldRenderer = (value, column) => {
     return (
         <a
             href={`mailto:${value}`}
-            className="link link-primary text-sm"
+            className="link link-primary text-sm block truncate"
             onClick={(e) => e.stopPropagation()}
+            title={String(value)}
         >
             {String(value)}
         </a>
