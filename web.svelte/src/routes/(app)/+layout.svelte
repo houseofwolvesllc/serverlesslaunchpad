@@ -102,7 +102,7 @@
 
 		<!-- Page Content -->
 		<main class="flex-1 overflow-y-auto bg-muted/30">
-			<div class="container mx-auto p-6">
+			<div class="p-6">
 				{#if $authInitialized}
 					<slot />
 				{:else}
