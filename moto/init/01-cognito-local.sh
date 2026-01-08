@@ -297,57 +297,75 @@ echo "✓ Configuration stored in SSM"
 # Create test users using AWS CLI against cognito-local
 echo "Creating test users..."
 
+# Helper function to check if user exists
+user_exists() {
+    local username=$1
+    aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
+      cognito-idp admin-get-user \
+      --user-pool-id ${POOL_ID} \
+      --username "$username" \
+      --region ${AWS_REGION} >/dev/null 2>&1
+}
+
 # Admin user
-aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
-  cognito-idp admin-create-user \
-  --user-pool-id ${POOL_ID} \
-  --username admin@example.com \
-  --region ${AWS_REGION} \
-  --user-attributes \
-    Name=email,Value=admin@example.com \
-    Name=email_verified,Value=true \
-    Name=given_name,Value=Admin \
-    Name=family_name,Value=User \
-    Name=name,Value="Admin User" \
-  --temporary-password "TempPass123!" \
-  --message-action SUPPRESS >/dev/null 2>&1 || echo "   (User may already exist)"
+if user_exists "admin@example.com"; then
+    echo "✓ admin@example.com already exists"
+else
+    aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
+      cognito-idp admin-create-user \
+      --user-pool-id ${POOL_ID} \
+      --username admin@example.com \
+      --region ${AWS_REGION} \
+      --user-attributes \
+        Name=email,Value=admin@example.com \
+        Name=email_verified,Value=true \
+        Name=given_name,Value=Admin \
+        Name=family_name,Value=User \
+        Name=name,Value="Admin User" \
+      --temporary-password "TempPass123!" \
+      --message-action SUPPRESS >/dev/null 2>&1
 
-# Set permanent password for admin
-aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
-  cognito-idp admin-set-user-password \
-  --user-pool-id ${POOL_ID} \
-  --username admin@example.com \
-  --password "AdminPass123!" \
-  --region ${AWS_REGION} \
-  --permanent >/dev/null 2>&1 || echo "   (Password may already be set)"
+    # Set permanent password for admin
+    aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
+      cognito-idp admin-set-user-password \
+      --user-pool-id ${POOL_ID} \
+      --username admin@example.com \
+      --password "AdminPass123!" \
+      --region ${AWS_REGION} \
+      --permanent >/dev/null 2>&1
 
-echo "✓ Created/verified admin@example.com (password: AdminPass123!)"
+    echo "✓ Created admin@example.com (password: AdminPass123!)"
+fi
 
 # Test user
-aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
-  cognito-idp admin-create-user \
-  --user-pool-id ${POOL_ID} \
-  --username testuser@example.com \
-  --region ${AWS_REGION} \
-  --user-attributes \
-    Name=email,Value=testuser@example.com \
-    Name=email_verified,Value=true \
-    Name=given_name,Value=Test \
-    Name=family_name,Value=User \
-    Name=name,Value="Test User" \
-  --temporary-password "TempPass123!" \
-  --message-action SUPPRESS >/dev/null 2>&1 || echo "   (User may already exist)"
+if user_exists "testuser@example.com"; then
+    echo "✓ testuser@example.com already exists"
+else
+    aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
+      cognito-idp admin-create-user \
+      --user-pool-id ${POOL_ID} \
+      --username testuser@example.com \
+      --region ${AWS_REGION} \
+      --user-attributes \
+        Name=email,Value=testuser@example.com \
+        Name=email_verified,Value=true \
+        Name=given_name,Value=Test \
+        Name=family_name,Value=User \
+        Name=name,Value="Test User" \
+      --temporary-password "TempPass123!" \
+      --message-action SUPPRESS >/dev/null 2>&1
 
-# Set permanent password for test user
-aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
-  cognito-idp admin-set-user-password \
-  --user-pool-id ${POOL_ID} \
-  --username testuser@example.com \
-  --password "TestPass123!" \
-  --region ${AWS_REGION} \
-  --permanent >/dev/null 2>&1 || echo "   (Password may already be set)"
+    # Set permanent password for test user
+    aws --endpoint-url=${COGNITO_LOCAL_ENDPOINT} \
+      cognito-idp admin-set-user-password \
+      --user-pool-id ${POOL_ID} \
+      --username testuser@example.com \
+      --password "TestPass123!" \
+      --region ${AWS_REGION} \
+      --permanent >/dev/null 2>&1
 
-echo "✓ Created/verified testuser@example.com (password: TestPass123!)"
+    echo "✓ Created testuser@example.com (password: TestPass123!)"
+fi
 
 # Test authentication to verify everything works
 echo "Testing authentication flow..."

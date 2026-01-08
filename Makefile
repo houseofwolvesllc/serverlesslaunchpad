@@ -89,15 +89,15 @@ dev-start:
 	@if [ "$(web)" = "all" ]; then \
 		npm run dev:watch; \
 	elif [ "$(web)" = "mantine" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "MANTINE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "MANTINE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "shadcn" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue,red --names "SHADCN,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue,red --names "SHADCN,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "daisyui" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue,red --names "DAISYUI,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue,red --names "DAISYUI,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "svelte" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange,red --names "SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange,red --names "SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "none" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue,red --names "API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue,red --names "API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	fi
 	@echo ""
 	@echo "✨ Development environment is ready!"
