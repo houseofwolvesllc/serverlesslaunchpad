@@ -21,11 +21,11 @@ export class DynamoDbStack extends BaseStack {
     }
 
     /**
-     * Generate table name with underscore separator (slp_{env}_{name})
+     * Generate table name with underscore separator ({prefix}_{env}_{name})
      * DynamoDB tables use underscores to match the table prefix in DynamoDbClientFactory
      */
     private tableName(name: string): string {
-        return `slp_${this.appEnvironment}_${name}`;
+        return `${this.projectConfig.tablePrefix}_${this.appEnvironment}_${name}`;
     }
 
     /**

@@ -16,6 +16,8 @@ describe("FileConfigurationStore", () => {
         SSK: "test-ssk",
     };
 
+    const defaultConfigName = "serverlesslaunchpad.com.config.json";
+
     let tempDir: string;
     let store: FileConfigurationStore<typeof mockConfigSchema>;
 
@@ -29,13 +31,13 @@ describe("FileConfigurationStore", () => {
         await rm(tempDir, { recursive: true, force: true });
     });
 
-    describe("with default configuration name", () => {
+    describe("with explicit configuration name", () => {
         beforeEach(() => {
-            store = new FileConfigurationStore(mockConfigSchema, tempDir);
+            store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
         });
 
-        it("should read and parse configuration from default file", async () => {
-            const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        it("should read and parse configuration from specified file", async () => {
+            const configPath = path.join(tempDir, defaultConfigName);
             await writeFile(configPath, JSON.stringify(mockConfig));
 
             const result = await store.get();
@@ -68,16 +70,16 @@ describe("FileConfigurationStore", () => {
     });
 
     it("should throw error for invalid JSON in file", async () => {
-        store = new FileConfigurationStore(mockConfigSchema, tempDir);
-        const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
+        const configPath = path.join(tempDir, defaultConfigName);
         await writeFile(configPath, "invalid-json");
 
         await expect(store.get()).rejects.toThrow(/Unexpected token/);
     });
 
     it("should throw error when configuration does not match schema", async () => {
-        store = new FileConfigurationStore(mockConfigSchema, tempDir);
-        const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
+        const configPath = path.join(tempDir, defaultConfigName);
         const invalidConfig = {
             AWS_S3_BUCKET: "test-bucket",
             // Missing SSK field
@@ -88,8 +90,8 @@ describe("FileConfigurationStore", () => {
     });
 
     it("should throw error when configuration has invalid types", async () => {
-        store = new FileConfigurationStore(mockConfigSchema, tempDir);
-        const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
+        const configPath = path.join(tempDir, defaultConfigName);
         const invalidConfig = {
             AWS_S3_BUCKET: 123, // Should be string
             SSK: "test-ssk",
@@ -119,16 +121,16 @@ describe("FileConfigurationStore", () => {
     });
 
     it("should handle file with empty JSON object", async () => {
-        store = new FileConfigurationStore(mockConfigSchema, tempDir);
-        const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
+        const configPath = path.join(tempDir, defaultConfigName);
         await writeFile(configPath, JSON.stringify({}));
 
         await expect(store.get()).rejects.toThrow();
     });
 
     it("should handle file with null content", async () => {
-        store = new FileConfigurationStore(mockConfigSchema, tempDir);
-        const configPath = path.join(tempDir, "serverlesslaunchpad.com.config.json");
+        store = new FileConfigurationStore(mockConfigSchema, tempDir, defaultConfigName);
+        const configPath = path.join(tempDir, defaultConfigName);
         await writeFile(configPath, JSON.stringify(null));
 
         await expect(store.get()).rejects.toThrow();

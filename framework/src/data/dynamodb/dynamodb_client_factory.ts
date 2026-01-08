@@ -12,11 +12,18 @@ import { DynamoDbClient, DynamoDbClientConfig } from "./dynamodb_client";
 @Injectable()
 export class DynamoDbClientFactory {
     private readonly configStore: InfrastructureConfigurationStore;
+    private readonly tablePrefix: string;
     private dynamoDbClient: DynamoDbClient | undefined;
     private clientPromise: Promise<DynamoDbClient> | undefined;
 
-    constructor(configStore: InfrastructureConfigurationStore) {
+    /**
+     * Create a new DynamoDbClientFactory.
+     * @param configStore - Configuration store for AWS/infrastructure settings
+     * @param tablePrefix - Table name prefix (e.g., "slp" for tables like "slp_development_users")
+     */
+    constructor(configStore: InfrastructureConfigurationStore, tablePrefix: string) {
         this.configStore = configStore;
+        this.tablePrefix = tablePrefix;
     }
 
     /**
@@ -58,7 +65,7 @@ export class DynamoDbClientFactory {
                     environment === "moto" ? { accessKeyId: "testing", secretAccessKey: "testing" } : undefined,
             };
 
-            const tablePrefix = `slp_${environment}`;
+            const tablePrefix = `${this.tablePrefix}_${environment}`;
             this.dynamoDbClient = new DynamoDbClient(dynamoDbConfig, tablePrefix);
             return this.dynamoDbClient;
         } catch (error) {

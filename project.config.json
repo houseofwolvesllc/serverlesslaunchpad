@@ -1,0 +1,8 @@
+{
+    "packageScope": "@houseofwolves",
+    "packageName": "serverlesslaunchpad",
+    "displayName": "Serverless Launchpad",
+    "resourcePrefix": "slp",
+    "tablePrefix": "slp",
+    "configDomain": "serverlesslaunchpad.com"
+}

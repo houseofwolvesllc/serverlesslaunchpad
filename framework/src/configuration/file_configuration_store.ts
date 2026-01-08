@@ -8,8 +8,13 @@ export class FileConfigurationStore<T extends z.ZodType> implements Configuratio
     private readonly filePath: string;
     private readonly zodSchema: T;
 
-    constructor(zodSchema: T, configPath: string, configurationName?: string) {
-        const fileName = configurationName ?? "serverlesslaunchpad.com.config.json";
+    /**
+     * Create a file-based configuration store.
+     * @param zodSchema - Zod schema for configuration validation
+     * @param configPath - Directory path where the configuration file is located
+     * @param fileName - Configuration file name (e.g., "serverlesslaunchpad.com.config.json")
+     */
+    constructor(zodSchema: T, configPath: string, fileName: string) {
         this.filePath = path.join(configPath, fileName);
         this.zodSchema = zodSchema;
     }

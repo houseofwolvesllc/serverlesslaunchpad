@@ -1,5 +1,6 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
 import { z } from "zod";
+import { getProjectConfig, getKmsKeyAlias } from "./load_project_config";
 
 /**
  * Stack configuration schema
@@ -81,7 +82,7 @@ export const configurations: Record<
             reservedConcurrentExecutions: 100,
         },
         secrets: {
-            kmsKeyAlias: "alias/slp-production",
+            kmsKeyAlias: getKmsKeyAlias(getProjectConfig()),
         },
     },
 };
@@ -122,12 +123,12 @@ export function getConfiguration(environment: Environment): StackConfiguration {
             ...(albCertificateArn && { certificateArn: albCertificateArn }),
         },
         secrets: {
-            secretName: `${environment}.serverlesslaunchpad.com`,
+            secretName: `${environment}.${getProjectConfig().configDomain}`,
             ...envConfig.secrets,
         },
         tags: {
             Environment: environment,
-            Project: "ServerlessLaunchpad",
+            Project: getProjectConfig().displayName.replace(/\s+/g, ""),
             ManagedBy: "CDK",
             ...envConfig.tags,
         },

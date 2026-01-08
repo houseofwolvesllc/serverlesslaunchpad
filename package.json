@@ -22,6 +22,7 @@
         "npm": ">=10.2.5"
     },
     "scripts": {
+        "create-project": "npx tsx scripts/scaffolding/index.ts",
         "dev:clean": "echo '🧹 Cleaning up stale development processes...' && (pkill -f 'vite.*moto' 2>/dev/null || true) && (pkill -f 'tsx.*dev_server' 2>/dev/null || true) && echo '✅ Cleanup complete'",
         "dev:check": "echo '🔍 Checking for port conflicts...' && (lsof -i :5173-5176,3001 2>/dev/null || echo '✅ No port conflicts detected')",
         "dev:web:mantine": "cd web.mantine && npm run local:watch",
@@ -39,7 +40,13 @@
         "dev:reset": "npm run dev:clean && sleep 2 && npm run dev"
     },
     "devDependencies": {
+        "@types/fs-extra": "^11.0.0",
+        "@types/inquirer": "^9.0.0",
+        "chalk": "^5.3.0",
         "concurrently": "^8.2.2",
-        "nodemon": "^3.1.10"
+        "fs-extra": "^11.2.0",
+        "inquirer": "^9.2.0",
+        "nodemon": "^3.1.10",
+        "tsx": "^4.19.3"
     }
 }
