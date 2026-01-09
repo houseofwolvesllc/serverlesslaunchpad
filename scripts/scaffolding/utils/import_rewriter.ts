@@ -141,7 +141,7 @@ function parseImport(importStatement: string): ParsedImport | null {
 }
 
 /**
- * Rewrite imports in a file from @houseofwolves/serverlesslaunchpad.web.commons* to relative paths
+ * Rewrite imports from web.commons packages to relative paths pointing to commons/ folder
  */
 export function rewriteImports(
     fileContent: string,
@@ -150,49 +150,32 @@ export function rewriteImports(
     projectScope: string,
     projectBaseName: string
 ): { content: string; modified: boolean } {
-    const oldPackageBase = `@houseofwolves/serverlesslaunchpad.web.commons`;
-    const newPackageBase = `${projectScope}/${projectBaseName}.web.commons`;
+    // Match both old and new package names for web.commons
+    const oldWebCommonsPackage = `@houseofwolves/serverlesslaunchpad.web.commons`;
+    const newWebCommonsPackage = `${projectScope}/${projectBaseName}.web.commons`;
 
     let modified = false;
     let result = fileContent;
 
-    // Find all import statements
-    const importRegex = /import\s+(type\s+)?(?:({[^}]+})|(\w+))\s+from\s+["']([^"']+)["']/g;
-    let match;
+    // Calculate relative paths from the current file to the commons folders
+    const commonsDir = path.join(webSrcDir, "commons");
+    const commonsReactDir = path.join(webSrcDir, "commons-react");
+    const relativeToCommons = getRelativePath(filePath, commonsDir);
+    const relativeToCommonsReact = getRelativePath(filePath, commonsReactDir);
 
-    while ((match = importRegex.exec(fileContent)) !== null) {
-        const parsed = parseImport(match[0]);
-        if (!parsed) continue;
+    // Replace web.commons imports with relative path to commons/
+    // Handle: @houseofwolves/serverlesslaunchpad.web.commons (bare import)
+    // Handle: @houseofwolves/testslp.web.commons (new project name)
+    const patterns = [
+        { pattern: new RegExp(`(['"])${escapeRegExp(oldWebCommonsPackage)}(['"])`, "g"), targetPath: relativeToCommons },
+        { pattern: new RegExp(`(['"])${escapeRegExp(newWebCommonsPackage)}(['"])`, "g"), targetPath: relativeToCommons },
+        { pattern: new RegExp(`(['"])${escapeRegExp(oldWebCommonsPackage)}\\.react(['"])`, "g"), targetPath: relativeToCommonsReact },
+        { pattern: new RegExp(`(['"])${escapeRegExp(newWebCommonsPackage)}\\.react(['"])`, "g"), targetPath: relativeToCommonsReact },
+    ];
 
-        // Check if this import is from web.commons or web.commons.react
-        if (!parsed.modulePath.startsWith(oldPackageBase)) continue;
-
-        // Group imports by their target path
-        const importGroups = new Map<string, string[]>();
-
-        for (const importName of parsed.namedImports) {
-            const mapping = IMPORT_MAPPINGS.find((m) => m.exportName === importName);
-
-            if (mapping) {
-                const targetPath = path.join(webSrcDir, mapping.sourcePath);
-                const relativePath = getRelativePath(filePath, targetPath);
-
-                if (!importGroups.has(relativePath)) {
-                    importGroups.set(relativePath, []);
-                }
-                importGroups.get(relativePath)!.push(importName);
-            }
-        }
-
-        // Build new import statements
-        const newImports: string[] = [];
-        for (const [relativePath, imports] of importGroups) {
-            const typePrefix = parsed.isTypeImport ? "type " : "";
-            newImports.push(`import ${typePrefix}{ ${imports.join(", ")} } from "${relativePath}";`);
-        }
-
-        if (newImports.length > 0) {
-            result = result.replace(match[0], newImports.join("\n"));
+    for (const { pattern, targetPath } of patterns) {
+        if (pattern.test(result)) {
+            result = result.replace(pattern, `$1${targetPath}$2`);
             modified = true;
         }
     }

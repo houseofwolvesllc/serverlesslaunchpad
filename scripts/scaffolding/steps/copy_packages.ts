@@ -9,12 +9,21 @@ import { log } from "../utils/logger";
 /**
  * Core packages to copy (not web packages)
  */
-const CORE_PACKAGES = ["api.hypermedia", "assets", "core", "framework", "infrastructure", "moto", "types"];
+const CORE_PACKAGES = ["api.hypermedia", "core", "framework", "infrastructure", "moto", "types"];
 
 /**
  * Root configuration files to copy
  */
-const ROOT_FILES = [".nvmrc", ".prettierrc.json", ".gitignore", ".eslintrc.json", "tsconfig.base.json"];
+const ROOT_FILES = [
+    "package.json",
+    ".nvmrc",
+    ".prettierrc.json",
+    ".gitignore",
+    ".eslintrc.json",
+    "tsconfig.json",
+    "Makefile",
+    "docker-compose.moto.yml",
+];
 
 /**
  * Copy core packages to target directory

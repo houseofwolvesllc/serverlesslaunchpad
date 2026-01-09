@@ -28,8 +28,11 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
     const oldScope = "@houseofwolves";
     const oldBaseName = "serverlesslaunchpad";
     const oldFullPackage = `${oldScope}/${oldBaseName}`;
+    const oldRootName = "houseofwolves.serverlesslaunchpad";
 
     const newFullPackage = `${config.projectScope}/${config.projectBaseName}`;
+    // Root package name uses scope without @ and with dot separator
+    const newRootName = `${config.projectScope.replace("@", "")}.${config.projectBaseName}`;
 
     // Find all package.json files
     const packageFiles = await glob(config.outputPath, ["package.json"]);
@@ -41,9 +44,17 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
         let modified = false;
 
         // Update package name
-        if (typeof pkg.name === "string" && pkg.name.includes(oldFullPackage)) {
-            pkg.name = pkg.name.replace(oldFullPackage, newFullPackage);
-            modified = true;
+        if (typeof pkg.name === "string") {
+            if (pkg.name === oldRootName) {
+                // Root package.json uses dot format
+                pkg.name = newRootName;
+                pkg.author = "YOUR NAME HERE";
+                pkg.description = "YOUR NEXT AWESOME PROJECT";
+                modified = true;
+            } else if (pkg.name.includes(oldFullPackage)) {
+                pkg.name = pkg.name.replace(oldFullPackage, newFullPackage);
+                modified = true;
+            }
         }
 
         // Update dependencies
@@ -75,17 +86,58 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
         if (Array.isArray(pkg.workspaces)) {
             const workspaces = pkg.workspaces as string[];
             const newWorkspaces = workspaces
-                .filter((w: string) => !REMOVED_PACKAGES.includes(w))
                 .map((w: string) => {
-                    // Rename web.{framework} to web
+                    // Rename web.{framework} to web (do this first before filtering)
                     if (w === `./web.${config.webFramework}`) {
                         return "./web";
                     }
                     return w;
-                });
+                })
+                .filter((w: string) => !REMOVED_PACKAGES.includes(w));
 
             if (newWorkspaces.length !== workspaces.length || !newWorkspaces.every((w: string, i: number) => w === workspaces[i])) {
                 pkg.workspaces = newWorkspaces;
+                modified = true;
+            }
+
+            // Update scripts for root package.json - simplify for single web frontend
+            if (typeof pkg.scripts === "object" && pkg.scripts !== null) {
+                const scripts = pkg.scripts as Record<string, string>;
+                const newScripts: Record<string, string> = {};
+
+                for (const [key, value] of Object.entries(scripts)) {
+                    // Skip scripts for other web frameworks
+                    if (key.match(/dev:web:(mantine|shadcn|daisyui|svelte)/) && key !== `dev:web:${config.webFramework}`) {
+                        continue;
+                    }
+                    // Skip dev:web:all (not needed with single frontend)
+                    if (key === "dev:web:all") {
+                        continue;
+                    }
+                    // Skip create-project script (not needed in scaffolded project)
+                    if (key === "create-project") {
+                        continue;
+                    }
+
+                    let newValue = value;
+
+                    // Replace container names
+                    newValue = newValue.replace(/serverlesslaunchpad/g, config.projectBaseName);
+
+                    // Update web framework references to just "web"
+                    newValue = newValue.replace(new RegExp(`web\\.${config.webFramework}`, "g"), "web");
+                    newValue = newValue.replace(new RegExp(`dev:web:${config.webFramework}`, "g"), "dev:web");
+
+                    // Rename dev:web:{framework} key to dev:web
+                    const newKey = key === `dev:web:${config.webFramework}` ? "dev:web" : key;
+
+                    newScripts[newKey] = newValue;
+                }
+
+                // Create simplified dev:watch script for single web frontend
+                newScripts["dev:watch"] = `concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "WEB,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s ${config.projectBaseName}-cognito-local 2>&1 | grep --line-buffered -v DEBUG"`;
+
+                pkg.scripts = newScripts;
                 modified = true;
             }
         }

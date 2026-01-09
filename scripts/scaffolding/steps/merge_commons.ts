@@ -1,57 +1,52 @@
 /**
  * Merge web.commons into web/src step
+ *
+ * Instead of trying to merge files with potential conflicts, we copy
+ * web.commons to its own subfolder (web/src/commons/) and update imports.
  */
 import path from "path";
-import { ScaffoldingConfig, StepResult, MergeOperation } from "../types";
-import { copyDirectory, mergeDirectory, pathExists } from "../utils/file_operations";
+import { ScaffoldingConfig, StepResult } from "../types";
+import { copyDirectory, pathExists, readFile, writeFile } from "../utils/file_operations";
 import { log } from "../utils/logger";
 
 /**
- * Merge operations for web.commons
- */
-const MERGE_OPERATIONS: MergeOperation[] = [
-    { source: "collection", target: "collection", mode: "copy" },
-    { source: "configuration", target: "configuration", mode: "merge" },
-    { source: "enums", target: "enums", mode: "copy" },
-    { source: "lib", target: "lib", mode: "merge" },
-    { source: "logging", target: "logging", mode: "merge" },
-    { source: "services", target: "services", mode: "merge" },
-    { source: "templates", target: "templates", mode: "copy" },
-];
-
-/**
- * Merge web.commons/src into web/src
+ * Copy web.commons/src to web/src/commons/
  */
 export async function mergeCommons(config: ScaffoldingConfig): Promise<StepResult> {
-    log.section("🔗", "Merging web.commons...");
+    log.section("🔗", "Copying web.commons...");
 
     const commonsRoot = path.join(config.sourceRoot, "web.commons", "src");
-    const webSrcRoot = path.join(config.outputPath, "web", "src");
+    const targetRoot = path.join(config.outputPath, "web", "src", "commons");
 
-    let totalFiles = 0;
-
-    for (const op of MERGE_OPERATIONS) {
-        const source = path.join(commonsRoot, op.source);
-        const target = path.join(webSrcRoot, op.target);
-
-        if (!(await pathExists(source))) {
-            log.warning(`Skipped ${op.source} (not found)`);
-            continue;
-        }
-
-        let fileCount: number;
-        if (op.mode === "copy") {
-            fileCount = await copyDirectory(source, target);
-        } else {
-            fileCount = await mergeDirectory(source, target);
-        }
-
-        totalFiles += fileCount;
-        log.success(`${op.source}${op.mode === "merge" ? " (merged)" : ""}`);
+    if (!(await pathExists(commonsRoot))) {
+        log.warning("web.commons/src not found, skipping");
+        return { success: true, filesProcessed: 0 };
     }
+
+    // Copy entire web.commons/src to web/src/commons/
+    const fileCount = await copyDirectory(commonsRoot, targetRoot);
+
+    // Update imports in the copied files to use new package name
+    const oldPackage = "@houseofwolves/serverlesslaunchpad";
+    const newPackage = `${config.projectScope}/${config.projectBaseName}`;
+
+    // Update the index.ts imports that reference the types package
+    const indexPath = path.join(targetRoot, "index.ts");
+    if (await pathExists(indexPath)) {
+        let indexContent = await readFile(indexPath);
+        if (indexContent) {
+            indexContent = indexContent.replace(
+                new RegExp(oldPackage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+                newPackage
+            );
+            await writeFile(indexPath, indexContent);
+        }
+    }
+
+    log.success(`Copied ${fileCount} files to commons/`);
 
     return {
         success: true,
-        filesProcessed: totalFiles,
+        filesProcessed: fileCount,
     };
 }

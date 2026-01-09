@@ -1,70 +1,58 @@
 /**
  * Merge web.commons.react into web/src step
+ *
+ * Copies web.commons.react to web/src/commons-react/ to avoid conflicts
+ * and maintain clean separation.
  */
 import path from "path";
 import { ScaffoldingConfig, StepResult } from "../types";
-import { copyDirectory, copyFile, pathExists } from "../utils/file_operations";
+import { copyDirectory, pathExists, readFile, writeFile, glob } from "../utils/file_operations";
 import { log } from "../utils/logger";
 
 /**
- * Directories to merge for React projects
- */
-const REACT_DIRECTORIES = ["field-rendering", "hal-resource", "navigation"];
-
-/**
- * Pure TypeScript files to copy for Svelte (no React dependencies)
- */
-const SVELTE_PURE_TS_FILES = [
-    "field-rendering/field_rendering_utils.ts",
-    "field-rendering/index.ts",
-    "hal-resource/resource_utils.ts",
-    "navigation/types.ts",
-    "navigation/adapters/sitemap_adapter.ts",
-    "navigation/utils/hal_helpers.ts",
-];
-
-/**
- * Merge web.commons.react/src into web/src
+ * Copy web.commons.react/src to web/src/commons-react/
  */
 export async function mergeCommonsReact(config: ScaffoldingConfig): Promise<StepResult> {
-    log.section("🔗", "Merging web.commons.react...");
+    log.section("🔗", "Copying web.commons.react...");
 
     const commonsReactRoot = path.join(config.sourceRoot, "web.commons.react", "src");
-    const webSrcRoot = path.join(config.outputPath, "web", "src");
+    const targetRoot = path.join(config.outputPath, "web", "src", "commons-react");
 
-    let totalFiles = 0;
+    if (!(await pathExists(commonsReactRoot))) {
+        log.warning("web.commons.react/src not found, skipping");
+        return { success: true, filesProcessed: 0 };
+    }
 
+    // For Svelte, skip the React-specific components
     if (config.webFramework === "svelte") {
-        // Svelte: only copy pure TypeScript utilities
-        for (const file of SVELTE_PURE_TS_FILES) {
-            const source = path.join(commonsReactRoot, file);
-            const target = path.join(webSrcRoot, file);
+        log.success("Skipped (Svelte project - no React dependencies needed)");
+        return { success: true, filesProcessed: 0 };
+    }
 
-            if (await pathExists(source)) {
-                await copyFile(source, target);
-                totalFiles++;
-            }
-        }
-        log.success(`Copied ${totalFiles} pure TS files (React files skipped)`);
-    } else {
-        // React: copy all directories
-        for (const dir of REACT_DIRECTORIES) {
-            const source = path.join(commonsReactRoot, dir);
-            const target = path.join(webSrcRoot, dir);
+    // Copy entire web.commons.react/src to web/src/commons-react/
+    const fileCount = await copyDirectory(commonsReactRoot, targetRoot);
 
-            if (!(await pathExists(source))) {
-                log.warning(`Skipped ${dir} (not found)`);
-                continue;
-            }
+    // Update imports in the copied files to use new package name
+    const oldPackage = "@houseofwolves/serverlesslaunchpad";
+    const newPackage = `${config.projectScope}/${config.projectBaseName}`;
 
-            const fileCount = await copyDirectory(source, target);
-            totalFiles += fileCount;
-            log.success(dir);
+    // Update all .ts and .tsx files in the copied directory
+    const files = await glob(targetRoot, ["*.ts", "*.tsx"]);
+    for (const file of files) {
+        let content = await readFile(file);
+        if (content && content.includes(oldPackage)) {
+            content = content.replace(
+                new RegExp(oldPackage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+                newPackage
+            );
+            await writeFile(file, content);
         }
     }
 
+    log.success(`Copied ${fileCount} files to commons-react/`);
+
     return {
         success: true,
-        filesProcessed: totalFiles,
+        filesProcessed: fileCount,
     };
 }
