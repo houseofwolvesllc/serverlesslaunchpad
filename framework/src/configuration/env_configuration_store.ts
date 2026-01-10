@@ -7,8 +7,13 @@ export class EnvConfigurationStore<T extends z.ZodType> implements Configuration
     private readonly configurationName: string;
     private readonly zodSchema: T;
 
-    constructor(zodSchema: T, configurationName?: string) {
-        this.configurationName = configurationName ?? "serverlesslaunchpad.com";
+    /**
+     * Create an environment variable configuration store.
+     * @param zodSchema - Zod schema for configuration validation
+     * @param configurationName - Environment variable name to read configuration from
+     */
+    constructor(zodSchema: T, configurationName: string) {
+        this.configurationName = configurationName;
         this.zodSchema = zodSchema;
     }
 

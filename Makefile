@@ -1,8 +1,14 @@
 # Serverless Launchpad Development Makefile
 .PHONY: help dev-start dev-stop dev-reset dev-status test-local clean
 
+# BEGIN:SCAFFOLDING_REMOVE
 # Default web frontend(s) to start: all, mantine, shadcn, daisyui, or none
 web ?= all
+# END:SCAFFOLDING_REMOVE
+
+# BEGIN:SCAFFOLDING_INSERT
+# WEB_DIR = web
+# END:SCAFFOLDING_INSERT
 
 # Default target
 help:
@@ -10,12 +16,17 @@ help:
 	@echo "=========================================="
 	@echo ""
 	@echo "Development Environment:"
+	# BEGIN:SCAFFOLDING_REMOVE
 	@echo "  make dev-start              - Start Moto and all web frontends (default)"
 	@echo "  make dev-start web=all      - Start Moto and all frontends (explicit)"
 	@echo "  make dev-start web=mantine  - Start Moto and Mantine frontend only"
 	@echo "  make dev-start web=shadcn   - Start Moto and shadcn frontend only"
 	@echo "  make dev-start web=daisyui  - Start Moto and DaisyUI frontend only"
 	@echo "  make dev-start web=none     - Start Moto only (infrastructure only)"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "  make dev-start              - Start Moto and development servers"
+	# END:SCAFFOLDING_INSERT
 	@echo "  make dev-stop               - Stop all services"
 	@echo "  make dev-restart            - Restart all services"
 	@echo "  make dev-reset              - Reset Moto data and restart"
@@ -52,10 +63,13 @@ dev-start:
 	@echo ""
 	@echo "🛑 Ensuring clean environment..."
 	@$(MAKE) dev-stop 2>/dev/null || true
+	@# Stop any container using our ports (from other projects)
+	@docker ps -q --filter "publish=5555" | xargs -r docker stop 2>/dev/null || true
+	@docker ps -q --filter "publish=9230" | xargs -r docker stop 2>/dev/null || true
 	@echo ""
 	@mkdir -p logs
 	@echo "🚀 Starting Moto..."
-	@docker-compose -f docker-compose.moto.yml up -d > logs/moto.log 2>&1
+	@docker compose -f docker-compose.moto.yml up -d > logs/moto.log 2>&1
 	@echo "⏳ Waiting for Moto to be ready..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
 		if curl -s http://localhost:5555/moto-api/reset >/dev/null 2>&1; then \
@@ -74,10 +88,11 @@ dev-start:
 	@./moto/init/05-dynamodb-tables.sh >> logs/moto.log 2>&1
 	@echo ""
 	@echo "🔧 Building workspace packages..."
-	@cd core && npm run build >/dev/null 2>&1
-	@cd framework && npm run build >/dev/null 2>&1
-	@cd types && npm run build >/dev/null 2>&1
+	@cd types && npm run build || { echo "❌ Failed to build types"; exit 1; }
+	@cd core && npm run build || { echo "❌ Failed to build core"; exit 1; }
+	@cd framework && npm run build || { echo "❌ Failed to build framework"; exit 1; }
 	@echo ""
+	# BEGIN:SCAFFOLDING_REMOVE
 	@echo "🚀 Starting development servers with file watching (web=$(web))..."
 	@# Validate web argument
 	@if [ "$(web)" != "all" ] && [ "$(web)" != "mantine" ] && [ "$(web)" != "shadcn" ] && [ "$(web)" != "daisyui" ] && [ "$(web)" != "svelte" ] && [ "$(web)" != "none" ]; then \
@@ -89,15 +104,15 @@ dev-start:
 	@if [ "$(web)" = "all" ]; then \
 		npm run dev:watch; \
 	elif [ "$(web)" = "mantine" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "MANTINE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors cyan,magenta,yellow,green,blue,red --names "MANTINE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:mantine" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "shadcn" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue,red --names "SHADCN,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors teal,magenta,yellow,green,blue,red --names "SHADCN,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:shadcn" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "daisyui" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue,red --names "DAISYUI,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors green,magenta,yellow,orange,blue,red --names "DAISYUI,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:daisyui" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "svelte" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange,red --names "SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors blue,magenta,yellow,green,orange,red --names "SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:web:svelte" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	elif [ "$(web)" = "none" ]; then \
-		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue,red --names "API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
+		concurrently --kill-others-on-fail --prefix-colors magenta,yellow,green,blue,red --names "API,TYPES,CORE,FRAMEWORK,COGNITO" "npm run dev:api" "npm run dev:watch:types" "npm run dev:watch:core" "npm run dev:watch:framework" "docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG"; \
 	fi
 	@echo ""
 	@echo "✨ Development environment is ready!"
@@ -119,6 +134,18 @@ dev-start:
 		echo "  Svelte:     http://localhost:5176"; \
 	fi
 	@echo ""
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "🚀 Starting development servers..."
+	# @npm run dev:watch
+	# @echo ""
+	# @echo "✨ Development environment is ready!"
+	# @echo ""
+	# @echo "  Moto:       http://localhost:5555"
+	# @echo "  API:        http://localhost:3001"
+	# @echo "  Web:        http://localhost:5173"
+	# @echo ""
+	# END:SCAFFOLDING_INSERT
 	@echo "View Moto logs with: make moto-logs"
 	@echo "Check status with: make dev-status"
 
@@ -144,7 +171,7 @@ dev-stop:
 	@# Clean up any stragglers
 	@npm run dev:clean 2>/dev/null || true
 	@echo "   ✓ Development servers stopped"
-	@docker-compose -f docker-compose.moto.yml stop 2>/dev/null || true
+	@docker compose -f docker-compose.moto.yml down 2>/dev/null || true
 	@echo "   ✓ Moto stopped"
 	@echo "✅ All services stopped"
 
@@ -154,7 +181,7 @@ dev-restart: dev-stop dev-start
 # Reset Moto data and restart
 dev-reset:
 	@echo "🔄 Resetting Moto data..."
-	@docker-compose -f docker-compose.moto.yml down -v
+	@docker compose -f docker-compose.moto.yml down -v
 	@mkdir -p logs
 	@echo "✅ Moto data reset"
 	@echo ""
@@ -189,6 +216,7 @@ dev-status:
 	else \
 		echo "  ❌ Not running"; \
 	fi
+	# BEGIN:SCAFFOLDING_REMOVE
 	@echo ""
 	@echo "Mantine Web:"
 	@if lsof -i :5173 >/dev/null 2>&1; then \
@@ -213,6 +241,17 @@ dev-status:
 	else \
 		echo "  ❌ Not running"; \
 	fi
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo ""
+	# @echo "Web Frontend:"
+	# @if lsof -i :5173 >/dev/null 2>&1; then \
+	# 	echo "  ✅ Running on port 5173"; \
+	# 	curl -s http://localhost:5173 >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
+	# else \
+	# 	echo "  ❌ Not running"; \
+	# fi
+	# END:SCAFFOLDING_INSERT
 
 # Run tests against Moto
 test-local:
@@ -229,7 +268,7 @@ test-local:
 clean:
 	@echo "🧹 Cleaning up..."
 	@$(MAKE) dev-stop
-	@docker-compose -f docker-compose.moto.yml down -v
+	@docker compose -f docker-compose.moto.yml down -v
 	@rm -rf logs
 	@echo "✅ Cleanup complete"
 
@@ -260,6 +299,7 @@ moto-services:
 
 # Cloud environment commands
 cloud-dev:
+	# BEGIN:SCAFFOLDING_REMOVE
 	@echo "☁️  Starting development environment (Local → AWS Development, web=$(web))"
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS development environment)..."
@@ -292,8 +332,24 @@ cloud-dev:
 	elif [ "$(web)" = "daisyui" ]; then \
 		echo "  DaisyUI:    http://localhost:5175 → AWS Development"; \
 	fi
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "☁️  Starting development environment (Local → AWS Development)"
+	# @mkdir -p logs
+	# @echo "🚀 Starting development servers (AWS development environment)..."
+	# @cd api.hypermedia && npm run local development > ../logs/api-dev.log 2>&1 &
+	# @echo "  Web:        http://localhost:5173"
+	# @sleep 3
+	# @echo "   Development servers started"
+	# @echo ""
+	# @echo "✨ Development environment ready (Local → AWS Development)!"
+	# @echo ""
+	# @echo "  API:        http://localhost:3001 → AWS Development"
+	# @echo "  Web:        http://localhost:5173"
+	# END:SCAFFOLDING_INSERT
 
 cloud-staging:
+	# BEGIN:SCAFFOLDING_REMOVE
 	@echo "☁️  Starting staging environment (Local → AWS Staging, web=$(web))"
 	@mkdir -p logs
 	@echo "🚀 Starting development servers (AWS staging environment)..."
@@ -326,6 +382,21 @@ cloud-staging:
 	elif [ "$(web)" = "daisyui" ]; then \
 		echo "  DaisyUI:    http://localhost:5175 → AWS Staging"; \
 	fi
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "☁️  Starting staging environment (Local → AWS Staging)"
+	# @mkdir -p logs
+	# @echo "🚀 Starting development servers (AWS staging environment)..."
+	# @cd api.hypermedia && npm run local staging > ../logs/api-staging.log 2>&1 &
+	# @echo "  Web:        http://localhost:5173"
+	# @sleep 3
+	# @echo "   Development servers started"
+	# @echo ""
+	# @echo "✨ Staging environment ready (Local → AWS Staging)!"
+	# @echo ""
+	# @echo "  API:        http://localhost:3001 → AWS Staging"
+	# @echo "  Web:        http://localhost:5173"
+	# END:SCAFFOLDING_INSERT
 
 # Create logs directory if it doesn't exist
 $(shell mkdir -p logs)

@@ -6,6 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { $ } from "zx";
+import { getProjectConfig } from "../config/load_project_config";
 import { StackManager } from "./stack_manager";
 
 // ES module __dirname equivalent
@@ -240,9 +241,10 @@ export class Deployer extends StackManager {
         const requiredStackNames = lambdaStack?.dependencies || ['cognito', 'data', 'alb'];
         
         // Map to actual stack names
+        const projectConfig = getProjectConfig();
         const requiredStacks = requiredStackNames.map((name: string) => ({
             name,
-            stackName: `serverlesslaunchpad-${name}-stack-${environment}`
+            stackName: `${projectConfig.resourcePrefix}-${name}-stack-${environment}`
         }));
         
         const missingStacks: string[] = [];
@@ -383,11 +385,12 @@ export class Deployer extends StackManager {
         };
         
         // Fetch outputs from each stack
+        const projectConfig = getProjectConfig();
         const stackConfigs = [
-            { name: `slp-cognito-stack-${environment}`, key: 'cognito' },
-            { name: `slp-secrets-stack-${environment}`, key: 'secrets' },
-            { name: `slp-lambda-stack-${environment}`, key: 'lambda' },
-            { name: `slp-alb-stack-${environment}`, key: 'alb' },
+            { name: `${projectConfig.resourcePrefix}-cognito-stack-${environment}`, key: 'cognito' },
+            { name: `${projectConfig.resourcePrefix}-secrets-stack-${environment}`, key: 'secrets' },
+            { name: `${projectConfig.resourcePrefix}-lambda-stack-${environment}`, key: 'lambda' },
+            { name: `${projectConfig.resourcePrefix}-alb-stack-${environment}`, key: 'alb' },
         ];
         
         for (const { name, key } of stackConfigs) {

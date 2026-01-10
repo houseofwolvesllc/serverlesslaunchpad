@@ -10,10 +10,17 @@ export class AwsSecretsConfigurationStore<T extends z.ZodType> implements Config
     private readonly zodSchema: T;
     private readonly environment: Environment;
 
-    constructor(zodSchema: T, environment: Environment, awsConfig?: ConstructorParameters<typeof SecretsManagerClient>[0], configurationName?: string) {
+    /**
+     * Create an AWS Secrets Manager configuration store.
+     * @param zodSchema - Zod schema for configuration validation
+     * @param environment - Environment to load secrets for
+     * @param configurationName - Configuration domain name (e.g., "serverlesslaunchpad.com")
+     * @param awsConfig - Optional AWS SDK client configuration
+     */
+    constructor(zodSchema: T, environment: Environment, configurationName: string, awsConfig?: ConstructorParameters<typeof SecretsManagerClient>[0]) {
         this.zodSchema = zodSchema;
         this.environment = environment;
-        this.configurationName = configurationName ?? "serverlesslaunchpad.com";
+        this.configurationName = configurationName;
         this.client = new SecretsManagerClient(awsConfig || {});
     }
 

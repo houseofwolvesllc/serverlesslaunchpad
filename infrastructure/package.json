@@ -33,7 +33,6 @@
     "dependencies": {
         "@aws-sdk/client-cloudformation": "^3.0.0",
         "@houseofwolves/serverlesslaunchpad.api.hypermedia": "*",
-        "@houseofwolves/serverlesslaunchpad.commons": "*",
         "@houseofwolves/serverlesslaunchpad.core": "*",
         "@houseofwolves/serverlesslaunchpad.framework": "*",
         "@inquirer/prompts": "^7.8.6",

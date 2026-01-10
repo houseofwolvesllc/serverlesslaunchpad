@@ -2,6 +2,7 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
+import { getProjectConfig } from "../config/load_project_config";
 import { getConfiguration } from "../config/stack_configuration";
 import { AlbStack } from "../lib/alb/alb_stack";
 import { CognitoStack } from "../lib/auth/cognito_stack";
@@ -10,6 +11,9 @@ import { ApiLambdaStack } from "../lib/lambda/api_lambda_stack";
 import { NetworkStack } from "../lib/network/network_stack";
 import { SecretsStack } from "../lib/secrets/secrets_stack";
 import { WebStaticHostingStack, WebPackageName } from "../lib/web/web_static_hosting_stack";
+
+// Load project configuration from project.config.json
+const projectConfig = getProjectConfig();
 
 // Get environment variables - use NODE_ENV as single source of truth
 const environment = (process.env.NODE_ENV || "development") as Environment;
@@ -54,7 +58,8 @@ app.node.setContext("@aws-cdk/aws-iam:minimizePolicies", true);
 // Define common props - include account/region for CDK context lookups
 const commonProps = {
     configuration,
-    description: `Serverless Launchpad ${environment} environment`,
+    projectConfig,
+    description: `${projectConfig.displayName} ${environment} environment`,
     env: {
         account,
         region,
@@ -62,33 +67,33 @@ const commonProps = {
 };
 
 // Create stacks in dependency order
-const secretsStack = new SecretsStack(app, `slp-secrets-stack-${environment}`, {
+const secretsStack = new SecretsStack(app, `${projectConfig.resourcePrefix}-secrets-stack-${environment}`, {
     ...commonProps,
-    description: `Secrets and configuration for Serverless Launchpad ${environment}`,
+    description: `Secrets and configuration for ${projectConfig.displayName} ${environment}`,
 });
 
-const cognitoStack = new CognitoStack(app, `slp-cognito-stack-${environment}`, {
+const cognitoStack = new CognitoStack(app, `${projectConfig.resourcePrefix}-cognito-stack-${environment}`, {
     ...commonProps,
-    description: `Cognito User Pool for Serverless Launchpad ${environment}`,
+    description: `Cognito User Pool for ${projectConfig.displayName} ${environment}`,
 });
 
-const dynamoDbStack = new DynamoDbStack(app, `slp-dynamodb-stack-${environment}`, {
+const dynamoDbStack = new DynamoDbStack(app, `${projectConfig.resourcePrefix}-dynamodb-stack-${environment}`, {
     ...commonProps,
-    description: `DynamoDB tables for Serverless Launchpad ${environment}`,
+    description: `DynamoDB tables for ${projectConfig.displayName} ${environment}`,
 });
 
 // Create network stack with shared VPC and target group
-const networkStack = new NetworkStack(app, `slp-network-stack-${environment}`, {
+const networkStack = new NetworkStack(app, `${projectConfig.resourcePrefix}-network-stack-${environment}`, {
     ...commonProps,
-    description: `Network infrastructure for Serverless Launchpad ${environment}`,
+    description: `Network infrastructure for ${projectConfig.displayName} ${environment}`,
     vpcConfig,
 });
 
 // Create Lambda stack with pre-created VPC (creates its own target group)
 // Note: Lambda stack looks up the configuration secret by name to avoid cross-stack export dependencies
-const apiLambdaStack = new ApiLambdaStack(app, `slp-lambda-stack-${environment}`, {
+const apiLambdaStack = new ApiLambdaStack(app, `${projectConfig.resourcePrefix}-lambda-stack-${environment}`, {
     ...commonProps,
-    description: `API Lambda function for Serverless Launchpad ${environment}`,
+    description: `API Lambda function for ${projectConfig.displayName} ${environment}`,
     encryptionKey: secretsStack.encryptionKey,
     userPoolId: cognitoStack.userPool.userPoolId,
     userPoolClientId: cognitoStack.userPoolClient.userPoolClientId,
@@ -96,9 +101,9 @@ const apiLambdaStack = new ApiLambdaStack(app, `slp-lambda-stack-${environment}`
 });
 
 // Create ALB stack with pre-created VPC, security group and Lambda's target group
-const albStack = new AlbStack(app, `slp-alb-stack-${environment}`, {
+const albStack = new AlbStack(app, `${projectConfig.resourcePrefix}-alb-stack-${environment}`, {
     ...commonProps,
-    description: `Application Load Balancer for Serverless Launchpad ${environment}`,
+    description: `Application Load Balancer for ${projectConfig.displayName} ${environment}`,
     vpc: networkStack.vpc,
     securityGroup: networkStack.albSecurityGroup,
     targetGroup: apiLambdaStack.targetGroup,
@@ -119,7 +124,7 @@ albStack.addDependency(apiLambdaStack); // ALB needs Lambda's target group
 const webPackages: WebPackageName[] = ["mantine", "shadcn", "daisyui", "svelte"];
 
 webPackages.forEach((pkg) => {
-    const stack = new WebStaticHostingStack(app, `slp-web-${pkg}-stack-${environment}`, {
+    const stack = new WebStaticHostingStack(app, `${projectConfig.resourcePrefix}-web-${pkg}-stack-${environment}`, {
         ...commonProps,
         description: `Static web hosting for web.${pkg} - ${environment}`,
         webPackageName: pkg,

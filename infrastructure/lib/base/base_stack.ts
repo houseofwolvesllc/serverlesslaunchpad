@@ -1,10 +1,12 @@
 import { Environment } from "@houseofwolves/serverlesslaunchpad.core";
+import { ProjectConfig } from "@houseofwolves/serverlesslaunchpad.types";
 import { RemovalPolicy, Stack, StackProps, Tags } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { StackConfiguration } from "../../config/stack_configuration";
 
 export interface BaseStackProps extends StackProps {
     configuration: StackConfiguration;
+    projectConfig: ProjectConfig;
     description?: string;
 }
 
@@ -13,12 +15,14 @@ export interface BaseStackProps extends StackProps {
  */
 export abstract class BaseStack extends Stack {
     protected readonly configuration: StackConfiguration;
+    protected readonly projectConfig: ProjectConfig;
     public readonly appEnvironment: Environment;
 
     constructor(scope: Construct, id: string, props: BaseStackProps) {
         super(scope, id, props);
 
         this.configuration = props.configuration;
+        this.projectConfig = props.projectConfig;
         this.appEnvironment = props.configuration.environment;
 
         // Apply tags to all resources in this stack
@@ -43,14 +47,14 @@ export abstract class BaseStack extends Stack {
      * Generate a resource name with environment suffix
      */
     protected resourceName(baseName: string): string {
-        return `slp-${baseName}-${this.appEnvironment}`;
+        return `${this.projectConfig.resourcePrefix}-${baseName}-${this.appEnvironment}`;
     }
 
     /**
      * Generate a construct ID with project prefix
      */
     protected constructId(baseName: string): string {
-        return `slp-${baseName}`;
+        return `${this.projectConfig.resourcePrefix}-${baseName}`;
     }
 
     /**

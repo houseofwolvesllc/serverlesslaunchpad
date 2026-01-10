@@ -26,6 +26,7 @@ import {
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { ApiLogger } from "./logging";
+import { getProjectConfig } from "./project_config";
 
 /**
  * Singleton container instance for the API.Hypermedia application.
@@ -69,7 +70,8 @@ class AppContainer {
             .bind(DynamoDbClientFactory)
             .toFactory(() => {
                 const configStore = AppContainer.getInfraConfigStore();
-                return new DynamoDbClientFactory(configStore);
+                const projectConfig = getProjectConfig();
+                return new DynamoDbClientFactory(configStore, projectConfig.tablePrefix);
             })
             .asSingleton();
 
@@ -83,14 +85,15 @@ class AppContainer {
             .bind(ApplicationSecretsStore)
             .toFactory(() => {
                 const environment = AppContainer.getEnvironment();
+                const projectConfig = getProjectConfig();
                 const secretsConfig =
                     environment === "moto" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
 
                 const baseStore = new AwsSecretsConfigurationStore(
                     SecretsConfigSchema,
                     environment,
-                    secretsConfig,
-                    "serverlesslaunchpad.com"
+                    projectConfig.configDomain,
+                    secretsConfig
                 );
                 // Cache for 15 minutes - secrets may be rotated
                 const cachedStore = new CachedConfigurationStore(baseStore, 15);
