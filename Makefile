@@ -63,10 +63,13 @@ dev-start:
 	@echo ""
 	@echo "🛑 Ensuring clean environment..."
 	@$(MAKE) dev-stop 2>/dev/null || true
+	@# Stop any container using our ports (from other projects)
+	@docker ps -q --filter "publish=5555" | xargs -r docker stop 2>/dev/null || true
+	@docker ps -q --filter "publish=9230" | xargs -r docker stop 2>/dev/null || true
 	@echo ""
 	@mkdir -p logs
 	@echo "🚀 Starting Moto..."
-	@docker-compose -f docker-compose.moto.yml up -d > logs/moto.log 2>&1
+	@docker compose -f docker-compose.moto.yml up -d > logs/moto.log 2>&1
 	@echo "⏳ Waiting for Moto to be ready..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
 		if curl -s http://localhost:5555/moto-api/reset >/dev/null 2>&1; then \
@@ -168,7 +171,7 @@ dev-stop:
 	@# Clean up any stragglers
 	@npm run dev:clean 2>/dev/null || true
 	@echo "   ✓ Development servers stopped"
-	@docker-compose -f docker-compose.moto.yml stop 2>/dev/null || true
+	@docker compose -f docker-compose.moto.yml down 2>/dev/null || true
 	@echo "   ✓ Moto stopped"
 	@echo "✅ All services stopped"
 
@@ -178,7 +181,7 @@ dev-restart: dev-stop dev-start
 # Reset Moto data and restart
 dev-reset:
 	@echo "🔄 Resetting Moto data..."
-	@docker-compose -f docker-compose.moto.yml down -v
+	@docker compose -f docker-compose.moto.yml down -v
 	@mkdir -p logs
 	@echo "✅ Moto data reset"
 	@echo ""
@@ -265,7 +268,7 @@ test-local:
 clean:
 	@echo "🧹 Cleaning up..."
 	@$(MAKE) dev-stop
-	@docker-compose -f docker-compose.moto.yml down -v
+	@docker compose -f docker-compose.moto.yml down -v
 	@rm -rf logs
 	@echo "✅ Cleanup complete"
 
