@@ -1,32 +1,84 @@
-import WebConfigurationStore from './web_config_store';
+/**
+ * Moto Amplify Shims - Shared Implementation
+ *
+ * AWS Amplify v6 + Moto Compatibility Shims for local development.
+ * This module provides authentication-related shims to enable AWS Amplify v6 to work with
+ * Moto (AWS service emulator) for local development.
+ *
+ * These shims are only applied when using a custom Cognito endpoint.
+ *
+ * Background:
+ * - AWS Amplify v6 removed native support for custom endpoints (unlike v5)
+ * - Moto doesn't implement all AWS Cognito API actions (e.g., revoke_token)
+ * - These shims bridge the compatibility gap by intercepting and redirecting API calls
+ *
+ * Note: This only handles browser-side authentication flows. JWT verification in the
+ * API server is handled separately in the framework package.
+ *
+ * Production Impact: NONE - only applies when custom endpoints are configured
+ *
+ * @packageDocumentation
+ */
+
+import type { WebConfig } from './web_config_schema';
+
+/**
+ * Config getter function type.
+ * This allows framework-specific config loading without coupling to any framework.
+ */
+export type ConfigGetter = () => Promise<WebConfig>;
+
+/**
+ * Shim state for diagnostics
+ */
+export interface ShimState {
+    initialized: boolean;
+    initTimestamp: Date | null;
+    xhrShimInstalled: boolean;
+    fetchShimInstalled: boolean;
+    awsEnvConfigured: boolean;
+    revokeTokenShimInstalled: boolean;
+    interceptedRequests: Array<{
+        url: string;
+        method: string;
+        timestamp: Date;
+        redirected: boolean;
+    }>;
+}
 
 // Debug state tracking
-const shimState = {
+const shimState: ShimState = {
     initialized: false,
-    initTimestamp: null as Date | null,
+    initTimestamp: null,
     xhrShimInstalled: false,
     fetchShimInstalled: false,
     awsEnvConfigured: false,
     revokeTokenShimInstalled: false,
-    interceptedRequests: [] as Array<{ url: string; method: string; timestamp: Date; redirected: boolean }>
+    interceptedRequests: []
 };
 
 // Debug logging helper
-function debugLog(level: 'info' | 'warn' | 'error' | 'success', message: string, ...args: unknown[]) {
+function debugLog(level: 'info' | 'warn' | 'error' | 'success', message: string, ...args: unknown[]): void {
     const timestamp = new Date().toISOString();
     const prefix = {
-        info: '🔧 [SHIM]',
-        warn: '⚠️ [SHIM]',
-        error: '❌ [SHIM]',
-        success: '✅ [SHIM]'
+        info: '[SHIM]',
+        warn: '[SHIM]',
+        error: '[SHIM]',
+        success: '[SHIM]'
     }[level];
 
     console.log(`${prefix} ${timestamp} ${message}`, ...args);
 }
 
-
-// Diagnostic function to test shim status
-function getShimDiagnostics() {
+/**
+ * Get current shim diagnostics
+ */
+export function getShimDiagnostics(): ShimState & {
+    hasXMLHttpRequest: boolean;
+    hasFetch: boolean;
+    hasProcess: boolean;
+    processEnv: Record<string, string | undefined>;
+} {
     const globalThis_: typeof globalThis & { process?: { env?: Record<string, string | undefined> } } = globalThis;
     return {
         ...shimState,
@@ -38,7 +90,7 @@ function getShimDiagnostics() {
 }
 
 // Advanced diagnostic tools
-function runShimDiagnostics() {
+function runShimDiagnostics(): ReturnType<typeof getShimDiagnostics> {
     const diagnostics = getShimDiagnostics();
 
     debugLog('info', '=== SHIM DIAGNOSTICS REPORT ===');
@@ -57,13 +109,12 @@ function runShimDiagnostics() {
         });
     }
 
-
     return diagnostics;
 }
 
-async function testCognitoLocalConnectivity(): Promise<boolean> {
+async function testCognitoLocalConnectivity(getConfig: ConfigGetter): Promise<boolean> {
     try {
-        const config = await WebConfigurationStore.getConfig();
+        const config = await getConfig();
         if (!config.cognito?.endpoint_url) {
             debugLog('warn', 'No Cognito-Local URL configured');
             return false;
@@ -123,12 +174,16 @@ async function testCognitoRedirection(): Promise<boolean> {
     }
 }
 
-// Comprehensive shim test suite
-async function runFullDiagnostics(): Promise<void> {
+/**
+ * Run full diagnostic suite
+ *
+ * @param getConfig - Function that returns the web configuration
+ */
+export async function runFullDiagnostics(getConfig: ConfigGetter): Promise<void> {
     debugLog('info', '=== RUNNING FULL SHIM DIAGNOSTICS ===');
 
     const basic = runShimDiagnostics();
-    const motoConnected = await testCognitoLocalConnectivity();
+    const motoConnected = await testCognitoLocalConnectivity(getConfig);
     const cognitoRedirected = await testCognitoRedirection();
 
     const allGood = basic.initialized && basic.xhrShimInstalled && basic.fetchShimInstalled && motoConnected && cognitoRedirected;
@@ -147,68 +202,56 @@ async function runFullDiagnostics(): Promise<void> {
 }
 
 // Expose diagnostics and test functions globally for debugging
-type GlobalThis = typeof globalThis & {
+type GlobalThisWithDiagnostics = typeof globalThis & {
     __MOTO_SHIM_DIAGNOSTICS__?: typeof getShimDiagnostics;
     __MOTO_SHIM_RUN_DIAGNOSTICS__?: typeof runShimDiagnostics;
-    __MOTO_SHIM_TEST_CONNECTIVITY__?: typeof testCognitoLocalConnectivity;
+    __MOTO_SHIM_TEST_CONNECTIVITY__?: (getConfig: ConfigGetter) => Promise<boolean>;
     __MOTO_SHIM_TEST_REDIRECTION__?: typeof testCognitoRedirection;
-    __MOTO_SHIM_FULL_TEST__?: typeof runFullDiagnostics;
+    __MOTO_SHIM_FULL_TEST__?: (getConfig: ConfigGetter) => Promise<void>;
 };
-const globalThis_: GlobalThis = globalThis;
-globalThis_.__MOTO_SHIM_DIAGNOSTICS__ = getShimDiagnostics;
-globalThis_.__MOTO_SHIM_RUN_DIAGNOSTICS__ = runShimDiagnostics;
-globalThis_.__MOTO_SHIM_TEST_CONNECTIVITY__ = testCognitoLocalConnectivity;
-globalThis_.__MOTO_SHIM_TEST_REDIRECTION__ = testCognitoRedirection;
-globalThis_.__MOTO_SHIM_FULL_TEST__ = runFullDiagnostics;
 
 /**
- * AWS Amplify v6 + Moto Compatibility Shims
+ * Apply Moto compatibility shims for local development
  *
- * This module provides authentication-related shims to enable AWS Amplify v6 to work with
- * Moto (AWS service emulator) for local development. These shims are only applied when
- * using a custom Cognito endpoint.
+ * @param getConfig - Function that returns the web configuration
+ * @returns Promise that resolves when shims are applied
  *
- * Background:
- * - AWS Amplify v6 removed native support for custom endpoints (unlike v5)
- * - Moto doesn't implement all AWS Cognito API actions (e.g., revoke_token)
- * - These shims bridge the compatibility gap by intercepting and redirecting API calls
+ * @example
+ * // In React main.tsx
+ * import { applyMotoShims } from '@houseofwolves/serverlesslaunchpad.web.commons';
+ * import WebConfigurationStore from './configuration/web_config_store';
  *
- * Note: This only handles browser-side authentication flows. JWT verification in the
- * API server is handled separately in the framework package.
+ * applyMotoShims(() => WebConfigurationStore.getConfig());
  *
- * Production Impact: NONE - only applies when custom endpoints are configured
+ * @example
+ * // In Svelte hooks.client.ts
+ * import { applyMotoShims } from '@houseofwolves/serverlesslaunchpad.web.commons';
+ * import WebConfigurationStore from '$lib/config/web_config_store';
+ *
+ * applyMotoShims(() => WebConfigurationStore.getConfig());
  */
-
-/**
- * Apply environment-specific shims for AWS Amplify v6 compatibility with local development
- *
- * This function contains authentication-related shimming logic that's isolated from the
- * main application code. These shims are necessary because:
- *
- * 1. AWS Amplify v6 removed native support for custom endpoints (unlike v5)
- * 2. We need to redirect AWS Cognito API calls to local Moto/LocalStack instances
- * 3. This enables full offline authentication flows without hitting real AWS services
- *
- * The shims work by intercepting network requests at multiple layers:
- * - Environment variables for AWS SDK
- * - XMLHttpRequest shimming for older AWS SDK versions
- * - Fetch API shimming for modern implementations
- * - revoke_token polyfill for Moto compatibility
- */
-export async function applyShims(): Promise<void> {
+export async function applyMotoShims(getConfig: ConfigGetter): Promise<void> {
     debugLog('info', 'Starting shim initialization...');
+
+    // Expose diagnostics globally
+    const globalThis_: GlobalThisWithDiagnostics = globalThis;
+    globalThis_.__MOTO_SHIM_DIAGNOSTICS__ = getShimDiagnostics;
+    globalThis_.__MOTO_SHIM_RUN_DIAGNOSTICS__ = runShimDiagnostics;
+    globalThis_.__MOTO_SHIM_TEST_CONNECTIVITY__ = testCognitoLocalConnectivity;
+    globalThis_.__MOTO_SHIM_TEST_REDIRECTION__ = testCognitoRedirection;
+    globalThis_.__MOTO_SHIM_FULL_TEST__ = runFullDiagnostics;
 
     try {
         shimState.initTimestamp = new Date();
 
-        await addSupportForCustomEndpoints();
-        await addSupportForRevokeToken();
+        await addSupportForCustomEndpoints(getConfig);
+        await addSupportForRevokeToken(getConfig);
 
         shimState.initialized = true;
         debugLog('success', 'All shims applied successfully', getShimDiagnostics());
 
         // Test shim functionality
-        await testShimFunctionality();
+        await testShimFunctionality(getConfig);
 
     } catch (error) {
         debugLog('error', 'Failed to apply shims:', error);
@@ -224,10 +267,10 @@ export async function applyShims(): Promise<void> {
  *
  * Production impact: NONE - only applies when custom endpoint is configured
  */
-async function addSupportForCustomEndpoints(): Promise<void> {
+async function addSupportForCustomEndpoints(getConfig: ConfigGetter): Promise<void> {
     debugLog('info', 'Loading configuration for custom endpoint shims...');
 
-    const config = await WebConfigurationStore.getConfig();
+    const config = await getConfig();
     debugLog('info', 'Configuration loaded:', {
         environment: config.environment,
         hasCognitoEndpoint: !!config.cognito?.endpoint_url,
@@ -278,8 +321,8 @@ async function addSupportForCustomEndpoints(): Promise<void> {
                         redirected: true
                     });
 
-                    debugLog('info', `🔄 XHR Intercepted: ${method} ${url}`);
-                    debugLog('info', `   ↳ Redirecting to: ${customUrl}`);
+                    debugLog('info', `XHR Intercepted: ${method} ${url}`);
+                    debugLog('info', `   Redirecting to: ${customUrl}`);
 
                     return originalOpen.call(this, method, customUrl, async ?? true, user, password);
                 } else {
@@ -291,7 +334,7 @@ async function addSupportForCustomEndpoints(): Promise<void> {
                             timestamp: new Date(),
                             redirected: false
                         });
-                        debugLog('warn', `🔍 XHR Bypassed: ${method} ${url} (not intercepted)`);
+                        debugLog('warn', `XHR Bypassed: ${method} ${url} (not intercepted)`);
                     }
                 }
                 return originalOpen.call(this, method, url, async ?? true, user, password);
@@ -332,8 +375,8 @@ async function addSupportForCustomEndpoints(): Promise<void> {
                     redirected: true
                 });
 
-                debugLog('info', `🔄 Fetch Intercepted: ${method} ${url}`);
-                debugLog('info', `   ↳ Redirecting to: ${customUrl}`);
+                debugLog('info', `Fetch Intercepted: ${method} ${url}`);
+                debugLog('info', `   Redirecting to: ${customUrl}`);
 
                 const newInput =
                     typeof input === 'string'
@@ -351,7 +394,7 @@ async function addSupportForCustomEndpoints(): Promise<void> {
                         timestamp: new Date(),
                         redirected: false
                     });
-                    debugLog('warn', `🔍 Fetch Bypassed: ${method} ${url} (not intercepted)`);
+                    debugLog('warn', `Fetch Bypassed: ${method} ${url} (not intercepted)`);
                 }
             }
 
@@ -383,10 +426,10 @@ async function addSupportForCustomEndpoints(): Promise<void> {
  *
  * Production impact: NONE - only applies when using Moto endpoints
  */
-async function addSupportForRevokeToken(): Promise<void> {
+async function addSupportForRevokeToken(getConfig: ConfigGetter): Promise<void> {
     debugLog('info', 'Installing revoke_token polyfill...');
 
-    const config = await WebConfigurationStore.getConfig();
+    const config = await getConfig();
 
     // Only apply polyfill when using cognito-local
     if (!config.cognito?.endpoint_url) {
@@ -407,7 +450,7 @@ async function addSupportForRevokeToken(): Promise<void> {
                 try {
                     const body = typeof init.body === 'string' ? init.body : '';
                     if (body.includes('"X-Amz-Target":"AWSCognitoIdentityProviderService.RevokeToken"')) {
-                        debugLog('info', '🔄 Intercepting revoke_token call - returning mock success for cognito-local compatibility');
+                        debugLog('info', 'Intercepting revoke_token call - returning mock success for cognito-local compatibility');
                         // Return a mock success response that matches AWS Cognito's revoke_token response
                         return Promise.resolve(
                             new Response('{}', {
@@ -438,12 +481,12 @@ async function addSupportForRevokeToken(): Promise<void> {
 }
 
 // Test shim functionality with a dummy request
-async function testShimFunctionality(): Promise<void> {
+async function testShimFunctionality(getConfig: ConfigGetter): Promise<void> {
     try {
         debugLog('info', 'Testing shim functionality...');
 
         // Test if we can reach cognito-local
-        const config = await WebConfigurationStore.getConfig();
+        const config = await getConfig();
         if (!config.cognito?.endpoint_url) {
             return;
         }
@@ -497,8 +540,8 @@ async function addAwsSdkV3Support(customEndpoint: string): Promise<void> {
                         redirected: true
                     });
 
-                    debugLog('info', `🔄 SDK v3 Intercepted: ${method} ${url}`);
-                    debugLog('info', `   ↳ Redirecting to: ${customUrl}`);
+                    debugLog('info', `SDK v3 Intercepted: ${method} ${url}`);
+                    debugLog('info', `   Redirecting to: ${customUrl}`);
 
                     const newInput = typeof input === 'string'
                         ? customUrl
@@ -534,8 +577,16 @@ async function addAwsSdkV3Support(customEndpoint: string): Promise<void> {
     }
 }
 
-// Auto-apply shims when this module is imported
-debugLog('info', 'Moto shim module loading...');
-applyShims().catch(error => {
-    debugLog('error', 'Failed to apply Moto shims:', error);
-});
+/**
+ * Reset shim state - useful for testing
+ * @internal
+ */
+export function resetShimState(): void {
+    shimState.initialized = false;
+    shimState.initTimestamp = null;
+    shimState.xhrShimInstalled = false;
+    shimState.fetchShimInstalled = false;
+    shimState.awsEnvConfigured = false;
+    shimState.revokeTokenShimInstalled = false;
+    shimState.interceptedRequests = [];
+}

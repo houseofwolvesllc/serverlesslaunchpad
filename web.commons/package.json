@@ -13,18 +13,19 @@
     "build:watch": "tsc --watch --preserveWatchOutput",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@houseofwolves/serverlesslaunchpad.types": "*",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
-    "eslint": "^8.56.0",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.21.0",
     "vitest": "^1.0.0"
   }
 }

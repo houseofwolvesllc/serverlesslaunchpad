@@ -62,10 +62,11 @@ dev-start:
 	@echo "✅ Docker is available"
 	@echo ""
 	@echo "🛑 Ensuring clean environment..."
-	@$(MAKE) dev-stop 2>/dev/null || true
+	@$(MAKE) dev-stop
+	@sleep 1
 	@# Stop any container using our ports (from other projects)
-	@docker ps -q --filter "publish=5555" | xargs -r docker stop 2>/dev/null || true
-	@docker ps -q --filter "publish=9230" | xargs -r docker stop 2>/dev/null || true
+	@docker ps -q --filter "publish=5555" | xargs docker stop 2>/dev/null || true
+	@docker ps -q --filter "publish=9230" | xargs docker stop 2>/dev/null || true
 	@echo ""
 	@mkdir -p logs
 	@echo "🚀 Starting Moto..."

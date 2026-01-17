@@ -5,12 +5,16 @@
  * Perfect place to initialize global configurations like Moto shims.
  */
 
-// Import Moto shims - this triggers the auto-apply logic at module load
-import '$lib/config/moto_amplify_shims';
+// Import shared shims from web.commons
+import { applyMotoShims } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import WebConfigurationStore from '$lib/config/web_config_store';
 import { getInitializationPromise } from '$lib/init';
 import { logger } from '$lib/logging';
 
-logger.info('[SvelteKit] Client hooks initialized - Moto shims loaded');
+// Apply Moto shims FIRST to ensure they're applied before any AWS Amplify code runs
+applyMotoShims(() => WebConfigurationStore.getConfig()).then(() => {
+	logger.info('[SvelteKit] Client hooks initialized - Moto shims loaded');
+});
 
 // Start initialization immediately
 getInitializationPromise();
