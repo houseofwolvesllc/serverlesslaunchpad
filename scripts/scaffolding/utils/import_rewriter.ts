@@ -30,6 +30,18 @@ const WEB_COMMONS_MAPPINGS: ExportMapping[] = [
     // Lib
     { exportName: "HalFormsClient", sourcePath: "lib/hal_forms_client", sourcePackage: "web.commons" },
     { exportName: "createHalFormsClient", sourcePath: "lib/hal_forms_client", sourcePackage: "web.commons" },
+
+    // Field Rendering
+    { exportName: "getEnumPropertyFromTemplates", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "determineBadgeVariant", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "formatDateValue", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "evaluateBooleanValue", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "shortenUrl", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "getNullValuePlaceholder", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "isArrayValue", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "isNullish", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "isEmpty", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
+    { exportName: "isValidDate", sourcePath: "field-rendering/field_rendering_utils", sourcePackage: "web.commons" },
 ];
 
 /**
@@ -61,18 +73,6 @@ const WEB_COMMONS_REACT_MAPPINGS: ExportMapping[] = [
     { exportName: "useHalResourceDetail", sourcePath: "hal-resource/use_hal_resource_detail", sourcePackage: "web.commons.react" },
     { exportName: "inferPageTitle", sourcePath: "hal-resource/resource_utils", sourcePackage: "web.commons.react" },
     { exportName: "organizeFields", sourcePath: "hal-resource/resource_utils", sourcePackage: "web.commons.react" },
-
-    // Field Rendering
-    {
-        exportName: "getEnumPropertyFromTemplates",
-        sourcePath: "field-rendering/field_rendering_utils",
-        sourcePackage: "web.commons.react",
-    },
-    {
-        exportName: "determineBadgeVariant",
-        sourcePath: "field-rendering/field_rendering_utils",
-        sourcePackage: "web.commons.react",
-    },
 ];
 
 /**

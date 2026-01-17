@@ -28,7 +28,7 @@
         "ts-node": "^10.9.2",
         "tsx": "^4.19.3",
         "typescript": "~5.3.3",
-        "zx": "^7.2.3"
+        "zx": "^8.8.5"
     },
     "dependencies": {
         "@aws-sdk/client-cloudformation": "^3.0.0",

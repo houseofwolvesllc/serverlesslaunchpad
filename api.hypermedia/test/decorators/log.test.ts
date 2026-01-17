@@ -1,5 +1,5 @@
 import { Container } from "@houseofwolves/serverlesslaunchpad.core";
-import { ALBEvent } from "aws-lambda";
+import type { ALBEvent } from "aws-lambda";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Log, Debug } from "../../src/decorators";
 import { ApiLogger } from "../../src/logging/api_logger";

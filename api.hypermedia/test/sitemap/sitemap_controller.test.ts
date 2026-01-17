@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Role } from "@houseofwolves/serverlesslaunchpad.core";
-import { ALBEvent } from "aws-lambda";
+import type { ALBEvent } from "aws-lambda";
 import { getContainer } from "../../src/container";
 import { SitemapController } from "../../src/sitemap/sitemap_controller";
 import "../../src/index.js"; // Register Router in container

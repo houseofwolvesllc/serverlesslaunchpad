@@ -48,5 +48,8 @@
         "inquirer": "^9.2.0",
         "nodemon": "^3.1.10",
         "tsx": "^4.19.3"
+    },
+    "dependencies": {
+        "zx": "^8.8.5"
     }
 }

@@ -8,9 +8,13 @@
 
 	import { Copy, Check } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
-	import type { InferredColumn, HalObject } from '@houseofwolves/serverlesslaunchpad.web.commons';
-	import { FieldType, getEnumLabel } from '@houseofwolves/serverlesslaunchpad.web.commons';
-	import { getEnumPropertyFromTemplates } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
+	import {
+		type InferredColumn,
+		type HalObject,
+		FieldType,
+		getEnumLabel,
+		getEnumPropertyFromTemplates
+	} from '@houseofwolves/serverlesslaunchpad.web.commons';
 	import type { FieldRenderer } from './field_renderers';
 	import { getFieldRenderer } from './field_renderers';
 	import { cn } from '$lib/utils';

@@ -47,7 +47,6 @@
         "@houseofwolves/serverlesslaunchpad.core": "*",
         "@houseofwolves/serverlesslaunchpad.framework": "*",
         "@houseofwolves/serverlesslaunchpad.types": "*",
-        "aws-lambda": "^1.0.7",
         "halson": "^3.0.0",
         "reflect-metadata": "^0.2.2",
         "zod": "^3.22.4"
