@@ -22,6 +22,14 @@ const WEB_COMMONS_MAPPINGS: ExportMapping[] = [
     { exportName: "WebConfig", sourcePath: "configuration/web_config_schema", sourcePackage: "web.commons" },
     { exportName: "createWebConfigStore", sourcePath: "configuration/web_config_store", sourcePackage: "web.commons" },
 
+    // Moto Amplify Shims
+    { exportName: "applyMotoShims", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+    { exportName: "getShimDiagnostics", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+    { exportName: "runFullDiagnostics", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+    { exportName: "resetShimState", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+    { exportName: "ConfigGetter", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+    { exportName: "ShimState", sourcePath: "configuration/moto_amplify_shims", sourcePackage: "web.commons" },
+
     // Logging
     { exportName: "createWebLogger", sourcePath: "logging/logger", sourcePackage: "web.commons" },
     { exportName: "Logger", sourcePath: "logging/logger", sourcePackage: "web.commons" },

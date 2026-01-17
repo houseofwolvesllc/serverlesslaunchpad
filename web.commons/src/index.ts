@@ -59,6 +59,19 @@ export {
 } from './configuration/web_config_schema';
 
 // ============================================================================
+// Moto Amplify Shims - AWS Amplify v6 + Moto compatibility for local dev
+// ============================================================================
+
+export {
+    applyMotoShims,
+    getShimDiagnostics,
+    runFullDiagnostics,
+    resetShimState,
+    type ConfigGetter,
+    type ShimState,
+} from './configuration/moto_amplify_shims';
+
+// ============================================================================
 // Logging - Structured logging utilities
 // ============================================================================
 
