@@ -14,14 +14,12 @@ import {
     FieldType,
     type InferredColumn,
     getEnumLabel,
-} from '@houseofwolves/serverlesslaunchpad.web.commons';
-import {
     getEnumPropertyFromTemplates,
     determineBadgeVariant,
     formatDateValue,
     evaluateBooleanValue,
     shortenUrl,
-} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
+} from '@houseofwolves/serverlesslaunchpad.web.commons';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 

@@ -1,9 +1,7 @@
 /**
  * Field Rendering Utilities
  *
- * Pure utility functions extracted from React field renderers across
- * web.shadcn, web.mantine, and web.daisyui packages.
- *
+ * Pure utility functions for rendering field values across different UI frameworks.
  * These utilities provide framework-agnostic logic for:
  * - Badge variant determination based on field values
  * - Date formatting with relative and absolute time support
@@ -17,7 +15,7 @@
  * @module field-rendering
  */
 
-import { type HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import { type HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
 
 /**
  * Badge variant types for different UI frameworks

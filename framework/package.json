@@ -29,6 +29,7 @@
         "@houseofwolves/serverlesslaunchpad.core": "*",
         "aws-amplify": "^6.13.4",
         "jose": "^6.1.0",
+        "sinon": "^21.0.1",
         "ulid": "^3.0.1",
         "zod": "^3.23.8"
     },

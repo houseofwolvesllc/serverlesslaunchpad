@@ -1,5 +1,5 @@
 import { Container, Features, Role, User } from "@houseofwolves/serverlesslaunchpad.core";
-import { ALBEvent } from "aws-lambda";
+import type { ALBEvent } from "aws-lambda";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BaseController } from "../../src/base_controller";
 import { Protected } from "../../src/decorators";

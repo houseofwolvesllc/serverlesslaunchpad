@@ -162,6 +162,24 @@ export {
 } from './enums';
 
 // ============================================================================
+// Field Rendering - Framework-agnostic field rendering utilities
+// ============================================================================
+
+export {
+    getEnumPropertyFromTemplates,
+    determineBadgeVariant,
+    formatDateValue,
+    evaluateBooleanValue,
+    shortenUrl,
+    getNullValuePlaceholder,
+    isArrayValue,
+    isNullish,
+    isEmpty,
+    isValidDate,
+    type BadgeVariant,
+} from './field-rendering';
+
+// ============================================================================
 // Version
 // ============================================================================
 

@@ -2,8 +2,8 @@
  * Field Rendering Utilities
  *
  * Pure utility functions for rendering field values across different UI frameworks.
- * These utilities are extracted from React field renderers and provide framework-agnostic
- * logic for common field rendering tasks.
+ * These utilities are framework-agnostic and can be used by React, Svelte, or any
+ * other frontend framework.
  *
  * @module field-rendering
  */

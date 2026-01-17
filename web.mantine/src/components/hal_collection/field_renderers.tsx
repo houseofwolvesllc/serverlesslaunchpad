@@ -16,15 +16,17 @@ import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { IconCopy, IconCheck } from '@tabler/icons-react';
 import { ActionIcon, Badge, Code, Text, Anchor } from '@mantine/core';
-import { FieldType, type InferredColumn, getEnumLabel } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import {
+    FieldType,
+    type InferredColumn,
+    getEnumLabel,
     determineBadgeVariant,
     formatDateValue,
     evaluateBooleanValue,
     shortenUrl,
     getNullValuePlaceholder,
     getEnumPropertyFromTemplates,
-} from '@houseofwolves/serverlesslaunchpad.web.commons.react';
+} from '@houseofwolves/serverlesslaunchpad.web.commons';
 
 export type FieldRenderer = (value: any, column: InferredColumn, item: any) => React.ReactNode;
 

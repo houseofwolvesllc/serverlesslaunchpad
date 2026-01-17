@@ -25,9 +25,9 @@
 		getConfirmationConfig,
 		type TemplateExecutionContext,
 		FieldType,
-		getEnumLabel
+		getEnumLabel,
+		getEnumPropertyFromTemplates
 	} from '@houseofwolves/serverlesslaunchpad.web.commons';
-	import { getEnumPropertyFromTemplates } from '@houseofwolves/serverlesslaunchpad.web.commons.react';
 	import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 	import Card from '$lib/components/ui/card.svelte';
 	import CardContent from '$lib/components/ui/card-content.svelte';
