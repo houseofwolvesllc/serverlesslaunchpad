@@ -1,4 +1,4 @@
-import { WebConfig, WebConfigSchema } from './web_config_schema';
+import { type WebConfig, WebConfigSchema } from './web_config_schema';
 
 /**
  * Configuration loader function type
