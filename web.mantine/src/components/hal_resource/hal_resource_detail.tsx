@@ -12,7 +12,7 @@
  */
 
 import { useState } from 'react';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { IconRefresh, IconAlertCircle } from '@tabler/icons-react';
 import {
     humanizeLabel,
     type HalObject,
@@ -305,12 +305,12 @@ export function HalResourceDetail({
         return (
             <Stack gap="lg">
                 {/* Error alert */}
-                <Alert icon={<AlertCircle size={16} />} title="Error Loading Resource" color="red">
+                <Alert icon={<IconAlertCircle size={16} />} title="Error Loading Resource" color="red">
                     {error.message || 'Failed to load resource. Please try again.'}
                 </Alert>
 
                 {onRefresh && (
-                    <Button variant="outline" onClick={onRefresh} leftSection={<RefreshCw size={16} />}>
+                    <Button variant="outline" onClick={onRefresh} leftSection={<IconRefresh size={16} />}>
                         Try Again
                     </Button>
                 )}
@@ -322,7 +322,7 @@ export function HalResourceDetail({
     if (!resource) {
         return (
             <Stack gap="lg">
-                <Alert icon={<AlertCircle size={16} />} title="No Resource" color="blue">
+                <Alert icon={<IconAlertCircle size={16} />} title="No Resource" color="blue">
                     No resource data available.
                 </Alert>
             </Stack>
@@ -361,7 +361,7 @@ export function HalResourceDetail({
                         variant="default"
                         onClick={onRefresh}
                         size="sm"
-                        leftSection={<RefreshCw size={16} />}
+                        leftSection={<IconRefresh size={16} />}
                     >
                         Refresh
                     </Button>
