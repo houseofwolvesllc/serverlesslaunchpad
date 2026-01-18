@@ -51,7 +51,7 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
             type: "input",
             name: "outputPath",
             message: "Where should the new project be created?",
-            default: "./my-new-project",
+            default: "../my-new-project",
             validate: (input: string) => {
                 if (!input.trim()) {
                     return "Path is required";
