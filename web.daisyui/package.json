@@ -20,6 +20,7 @@
         "@houseofwolves/serverlesslaunchpad.web.commons.react": "*",
         "aws-amplify": "^6.14.4",
         "clsx": "^2.1.0",
+        "tailwind-merge": "^2.2.1",
         "date-fns": "^4.1.0",
         "lucide-react": "^0.462.0",
         "react": "^18.2.0",

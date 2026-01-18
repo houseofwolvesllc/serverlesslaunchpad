@@ -7,7 +7,7 @@
  * @see https://rwcbook.github.io/hal-forms/
  */
 
-import { HalObject, HalTemplate, HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
+import type { HalObject, HalTemplate, HalTemplateProperty } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { ApiClient } from '../services/api_client';
 
 /**
