@@ -92,8 +92,10 @@ dev-start:
 	@cd types && npm run build || { echo "❌ Failed to build types"; exit 1; }
 	@cd core && npm run build || { echo "❌ Failed to build core"; exit 1; }
 	@cd framework && npm run build || { echo "❌ Failed to build framework"; exit 1; }
+	# BEGIN:SCAFFOLDING_REMOVE
 	@cd web.commons && npm run build || { echo "❌ Failed to build web.commons"; exit 1; }
 	@cd web.commons.react && npm run build || { echo "❌ Failed to build web.commons.react"; exit 1; }
+	# END:SCAFFOLDING_REMOVE
 	@echo ""
 	# BEGIN:SCAFFOLDING_REMOVE
 	@echo "🚀 Starting development servers with file watching (web=$(web))..."
