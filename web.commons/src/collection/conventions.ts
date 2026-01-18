@@ -5,7 +5,7 @@
  * These patterns are used to infer how fields should be rendered based on their names.
  */
 
-import { FieldConventions } from './types';
+import type { FieldConventions } from './types';
 
 /**
  * Default field naming conventions
