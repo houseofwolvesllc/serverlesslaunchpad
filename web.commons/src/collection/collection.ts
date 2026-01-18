@@ -6,7 +6,7 @@
  */
 
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
-import { CollectionData, InferenceOptions } from './types';
+import type { CollectionData, InferenceOptions } from './types';
 import { extractEmbeddedItems, getPaginationInfo } from './utils';
 import { inferColumns, inferVisibleColumns } from './inference';
 

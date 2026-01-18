@@ -6,7 +6,7 @@
  */
 
 import type { HalObject } from '@houseofwolves/serverlesslaunchpad.types/hal';
-import { FieldType, InferredColumn, InferenceOptions } from './types';
+import { FieldType, type InferredColumn, type InferenceOptions } from './types';
 import { mergeConventions } from './conventions';
 import {
     getUniqueKeys,
