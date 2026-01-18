@@ -15,8 +15,8 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
 
     const webSrcDir = path.join(config.outputPath, "web", "src");
 
-    // Find all TypeScript files
-    const files = await glob(webSrcDir, ["*.ts", "*.tsx"]);
+    // Find all TypeScript and Svelte files
+    const files = await glob(webSrcDir, ["*.ts", "*.tsx", "*.svelte"]);
 
     let filesModified = 0;
 
