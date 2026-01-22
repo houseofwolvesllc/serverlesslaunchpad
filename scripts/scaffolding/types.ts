@@ -6,6 +6,7 @@ export type WebFramework = "mantine" | "shadcn" | "daisyui" | "svelte";
 
 export interface ScaffoldingConfig {
     outputPath: string; // Absolute path to output directory
+    outputPathDisplay: string; // Original user input for display purposes
     projectName: string; // npm package name (e.g., "@mycompany/myapp")
     projectScope: string; // npm scope (e.g., "@mycompany")
     projectBaseName: string; // package name without scope (e.g., "myapp")

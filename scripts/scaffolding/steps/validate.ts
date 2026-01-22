@@ -6,18 +6,6 @@ import path from "path";
 import { ScaffoldingConfig, ValidationResult } from "../types";
 
 /**
- * Get relative path for display purposes
- */
-function getDisplayPath(absolutePath: string): string {
-    const relativePath = path.relative(process.cwd(), absolutePath);
-    // Use relative path, but prefix with ./ if it doesn't start with ..
-    if (!relativePath.startsWith("..") && !relativePath.startsWith("./")) {
-        return `./${relativePath}`;
-    }
-    return relativePath;
-}
-
-/**
  * Required packages that must exist in source
  */
 const REQUIRED_PACKAGES = [
@@ -46,7 +34,7 @@ export async function validate(config: ScaffoldingConfig): Promise<ValidationRes
     if (await fs.pathExists(config.outputPath)) {
         const files = await fs.readdir(config.outputPath);
         if (files.length > 0) {
-            errors.push(`Directory already exists and is not empty: ${getDisplayPath(config.outputPath)}`);
+            errors.push(`Directory already exists and is not empty: ${config.outputPathDisplay}`);
         }
     }
 
