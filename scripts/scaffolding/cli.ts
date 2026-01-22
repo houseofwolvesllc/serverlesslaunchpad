@@ -1,10 +1,22 @@
 /**
  * CLI prompts for scaffolding configuration
  */
+import { execSync } from "child_process";
 import inquirer from "inquirer";
 import path from "path";
 import { ScaffoldingConfig, WebFramework } from "./types";
 import { log } from "./utils/logger";
+
+/**
+ * Get author name from git config
+ */
+function getGitAuthor(): string {
+    try {
+        return execSync("git config user.name", { encoding: "utf-8" }).trim();
+    } catch {
+        return "";
+    }
+}
 
 /**
  * Validate npm package name format
@@ -136,6 +148,18 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
             },
         },
         {
+            type: "input",
+            name: "author",
+            message: "Who is the author?",
+            default: getGitAuthor(),
+            validate: (input: string) => {
+                if (!input.trim()) {
+                    return "Author is required";
+                }
+                return true;
+            },
+        },
+        {
             type: "list",
             name: "webFramework",
             message: "Which web UI framework would you like to use?",
@@ -160,6 +184,7 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
         projectDisplayName: answers.projectDisplayName.trim(),
         resourcePrefix: answers.resourcePrefix.trim(),
         configDomain: answers.configDomain.trim(),
+        author: answers.author.trim(),
         webFramework: answers.webFramework as WebFramework,
         sourceRoot,
     };

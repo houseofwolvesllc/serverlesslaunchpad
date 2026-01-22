@@ -13,6 +13,7 @@ export interface ScaffoldingConfig {
     projectDisplayName: string; // Human-readable name (e.g., "My App")
     resourcePrefix: string; // Short prefix for AWS resources (e.g., "myapp")
     configDomain: string; // Domain for secrets/config (e.g., "myapp.mycompany.com")
+    author: string; // Package author name
     webFramework: WebFramework;
     sourceRoot: string; // Path to serverlesslaunchpad monorepo
 }
