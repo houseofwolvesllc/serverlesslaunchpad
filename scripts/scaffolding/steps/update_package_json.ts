@@ -48,8 +48,7 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
             if (pkg.name === oldRootName) {
                 // Root package.json uses dot format
                 pkg.name = newRootName;
-                pkg.author = "YOUR NAME HERE";
-                pkg.description = "YOUR NEXT AWESOME PROJECT";
+                pkg.author = config.author;
                 modified = true;
             } else if (pkg.name.includes(oldFullPackage)) {
                 pkg.name = pkg.name.replace(oldFullPackage, newFullPackage);

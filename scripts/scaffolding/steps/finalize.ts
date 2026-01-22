@@ -7,6 +7,18 @@ import { removeEmptyDirs, pathExists } from "../utils/file_operations";
 import { log } from "../utils/logger";
 
 /**
+ * Get relative path for display purposes
+ */
+function getDisplayPath(absolutePath: string): string {
+    const relativePath = path.relative(process.cwd(), absolutePath);
+    // Use relative path, but prefix with ./ if it doesn't start with ..
+    if (!relativePath.startsWith("..") && !relativePath.startsWith("./")) {
+        return `./${relativePath}`;
+    }
+    return relativePath;
+}
+
+/**
  * Critical files that must exist after scaffolding
  */
 const CRITICAL_FILES = [
@@ -47,10 +59,11 @@ export async function finalize(config: ScaffoldingConfig): Promise<StepResult> {
     }
 
     // Display success message
-    log.complete(`Project created successfully at ${config.outputPath}`);
+    const displayPath = getDisplayPath(config.outputPath);
+    log.complete(`Project created successfully at ${displayPath}`);
 
     console.log("Next steps:");
-    console.log(`  cd ${config.outputPath}`);
+    console.log(`  cd ${displayPath}`);
     console.log("  npm install");
     console.log("  npm run dev");
     console.log();
