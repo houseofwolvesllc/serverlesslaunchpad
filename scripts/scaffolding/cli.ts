@@ -63,19 +63,22 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
             type: "input",
             name: "outputPath",
             message: "Where should the new project be created?",
-            default: "../my-new-project",
+            default: "../my-awesome-project",
             validate: (input: string) => {
                 if (!input.trim()) {
                     return "Path is required";
                 }
                 return true;
             },
-            filter: (input: string) => path.resolve(input.trim()),
         },
         {
             type: "input",
             name: "projectName",
-            message: "What is the project name? (e.g., @acme/inventory-app)",
+            message: "What is the project name?",
+            default: (answers: Record<string, string>) => {
+                const folderName = path.basename(answers.outputPath.trim());
+                return `@acme/${folderName}`;
+            },
             validate: (input: string) => {
                 if (!isValidPackageName(input.trim())) {
                     return "Project name must be a valid scoped npm package name (e.g., @scope/package-name)";
@@ -86,9 +89,9 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
         {
             type: "input",
             name: "projectDisplayName",
-            message: "What is the display name? (e.g., Inventory App)",
+            message: "What is the display name?",
             default: (answers: Record<string, string>) => {
-                // Convert @acme/inventory-app to Inventory App
+                // Convert @acme/my-awesome-project to My Awesome Project
                 try {
                     const { baseName } = parsePackageName(answers.projectName);
                     return baseName
@@ -115,7 +118,7 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
                 try {
                     const { baseName } = parsePackageName(answers.projectName);
                     // Take first 3-4 chars of the base name
-                    return baseName.replace(/-/g, "").slice(0, 4).toLowerCase();
+                    return baseName.replace(/-/g, "").slice(0, 3).toLowerCase();
                 } catch {
                     return "app";
                 }
@@ -130,11 +133,11 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
         {
             type: "input",
             name: "configDomain",
-            message: "What configuration domain? (e.g., inventory.acme.com)",
+            message: "What configuration domain?",
             default: (answers: Record<string, string>) => {
                 try {
                     const { scope, baseName } = parsePackageName(answers.projectName);
-                    // Convert @acme/inventory to inventory.acme.com
+                    // Convert @acme/my-awesome-project to my-awesome-project.acme.com
                     return `${baseName.replace(/-/g, "")}.${scope.slice(1)}.com`;
                 } catch {
                     return "app.example.com";
@@ -174,9 +177,11 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
     ]);
 
     const { scope, baseName, dotted } = parsePackageName(answers.projectName.trim());
+    const outputPathInput = answers.outputPath.trim();
 
     return {
-        outputPath: answers.outputPath,
+        outputPath: path.resolve(outputPathInput),
+        outputPathDisplay: outputPathInput,
         projectName: answers.projectName.trim(),
         projectScope: scope,
         projectBaseName: baseName,
