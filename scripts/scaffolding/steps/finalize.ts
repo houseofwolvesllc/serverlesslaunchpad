@@ -52,7 +52,7 @@ export async function finalize(config: ScaffoldingConfig): Promise<StepResult> {
     console.log("Next steps:");
     console.log(`  cd ${config.outputPathDisplay}`);
     console.log("  npm install");
-    console.log("  npm run dev");
+    console.log("  make dev-start");
     console.log();
 
     return {

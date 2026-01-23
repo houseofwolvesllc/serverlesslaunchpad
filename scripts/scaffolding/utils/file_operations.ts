@@ -40,39 +40,6 @@ export async function copyDirectory(source: string, target: string, filter = def
 }
 
 /**
- * Merge source directory into target directory
- * Files from source are copied alongside existing files in target
- */
-export async function mergeDirectory(source: string, target: string, filter = defaultFilter): Promise<number> {
-    let fileCount = 0;
-
-    if (!(await fs.pathExists(source))) {
-        return 0;
-    }
-
-    const items = await fs.readdir(source);
-
-    for (const item of items) {
-        const srcPath = path.join(source, item);
-        const destPath = path.join(target, item);
-
-        if (!filter(srcPath)) continue;
-
-        const stat = await fs.stat(srcPath);
-
-        if (stat.isDirectory()) {
-            await fs.ensureDir(destPath);
-            fileCount += await mergeDirectory(srcPath, destPath, filter);
-        } else {
-            await fs.copy(srcPath, destPath, { overwrite: false });
-            fileCount++;
-        }
-    }
-
-    return fileCount;
-}
-
-/**
  * Copy a single file with error handling
  */
 export async function copyFile(source: string, target: string): Promise<void> {
@@ -99,14 +66,6 @@ export async function removeEmptyDirs(dir: string): Promise<void> {
     if (files.length === 0) {
         await fs.rmdir(dir);
     }
-}
-
-/**
- * Ensure a directory exists and is empty
- */
-export async function ensureEmptyDir(dir: string): Promise<void> {
-    await fs.ensureDir(dir);
-    await fs.emptyDir(dir);
 }
 
 /**

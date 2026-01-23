@@ -1,7 +1,6 @@
 /**
  * Update package.json files step
  */
-import path from "path";
 import { ScaffoldingConfig, StepResult } from "../types";
 import { readJson, writeJson, glob } from "../utils/file_operations";
 import { log } from "../utils/logger";
@@ -109,10 +108,6 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
                     if (key.match(/dev:web:(mantine|shadcn|daisyui|svelte)/) && key !== `dev:web:${config.webFramework}`) {
                         continue;
                     }
-                    // Skip dev:web:all (not needed with single frontend)
-                    if (key === "dev:web:all") {
-                        continue;
-                    }
                     // Skip create-project script (not needed in scaffolded project)
                     if (key === "create-project") {
                         continue;
@@ -123,9 +118,9 @@ export async function updatePackageJson(config: ScaffoldingConfig): Promise<Step
                     // Replace container names
                     newValue = newValue.replace(/serverlesslaunchpad/g, config.projectBaseName);
 
-                    // Update web framework references to just "web"
-                    newValue = newValue.replace(new RegExp(`web\\.${config.webFramework}`, "g"), "web");
-                    newValue = newValue.replace(new RegExp(`dev:web:${config.webFramework}`, "g"), "dev:web");
+                    // Update web framework references to just "web" (replace any framework, not just selected)
+                    newValue = newValue.replace(/web\.(mantine|shadcn|daisyui|svelte)/g, "web");
+                    newValue = newValue.replace(/dev:web:(mantine|shadcn|daisyui|svelte)/g, "dev:web");
 
                     // Rename dev:web:{framework} key to dev:web
                     const newKey = key === `dev:web:${config.webFramework}` ? "dev:web" : key;

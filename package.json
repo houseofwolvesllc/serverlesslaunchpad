@@ -24,20 +24,15 @@
     "scripts": {
         "create-project": "npx tsx scripts/scaffolding/index.ts",
         "dev:clean": "echo '🧹 Cleaning up stale development processes...' && (pkill -f 'vite.*moto' 2>/dev/null || true) && (pkill -f 'tsx.*dev_server' 2>/dev/null || true) && echo '✅ Cleanup complete'",
-        "dev:check": "echo '🔍 Checking for port conflicts...' && (lsof -i :5173-5176,3001 2>/dev/null || echo '✅ No port conflicts detected')",
         "dev:web:mantine": "cd web.mantine && npm run local:watch",
         "dev:web:shadcn": "cd web.shadcn && npm run local:watch",
         "dev:web:daisyui": "cd web.daisyui && npm run local:watch",
         "dev:web:svelte": "cd web.svelte && npm run local:watch",
-        "dev:web:all": "concurrently --kill-others-on-fail --prefix-colors cyan,teal,green,blue --names \"MANTINE,SHADCN,DAISYUI,SVELTE\" \"npm run dev:web:mantine\" \"npm run dev:web:shadcn\" \"npm run dev:web:daisyui\" \"npm run dev:web:svelte\"",
         "dev:api": "cd api.hypermedia && npm run local:watch",
         "dev:watch:types": "cd types && npm run build:watch",
         "dev:watch:core": "cd core && npm run build:watch",
         "dev:watch:framework": "cd framework && npm run build:watch",
-        "dev:watch:packages": "concurrently --kill-others-on-fail --prefix-colors yellow,green,blue --names \"TYPES,CORE,FRAMEWORK\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\"",
-        "dev": "echo '🚀 Starting development servers...' && concurrently --kill-others-on-fail --prefix-colors cyan,magenta --names \"WEB,API\" \"npm run dev:web:mantine\" \"npm run dev:api\"",
-        "dev:watch": "echo '🚀 Starting all development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,teal,green,blue,magenta,yellow,orange,red,white --names \"MANTINE,SHADCN,DAISYUI,SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO\" \"npm run dev:web:mantine\" \"npm run dev:web:shadcn\" \"npm run dev:web:daisyui\" \"npm run dev:web:svelte\" \"npm run dev:api\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\" \"docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG\"",
-        "dev:reset": "npm run dev:clean && sleep 2 && npm run dev"
+        "dev:watch": "echo '🚀 Starting all development servers with file watching...' && concurrently --kill-others-on-fail --prefix-colors cyan,teal,green,blue,magenta,yellow,orange,red,white --names \"MANTINE,SHADCN,DAISYUI,SVELTE,API,TYPES,CORE,FRAMEWORK,COGNITO\" \"npm run dev:web:mantine\" \"npm run dev:web:shadcn\" \"npm run dev:web:daisyui\" \"npm run dev:web:svelte\" \"npm run dev:api\" \"npm run dev:watch:types\" \"npm run dev:watch:core\" \"npm run dev:watch:framework\" \"docker logs -f --since=10s serverlesslaunchpad-cognito-local 2>&1 | grep --line-buffered -v DEBUG\""
     },
     "devDependencies": {
         "@eslint/js": "^9.18.0",
