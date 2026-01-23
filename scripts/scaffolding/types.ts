@@ -25,12 +25,6 @@ export interface ExportMapping {
     sourcePackage: "web.commons" | "web.commons.react";
 }
 
-export interface MergeOperation {
-    source: string; // Source directory/file path
-    target: string; // Target directory/file path
-    mode: "copy" | "merge"; // Copy creates new, merge combines
-}
-
 export interface ValidationResult {
     valid: boolean;
     errors: string[];

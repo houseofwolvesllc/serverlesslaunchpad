@@ -8,10 +8,6 @@ export const log = {
         console.log(chalk.bold.blue(`\n${message}\n`));
     },
 
-    step: (message: string): void => {
-        console.log(chalk.cyan(message));
-    },
-
     success: (message: string): void => {
         console.log(chalk.green(`   ✓ ${message}`));
     },
@@ -26,10 +22,6 @@ export const log = {
 
     info: (message: string): void => {
         console.log(chalk.gray(`   ${message}`));
-    },
-
-    newline: (): void => {
-        console.log();
     },
 
     section: (emoji: string, message: string): void => {
