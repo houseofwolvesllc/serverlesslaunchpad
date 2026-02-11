@@ -8,26 +8,26 @@ A full-stack serverless application boilerplate built with AWS services, impleme
 
 The project follows clean architecture with dependency inversion:
 
--   **core** - Business logic and domain abstractions (interfaces)
--   **framework** - AWS service implementations (Cognito, DynamoDB, S3)
--   **types** - Shared TypeScript types with Zod validation
+- **core** - Business logic and domain abstractions (interfaces)
+- **framework** - AWS service implementations (Cognito, DynamoDB, S3)
+- **types** - Shared TypeScript types with Zod validation
 
 ### HAL-FORMS and HATEOAS
 
 The API implements HAL-FORMS for hypermedia-driven interactions:
 
--   Server-driven UI with forms controlled by API responses
--   Permission-based operations only shown if user has access
--   Self-validating forms with validation rules from API metadata
--   Discoverable API capabilities at runtime
+- Server-driven UI with forms controlled by API responses
+- Permission-based operations only shown if user has access
+- Self-validating forms with validation rules from API metadata
+- Discoverable API capabilities at runtime
 
 ## Quick Start
 
 ### Prerequisites
 
--   Node.js >= 22.20.0
--   npm >= 10.2.5
--   Docker (for local development with Moto)
+- Node.js >= 22.20.0
+- npm >= 10.2.5
+- Docker (for local development with Moto)
 
 ### Development Setup
 
@@ -85,3 +85,7 @@ serverlesslaunchpad/
 ├── web.commons.react/   # Shared React utilities
 └── moto/                # Local AWS mock configuration
 ```
+
+## License
+
+Copyright © 2023-2026 House of Wolves LLC. Licensed under the [Apache License 2.0](LICENSE).
