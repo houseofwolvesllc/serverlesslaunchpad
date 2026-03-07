@@ -117,15 +117,13 @@
 	)}
 >
 	<!-- Branding Section -->
-	<div class="flex items-center justify-between p-4 border-b min-w-60">
-		<div class="flex items-center gap-3">
-			<div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-				<span class="text-primary font-bold text-lg">SL</span>
-			</div>
-			<div class="flex flex-col">
-				<span class="font-semibold text-sm">Serverless Launchpad</span>
-				<span class="text-xs text-muted-foreground">Svelte Edition</span>
-			</div>
+	<div class="h-16 flex items-center gap-3 px-4 border-b min-w-60">
+		<div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+			<span class="text-primary font-bold text-lg">SL</span>
+		</div>
+		<div class="flex flex-col">
+			<span class="font-semibold text-sm">Serverless Launchpad</span>
+			<span class="text-xs text-muted-foreground">Svelte Edition</span>
 		</div>
 	</div>
 

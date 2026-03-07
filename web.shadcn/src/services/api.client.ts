@@ -20,7 +20,7 @@ async function createConfiguredApiClient(): Promise<ApiClient> {
         baseUrl: config.api.base_url,
         timeout: config.api.timeout,
         credentials: true, // Always include cookies
-        mode: import.meta.env.MODE === 'development' || import.meta.env.MODE === 'moto' ? 'development' : 'production',
+        mode: import.meta.env.VITE_APP_ENV === 'development' || import.meta.env.VITE_APP_ENV === 'local' ? 'development' : 'production',
         logger: {
             debug: (message, context) => logger.debug(message, context),
             error: (message, context) => logger.error(message, context),

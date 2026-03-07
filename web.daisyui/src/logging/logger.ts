@@ -10,7 +10,7 @@ import { createWebLogger, getLogLevelForEnvironment } from '@houseofwolves/serve
 /**
  * Get environment from Vite
  */
-const environment = import.meta.env.MODE || 'development';
+const environment = import.meta.env.VITE_APP_ENV || 'development';
 
 /**
  * Create logger with environment-based log level

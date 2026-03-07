@@ -87,7 +87,7 @@ class AppContainer {
                 const environment = AppContainer.getEnvironment();
                 const projectConfig = getProjectConfig();
                 const secretsConfig =
-                    environment === "moto" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
+                    environment === "local" ? { endpoint: "http://localhost:5555", region: "us-west-2" } : undefined;
 
                 const baseStore = new AwsSecretsConfigurationStore(
                     SecretsConfigSchema,

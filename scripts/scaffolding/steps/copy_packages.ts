@@ -22,7 +22,11 @@ const ROOT_FILES = [
     ".eslintrc.json",
     "tsconfig.json",
     "Makefile",
-    "docker-compose.moto.yml",
+    "docker-compose.local.yml",
+    ".env.development",
+    "README.md",
+    "NOTICE",
+    "LICENSE",
 ];
 
 /**

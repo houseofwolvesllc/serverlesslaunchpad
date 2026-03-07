@@ -8,7 +8,7 @@ import { z } from 'zod';
  * Framework-agnostic - can be used with any JavaScript/TypeScript framework.
  */
 export const WebConfigSchema = z.object({
-    environment: z.enum(['moto', 'local', 'development', 'staging', 'production']),
+    environment: z.enum(['local', 'development', 'staging', 'production']),
 
     // AWS configuration (minimal for frontend)
     aws: z.object({

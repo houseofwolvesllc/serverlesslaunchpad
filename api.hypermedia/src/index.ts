@@ -214,7 +214,7 @@ let corsEnvironment: string | undefined;
 
 /**
  * Get CORS headers based on the request origin and configuration.
- * - moto environment: allows all origins (returns "*")
+ * - local environment: allows all origins (returns "*")
  * - other environments: allows origins matching the configured suffix (e.g., ".serverlesslaunchpad.com")
  */
 async function getCorsHeaders(event: ALBEvent): Promise<Record<string, string>> {
@@ -232,9 +232,9 @@ async function getCorsHeaders(event: ALBEvent): Promise<Record<string, string>> 
         }
     }
 
-    // Moto: allow any origin; AWS environments: use suffix matching
+    // Local: allow any origin; AWS environments: use suffix matching
     const suffix = corsConfig.allowed_origin_suffix;
-    const isAllowed = corsEnvironment === "moto" || (suffix && origin?.endsWith(suffix));
+    const isAllowed = corsEnvironment === "local" || (suffix && origin?.endsWith(suffix));
 
     return {
         "Access-Control-Allow-Origin": isAllowed ? origin || "" : "",

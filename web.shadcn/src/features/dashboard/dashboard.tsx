@@ -119,7 +119,7 @@ function DashboardContent() {
     const navigationContent = (
         <>
             {/* Branding Section */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-border">
                 <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                         <span className="text-primary font-bold text-lg">SL</span>

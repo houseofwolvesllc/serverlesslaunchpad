@@ -1,9 +1,26 @@
 services:
+    postgres:
+        container_name: serverlesslaunchpad-postgres
+        image: postgres:16-alpine
+        ports:
+            - "${POSTGRES_PORT:-5432}:5432"
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_DB=serverlesslaunchpad
+        networks:
+            - serverlesslaunchpad
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+
     moto:
         container_name: serverlesslaunchpad-moto
         image: motoserver/moto:latest
         ports:
-            - "5555:5000" # Moto server port (external:internal)
+            - "${MOTO_PORT:-5555}:5000" # Moto server port (external:internal)
         environment:
             # Enable all services your app needs
             - MOTO_HOST=0.0.0.0
@@ -25,7 +42,7 @@ services:
         container_name: serverlesslaunchpad-cognito-local
         image: jagregory/cognito-local:latest
         ports:
-            - "9230:9230" # Cognito Local port (external:internal) - using 9230 to avoid conflict with Node.js debug port
+            - "${COGNITO_PORT:-9230}:9230" # Cognito Local port (external:internal)
         volumes:
             - ./.cognito:/app/.cognito # Persist user pools and users
         environment:

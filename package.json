@@ -50,6 +50,7 @@
         "typescript-eslint": "^8.21.0"
     },
     "dependencies": {
+        "@rollup/rollup-linux-arm64-gnu": "^4.59.0",
         "zx": "^8.8.5"
     }
 }

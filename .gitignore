@@ -49,10 +49,11 @@ Thumbs.db
 *.wmv
 
 .env*
+!.env.*.example
 config/*
 
 # Generated infrastructure config files (created by moto init scripts)
-**/config/moto.infrastructure.json
+**/config/local.infrastructure.json
 
 .cognito/
 .claude/

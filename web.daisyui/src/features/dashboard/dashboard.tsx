@@ -132,7 +132,7 @@ export const Dashboard = () => {
                 {/* Navbar */}
                 <div
                     className={cn(
-                        'navbar bg-base-100 border-b border-base-300 sticky top-0 z-40 transition-transform duration-200',
+                        'navbar h-16 min-h-0 bg-base-100 border-b border-base-300 sticky top-0 z-40 transition-transform duration-200',
                         pinned ? 'translate-y-0' : '-translate-y-full'
                     )}
                 >
@@ -230,15 +230,13 @@ export const Dashboard = () => {
                     )}
                 >
                     {/* Branding */}
-                    <div className="p-4 border-b border-base-300">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <span className="text-primary font-bold text-lg">SL</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-semibold text-sm">Serverless Launchpad</span>
-                                <span className="text-xs text-base-content/70">DaisyUI Edition</span>
-                            </div>
+                    <div className="h-16 flex items-center gap-3 px-4 border-b border-base-300">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <span className="text-primary font-bold text-lg">SL</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-semibold text-sm">Serverless Launchpad</span>
+                            <span className="text-xs text-base-content/70">DaisyUI Edition</span>
                         </div>
                     </div>
                     {navigationContent}

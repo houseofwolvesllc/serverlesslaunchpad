@@ -28,6 +28,79 @@ function isValidPackageName(name: string): boolean {
 }
 
 /**
+ * Reserved ports that should not be used
+ */
+const RESERVED_PORTS = [3000, 3306, 5432, 5173, 8080, 8443, 9229];
+
+/**
+ * Check if a port is currently in use on the host
+ */
+function isPortInUse(port: number): boolean {
+    try {
+        execSync(`lsof -i :${port}`, { encoding: "utf-8", stdio: "pipe" });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Port allocation: base=PostgreSQL, +1=API, +2=Web, +3=Moto, +4=Cognito
+ */
+const PORT_LABELS = ["PostgreSQL (base)", "API (base+1)", "Web (base+2)", "Moto (base+3)", "Cognito (base+4)"];
+const PORT_COUNT = PORT_LABELS.length;
+
+/**
+ * Find a suggested base port that avoids reserved and in-use ports
+ */
+function findSuggestedPort(startFrom: number): number {
+    for (let candidate = startFrom; candidate <= 49151 - PORT_COUNT + 1; candidate++) {
+        const ports = Array.from({ length: PORT_COUNT }, (_, i) => candidate + i);
+        const hasConflict = ports.some(
+            (p) => RESERVED_PORTS.includes(p) || isPortInUse(p)
+        );
+        if (!hasConflict) {
+            return candidate;
+        }
+    }
+    return 6000; // fallback
+}
+
+/**
+ * Validate a base port number and its derived ports (base through base+4)
+ */
+function validateBasePort(input: string): true | string {
+    const port = parseInt(input, 10);
+    if (isNaN(port)) {
+        return "Must be a valid number";
+    }
+    if (port < 3000 || port > 49151) {
+        return "Must be between 3000 and 49151";
+    }
+    if (port + PORT_COUNT - 1 > 49151) {
+        return `Port ${port + PORT_COUNT - 1} (base+${PORT_COUNT - 1}) exceeds maximum 49151`;
+    }
+
+    const ports = Array.from({ length: PORT_COUNT }, (_, i) => port + i);
+
+    for (let i = 0; i < ports.length; i++) {
+        if (RESERVED_PORTS.includes(ports[i])) {
+            const suggestion = findSuggestedPort(port + 1);
+            return `Port ${ports[i]} (${PORT_LABELS[i]}) is reserved. Try ${suggestion}`;
+        }
+    }
+
+    for (let i = 0; i < ports.length; i++) {
+        if (isPortInUse(ports[i])) {
+            const suggestion = findSuggestedPort(port + 1);
+            return `Port ${ports[i]} (${PORT_LABELS[i]}) is already in use. Try ${suggestion}`;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Validate resource prefix format
  */
 function isValidResourcePrefix(prefix: string): boolean {
@@ -174,6 +247,15 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
             ],
             default: "mantine",
         },
+        {
+            type: "input",
+            name: "basePort",
+            message:
+                "What base port for local Docker development? (5 sequential ports: PostgreSQL, API, Web, Moto, Cognito)",
+            default: 6000,
+            validate: validateBasePort,
+            filter: (input: string) => parseInt(input, 10),
+        },
     ]);
 
     const { scope, baseName, dotted } = parsePackageName(answers.projectName.trim());
@@ -191,6 +273,7 @@ export async function promptForConfig(sourceRoot: string): Promise<ScaffoldingCo
         configDomain: answers.configDomain.trim(),
         author: answers.author.trim(),
         webFramework: answers.webFramework as WebFramework,
+        basePort: answers.basePort as number,
         sourceRoot,
     };
 }

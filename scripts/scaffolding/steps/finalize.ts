@@ -12,6 +12,7 @@ import { log } from "../utils/logger";
 const CRITICAL_FILES = [
     "package.json",
     "project.config.json",
+    ".env",
     "core/package.json",
     "framework/package.json",
     "infrastructure/package.json",

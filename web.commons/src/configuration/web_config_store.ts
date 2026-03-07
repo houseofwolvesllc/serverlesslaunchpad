@@ -107,7 +107,7 @@ export class WebConfigurationStore {
  *     const module = await import(`../../config/${env}.infrastructure.json`);
  *     return module.default || module;
  *   },
- *   () => import.meta.env.MODE || 'moto'
+ *   () => import.meta.env.VITE_APP_ENV || 'local'
  * );
  * ```
  */

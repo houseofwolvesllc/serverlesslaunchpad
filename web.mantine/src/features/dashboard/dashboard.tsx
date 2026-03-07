@@ -123,7 +123,7 @@ export const Dashboard = () => {
         >
             <AppShell.Navbar p="md" pt="0" pb="0">
                 {/* Branding */}
-                <AppShell.Section p="md">
+                <AppShell.Section style={{ height: rem(60), display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--mantine-color-default-border)', marginLeft: 'calc(var(--mantine-spacing-md) * -1)', marginRight: 'calc(var(--mantine-spacing-md) * -1)', padding: '0 var(--mantine-spacing-md)' }}>
                     <Group gap="md">
                         <div
                             style={{
