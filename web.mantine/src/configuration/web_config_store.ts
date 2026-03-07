@@ -19,10 +19,10 @@ async function viteConfigLoader(environment: string): Promise<any> {
 
 /**
  * Vite-specific environment getter
- * Uses Vite's import.meta.env.MODE
+ * Uses VITE_APP_ENV to decouple from Vite's MODE
  */
 function viteGetEnvironment(): string {
-    return import.meta.env.MODE || 'moto';
+    return import.meta.env.VITE_APP_ENV || 'local';
 }
 
 /**

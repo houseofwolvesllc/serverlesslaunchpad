@@ -53,10 +53,11 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
     }
 
     // Also update imports in other packages (core, framework, etc.)
+    // Glob from package root to catch files in src/, lib/, config/, deployment/, etc.
     const otherPackages = ["api.hypermedia", "core", "framework", "infrastructure", "types"];
 
     for (const pkg of otherPackages) {
-        const pkgDir = path.join(config.outputPath, pkg, "src");
+        const pkgDir = path.join(config.outputPath, pkg);
         const pkgFiles = await glob(pkgDir, ["*.ts", "*.tsx"]);
 
         for (const file of pkgFiles) {
@@ -78,7 +79,7 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
     }
 
     // Transform docker-compose
-    const dockerComposePath = path.join(config.outputPath, "docker-compose.moto.yml");
+    const dockerComposePath = path.join(config.outputPath, "docker-compose.local.yml");
     let dockerContent = await readFile(dockerComposePath);
     if (dockerContent) {
         const newDockerContent = dockerContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
@@ -92,8 +93,9 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
     const makefilePath = path.join(config.outputPath, "Makefile");
     let makefileContent = await readFile(makefilePath);
     if (makefileContent) {
-        // Replace project name throughout
-        let newMakefileContent = makefileContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+        // Replace project name and display name throughout
+        let newMakefileContent = makefileContent.replace(/Serverless Launchpad/g, config.projectDisplayName);
+        newMakefileContent = newMakefileContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
 
         // Process scaffolding markers:
         // 1. Remove content between BEGIN:SCAFFOLDING_REMOVE and END:SCAFFOLDING_REMOVE (including markers)
@@ -142,6 +144,8 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
             let newContent = content.replace(/serverlesslaunchpad\.com/g, config.configDomain);
             // Then replace remaining project name references
             newContent = newContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+            // Replace hardcoded Moto port references
+            newContent = newContent.replace(/localhost:5555/g, `localhost:${config.basePort + 3}`);
             // Replace the DynamoDB table prefix (slp -> user's resourcePrefix)
             // This pattern is specific enough to avoid false positives
             newContent = newContent.replace(/TABLE_PREFIX="slp_/g, `TABLE_PREFIX="${config.resourcePrefix}_`);
@@ -150,6 +154,137 @@ export async function transformImports(config: ScaffoldingConfig): Promise<StepR
                 filesModified++;
             }
         }
+    }
+
+    // Branding sweep: replace display name, author, and org references across all files
+    // Order matters - more specific patterns first to avoid partial matches
+    const brandingPatterns: [RegExp, string][] = [
+        [/House of Wolves LLC/g, config.author],
+        [/House of Wolves/g, config.author],
+        [/Serverless Launchpad/g, config.projectDisplayName],
+        [/houseofwolvesllc/g, config.projectScope.slice(1)],
+    ];
+
+    // Sweep all files in copied packages for branding references
+    const brandingDirs = ["api.hypermedia", "core", "framework", "infrastructure", "types", "web"];
+    for (const dir of brandingDirs) {
+        const dirPath = path.join(config.outputPath, dir);
+
+        // Process all TypeScript/Svelte files from package root (catches src/, lib/, deployment/, etc.)
+        const tsFiles = await glob(dirPath, ["*.ts", "*.tsx", "*.svelte"]);
+        for (const file of tsFiles) {
+            let content = await readFile(file);
+            if (!content) continue;
+            let newContent = content;
+            for (const [pattern, replacement] of brandingPatterns) {
+                newContent = newContent.replace(pattern, replacement);
+            }
+            newContent = newContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+            if (newContent !== content) {
+                await writeFile(file, newContent);
+                filesModified++;
+            }
+        }
+
+        // Process package.json description fields
+        const pkgJsonPath = path.join(dirPath, "package.json");
+        let pkgJsonContent = await readFile(pkgJsonPath);
+        if (pkgJsonContent) {
+            let newPkgJson = pkgJsonContent;
+            for (const [pattern, replacement] of brandingPatterns) {
+                newPkgJson = newPkgJson.replace(pattern, replacement);
+            }
+            if (newPkgJson !== pkgJsonContent) {
+                await writeFile(pkgJsonPath, newPkgJson);
+                filesModified++;
+            }
+        }
+
+        // Process README.md, CLAUDE.md, index.html, and sub-directory docs
+        for (const pattern of ["README.md", "CLAUDE.md", "index.html", "*.md"]) {
+            const matchedFiles = await glob(dirPath, [pattern]);
+            for (const file of matchedFiles) {
+                let content = await readFile(file);
+                if (!content) continue;
+                let newContent = content;
+                for (const [pat, replacement] of brandingPatterns) {
+                    newContent = newContent.replace(pat, replacement);
+                }
+                newContent = newContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+                if (newContent !== content) {
+                    await writeFile(file, newContent);
+                    filesModified++;
+                }
+            }
+        }
+
+        // Process HTML files (index.html may be nested)
+        const htmlFiles = await glob(dirPath, ["*.html"]);
+        for (const file of htmlFiles) {
+            let content = await readFile(file);
+            if (!content) continue;
+            let newContent = content;
+            for (const [pat, replacement] of brandingPatterns) {
+                newContent = newContent.replace(pat, replacement);
+            }
+            newContent = newContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+            if (newContent !== content) {
+                await writeFile(file, newContent);
+                filesModified++;
+            }
+        }
+    }
+
+    // Process root-level branding files: README.md, NOTICE, LICENSE
+    const rootBrandingFiles = ["README.md", "NOTICE", "LICENSE"];
+    for (const fileName of rootBrandingFiles) {
+        const filePath = path.join(config.outputPath, fileName);
+        let content = await readFile(filePath);
+        if (!content) continue;
+        let newContent = content;
+        for (const [pattern, replacement] of brandingPatterns) {
+            newContent = newContent.replace(pattern, replacement);
+        }
+        newContent = newContent.replace(/serverlesslaunchpad/g, config.projectBaseName);
+        if (newContent !== content) {
+            await writeFile(filePath, newContent);
+            filesModified++;
+        }
+    }
+
+    // Generate .env file with port configuration
+    const basePort = config.basePort;
+    const envContent = [
+        "# Local Docker Development Ports",
+        `BASE_PORT=${basePort}`,
+        `POSTGRES_PORT=${basePort}`,
+        `API_PORT=${basePort + 1}`,
+        `WEB_PORT=${basePort + 2}`,
+        `MOTO_PORT=${basePort + 3}`,
+        `COGNITO_PORT=${basePort + 4}`,
+        "",
+    ].join("\n");
+
+    const envPath = path.join(config.outputPath, ".env");
+    await writeFile(envPath, envContent);
+    filesModified++;
+
+    // Update .env.development with configured ports
+    const envDevPath = path.join(config.outputPath, ".env.development");
+    let envDevContent = await readFile(envDevPath);
+    if (envDevContent) {
+        envDevContent = envDevContent
+            .replace(/^BASE_PORT=.*$/m, `BASE_PORT=${basePort}`)
+            .replace(/^POSTGRES_PORT=.*$/m, `POSTGRES_PORT=${basePort}`)
+            .replace(/^API_PORT=.*$/m, `API_PORT=${basePort + 1}`)
+            .replace(/^WEB_PORT=.*$/m, `WEB_PORT=${basePort + 2}`)
+            .replace(/^MOTO_PORT=.*$/m, `MOTO_PORT=${basePort + 3}`)
+            .replace(/^COGNITO_PORT=.*$/m, `COGNITO_PORT=${basePort + 4}`)
+            .replace(/localhost:5555/g, `localhost:${basePort + 3}`)
+            .replace(/localhost:3001/g, `localhost:${basePort + 1}`)
+            .replace(/localhost:5173/g, `localhost:${basePort + 2}`);
+        await writeFile(envDevPath, envDevContent);
+        filesModified++;
     }
 
     log.success(`${filesModified} files updated`);

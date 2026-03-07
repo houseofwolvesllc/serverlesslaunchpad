@@ -16,6 +16,7 @@ export interface ScaffoldingConfig {
     configDomain: string; // Domain for secrets/config (e.g., "myapp.mycompany.com")
     author: string; // Package author name
     webFramework: WebFramework;
+    basePort: number; // Base port for local Docker development
     sourceRoot: string; // Path to serverlesslaunchpad monorepo
 }
 

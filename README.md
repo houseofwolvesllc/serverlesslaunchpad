@@ -35,7 +35,7 @@ The API implements HAL-FORMS for hypermedia-driven interactions:
 # Install dependencies
 npm install
 
-# Start local development environment (Moto + API + web frontends)
+# Start local development environment (local services + API + web frontends)
 make dev-start
 
 # Or start with a specific frontend
@@ -51,8 +51,10 @@ make dev-start web=none      # API only (no frontend)
 ```bash
 make dev-stop      # Stop all services
 make dev-restart   # Restart all services
-make dev-reset     # Reset Moto data and restart
+make dev-reset     # Reset local data and restart
 make dev-status    # Check status of all services
+make local-start env=dev      # Run locally against AWS development
+make local-start env=staging  # Run locally against AWS staging
 make help          # Show all available commands
 ```
 

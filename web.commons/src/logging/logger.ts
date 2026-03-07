@@ -20,7 +20,7 @@ import { ConsoleLogger, LogLevel } from '@houseofwolves/serverlesslaunchpad.core
  * Environment to log level mapping
  */
 export const LOG_LEVEL_MAP: Record<string, LogLevel> = {
-    'moto': LogLevel.DEBUG,        // Local development with Moto AWS mocks
+    'local': LogLevel.DEBUG,        // Local development with Moto AWS mocks
     'development': LogLevel.DEBUG,  // Standard development mode
     'staging': LogLevel.WARN,       // Only warnings and errors in staging
     'production': LogLevel.ERROR,   // Only errors in production
