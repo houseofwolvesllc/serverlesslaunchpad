@@ -80,6 +80,7 @@ export interface UseSessionsResult {
     data: SessionsResponse | null; // Full HAL object with _templates
     sessions: Session[]; // Extracted array for convenience
     loading: boolean;
+    refreshing: boolean;
     error: string | null;
     selectedIds: Set<string>;
     currentSessionToken: string | null;
