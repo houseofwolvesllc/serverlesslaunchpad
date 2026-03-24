@@ -27,5 +27,6 @@ dist-ssr
 # Environment files
 .env*
 
-# Generated configuration files
+# Generated configuration files (overwritten by local init scripts)
 config/*
+!config/local.infrastructure.json
