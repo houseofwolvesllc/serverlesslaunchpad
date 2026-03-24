@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { halClient } from '../../../lib/hal_forms_client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
@@ -81,8 +81,10 @@ export function useSessions(): UseSessionsResult {
 
     // State
     const [data, setData] = useState<SessionsResponse | null>(null);
+    const dataRef = useRef<SessionsResponse | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true); // Start with loading true
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [sessionsEndpoint, setSessionsEndpoint] = useState<string | null>(null);
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false); // Track if we've loaded data
@@ -177,6 +179,7 @@ export function useSessions(): UseSessionsResult {
         if (!sessionsEndpoint) return;
 
         setLoading(true);
+        setRefreshing(dataRef.current !== null);
         setError(null);
 
         try {
@@ -193,6 +196,7 @@ export function useSessions(): UseSessionsResult {
 
             // Store full HAL object
             setData(response);
+            dataRef.current = response;
             setPagingInstructions(response.paging);
 
             // Clear selection when data changes
@@ -200,8 +204,10 @@ export function useSessions(): UseSessionsResult {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load sessions');
             setData(null);
+            dataRef.current = null;
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }, [sessionsEndpoint, pageSize]);
 
@@ -321,6 +327,7 @@ export function useSessions(): UseSessionsResult {
         data,
         sessions,
         loading,
+        refreshing,
         error,
         selectedIds,
         currentSessionToken: currentSessionId,

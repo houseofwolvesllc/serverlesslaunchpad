@@ -31,7 +31,7 @@ import { parseUserAgent } from '../utils/parse_user_agent';
  * ```
  */
 export function SessionsList() {
-    const { data, sessions, refresh } = useSessions();
+    const { data, sessions, refreshing, refresh } = useSessions();
 
     // Create enriched resource with isCurrent property on sessions
     const enrichedResource = useMemo(() => {
@@ -120,6 +120,7 @@ export function SessionsList() {
         <HalCollectionList
             resource={enrichedResource}
             onRefresh={refresh}
+            refreshing={refreshing}
             bulkOperations={[
                 {
                     id: 'delete',

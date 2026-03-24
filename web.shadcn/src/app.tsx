@@ -9,7 +9,7 @@ import { ConfirmDeleteProvider } from './utils/confirm_delete';
 
 export const App = () => {
     return (
-        <ThemeProvider defaultTheme="light" storageKey="shadcn-ui-theme">
+        <ThemeProvider defaultTheme="auto" storageKey="ui-theme">
             <LoadingProvider>
                 <BrowserRouter
                     future={{

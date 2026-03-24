@@ -32,7 +32,7 @@ import { parseUserAgent } from '../utils/parse_user_agent';
 import type { FieldRenderer } from '@/components/hal_collection';
 
 export function SessionsList() {
-    const { data, sessions, loading, error, refresh } = useSessions();
+    const { data, sessions, loading, refreshing, error, refresh } = useSessions();
 
     // Template execution for bulk delete
     const { execute: execute_bulk_delete } = useExecuteTemplate(() => {
@@ -154,6 +154,7 @@ export function SessionsList() {
         <HalCollectionList
             resource={enhancedData}
             onRefresh={refresh}
+            refreshing={refreshing}
             bulkOperations={[
                 {
                     id: 'delete',

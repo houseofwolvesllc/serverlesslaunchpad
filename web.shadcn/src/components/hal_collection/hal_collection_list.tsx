@@ -59,6 +59,8 @@ export interface HalCollectionListProps {
     emptyIcon?: React.ReactNode;
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
+    /** Whether a background refresh is in progress (spins the refresh icon) */
+    refreshing?: boolean;
     className?: string;
     selectableFilter?: (item: HalObject) => boolean;
     getRowClassName?: (item: HalObject) => string;
@@ -109,6 +111,7 @@ export function HalCollectionList({
     emptyIcon,
     showCreateButton = true,
     showRefreshButton = true,
+    refreshing = false,
     className = '',
     selectableFilter,
     getRowClassName,
@@ -274,8 +277,8 @@ export function HalCollectionList({
                         </Button>
                     )}
                     {showRefreshButton && (
-                        <Button variant="outline" size="sm" onClick={handleRefresh}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
+                        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
                     )}
@@ -343,8 +346,8 @@ export function HalCollectionList({
                         </Button>
                     )}
                     {showRefreshButton && (
-                        <Button variant="outline" size="sm" onClick={handleRefresh}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
+                        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
                     )}

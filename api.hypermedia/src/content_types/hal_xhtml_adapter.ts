@@ -465,49 +465,50 @@ ${checkboxes}
       * { box-sizing: border-box; }
       body {
         font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-        max-width: 1200px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 1rem;
         background: #f5f5f5;
-        line-height: 1.6;
+        line-height: 1.5;
+        font-size: 0.875rem;
         color: #333;
       }
 
       /* HAL Resource Container */
       .hal-resource {
         background: #fff;
-        padding: 2rem;
+        padding: 1.25rem 1.5rem;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         margin: 1rem 0;
       }
 
       /* Headings */
-      h1, h2, h3, h4 { color: #333; margin-top: 1.5rem; }
-      h1 { font-size: 2rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-      h2 { font-size: 1.5rem; }
+      h1, h2, h3, h4 { color: #333; margin-top: 1rem; }
+      h1 { font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+      h2 { font-size: 1.2rem; }
       h3 { font-size: 1.25rem; color: #555; }
 
       /* Properties as Definition List */
       dl {
         background: #f5f5f5;
-        padding: 1rem;
+        padding: 0.75rem;
         border-radius: 0.25rem;
         margin: 1rem 0;
       }
       dt {
         font-weight: bold;
-        margin-top: 0.5rem;
+        margin-top: 0.25rem;
         color: #555;
       }
       dd {
-        margin: 0.25rem 0 0.5rem 1rem;
+        margin: 0.1rem 0 0.25rem 0.75rem;
       }
 
       /* Navigation Structure (_nav) */
       .hal-nav {
         margin: 0 0 2rem 0;
-        padding: 1.5rem;
+        padding: 1rem;
         background: #f0f7ff;
         border-radius: 0.5rem;
         border: 1px solid #0066cc;
@@ -573,7 +574,7 @@ ${checkboxes}
 
       /* Embedded Resources */
       .hal-embedded {
-        margin: 2rem 0;
+        margin: 1rem 0;
       }
       .hal-embedded-item {
         margin: 1rem 0;
@@ -585,7 +586,7 @@ ${checkboxes}
 
       /* Navigation Links */
       .hal-links {
-        margin: 1.5rem 0;
+        margin: 1rem 0;
         padding: 1rem 0;
         border-top: 1px solid #eee;
       }
@@ -605,8 +606,8 @@ ${checkboxes}
 
       /* Templates/Forms Section */
       .hal-templates {
-        margin: 2rem 0;
-        padding-top: 2rem;
+        margin: 1rem 0;
+        padding-top: 1rem;
         border-top: 2px solid #0066cc;
       }
       .hal-template {
@@ -615,16 +616,29 @@ ${checkboxes}
         background: #fff;
         border: 1px solid #ddd;
         border-radius: 0.25rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem 1.5rem;
       }
       .hal-template h4 {
         margin-top: 0;
         color: #0066cc;
+        grid-column: 1 / -1;
+      }
+      .hal-template > input[type="hidden"] {
+        display: none;
+      }
+      .hal-template > fieldset {
+        grid-column: 1 / -1;
+      }
+      .hal-template > label:has(textarea) {
+        grid-column: 1 / -1;
       }
 
       /* Form Elements */
       .hal-template label {
         display: block;
-        margin: 1rem 0 0.25rem 0;
+        margin: 0.5rem 0 0.15rem 0;
         font-weight: 500;
         color: #333;
       }
@@ -633,9 +647,8 @@ ${checkboxes}
       .hal-template select {
         display: block;
         width: 100%;
-        max-width: 30rem;
-        padding: 0.75rem;
-        margin: 0.25rem 0 1rem 0;
+        padding: 0.5rem;
+        margin: 0.15rem 0 0.5rem 0;
         border: 1px solid #ccc;
         border-radius: 0.25rem;
         font-family: inherit;
@@ -649,7 +662,9 @@ ${checkboxes}
         box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
       }
       .hal-template button {
-        padding: 0.75rem 1.5rem;
+        grid-column: 1 / -1;
+        justify-self: start;
+        padding: 0.5rem 1rem;
         margin: 1rem 0.5rem 0 0;
         background: #0066cc;
         color: white;
@@ -665,6 +680,18 @@ ${checkboxes}
       }
       .hal-template button:active {
         background: #004080;
+      }
+
+      /* Responsive grid columns for template forms */
+      @media (min-width: 640px) {
+        .hal-template {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (min-width: 1024px) {
+        .hal-template {
+          grid-template-columns: repeat(3, 1fr);
+        }
       }
 
       /* Code and Time Elements */
@@ -695,11 +722,6 @@ ${checkboxes}
         }
         h1 {
           font-size: 1.5rem;
-        }
-        .hal-template input,
-        .hal-template textarea,
-        .hal-template select {
-          max-width: 100%;
         }
       }
 
