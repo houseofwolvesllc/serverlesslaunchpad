@@ -1,6 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
-import { ThemeToggle } from '@/components/theme_toggle';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +15,7 @@ import { AlertCircle, ChevronsLeft, ChevronsRight, Code2, HelpCircle, Home, Menu
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { GenericResourceView } from '../resource/generic_resource_view';
+import { SettingsPage } from '../settings/settings_page';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
 
@@ -222,9 +222,6 @@ function DashboardContent() {
                         >
                             <HelpCircle className="h-5 w-5" />
                         </Button>
-
-                        {/* Theme Toggle */}
-                        <ThemeToggle />
                     </div>
                 </header>
 
@@ -244,6 +241,9 @@ function DashboardContent() {
 
                                 {/* Dashboard home route */}
                                 <Route path="dashboard" element={<DashboardHome />} />
+
+                                {/* Client-side routes */}
+                                <Route path="settings" element={<SettingsPage />} />
 
                                 {/* Dynamic routes from sitemap */}
                                 {dynamicRoutes.map((route, index) => (
