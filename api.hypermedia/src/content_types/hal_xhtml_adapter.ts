@@ -465,7 +465,7 @@ ${checkboxes}
       * { box-sizing: border-box; }
       body {
         font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-        max-width: 860px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 1rem;
         background: #f5f5f5;
@@ -616,10 +616,23 @@ ${checkboxes}
         background: #fff;
         border: 1px solid #ddd;
         border-radius: 0.25rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem 1.5rem;
       }
       .hal-template h4 {
         margin-top: 0;
         color: #0066cc;
+        grid-column: 1 / -1;
+      }
+      .hal-template > input[type="hidden"] {
+        display: none;
+      }
+      .hal-template > fieldset {
+        grid-column: 1 / -1;
+      }
+      .hal-template > label:has(textarea) {
+        grid-column: 1 / -1;
       }
 
       /* Form Elements */
@@ -634,7 +647,6 @@ ${checkboxes}
       .hal-template select {
         display: block;
         width: 100%;
-        max-width: 30rem;
         padding: 0.5rem;
         margin: 0.15rem 0 0.5rem 0;
         border: 1px solid #ccc;
@@ -650,6 +662,8 @@ ${checkboxes}
         box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
       }
       .hal-template button {
+        grid-column: 1 / -1;
+        justify-self: start;
         padding: 0.5rem 1rem;
         margin: 1rem 0.5rem 0 0;
         background: #0066cc;
@@ -666,6 +680,18 @@ ${checkboxes}
       }
       .hal-template button:active {
         background: #004080;
+      }
+
+      /* Responsive grid columns for template forms */
+      @media (min-width: 640px) {
+        .hal-template {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (min-width: 1024px) {
+        .hal-template {
+          grid-template-columns: repeat(3, 1fr);
+        }
       }
 
       /* Code and Time Elements */
@@ -696,11 +722,6 @@ ${checkboxes}
         }
         h1 {
           font-size: 1.5rem;
-        }
-        .hal-template input,
-        .hal-template textarea,
-        .hal-template select {
-          max-width: 100%;
         }
       }
 

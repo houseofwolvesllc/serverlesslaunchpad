@@ -4,8 +4,8 @@ import { AuthenticationContext } from '@/features/authentication';
 import { useContext } from 'react';
 import type { LinksGroupProps } from '@/features/sitemap/utils/transform_navigation';
 
-/** Client-side link appended to the account navigation */
-const SETTINGS_LINK = { label: 'Settings', link: '/settings' };
+/** Client-side link inserted after My Profile in account navigation */
+const THEME_LINK = { label: 'Theme', link: '/settings' };
 
 interface UserButtonProps {
     /** Account navigation from sitemap (optional) */
@@ -16,8 +16,8 @@ interface UserButtonProps {
  * User button component that displays account-related navigation
  *
  * If accountNav is provided from the sitemap, it will be used with
- * a Settings link appended. Otherwise, shows a simple user menu
- * with the user's name and Settings link.
+ * a Theme link inserted after My Profile. Otherwise, shows a simple
+ * user menu with the user's name and Theme link.
  */
 export function UserButton({ accountNav }: UserButtonProps) {
     const { signedInUser, initialized } = useContext(AuthenticationContext);
@@ -31,13 +31,22 @@ export function UserButton({ accountNav }: UserButtonProps) {
         ? {
               ...accountNav,
               initiallyOpened: true, // Always show account links expanded
-              links: [...(accountNav.links ?? []), SETTINGS_LINK],
+              links: (() => {
+                  const links = [...(accountNav.links ?? [])];
+                  const profileIndex = links.findIndex(l => l.label === 'My Profile');
+                  if (profileIndex >= 0) {
+                      links.splice(profileIndex + 1, 0, THEME_LINK);
+                  } else {
+                      links.push(THEME_LINK);
+                  }
+                  return links;
+              })(),
           }
         : {
               label: signedInUser.name || 'User Menu',
               icon: User,
               initiallyOpened: true,
-              links: [SETTINGS_LINK],
+              links: [THEME_LINK],
           };
 
     return <LinksGroup {...userMenuData} />;

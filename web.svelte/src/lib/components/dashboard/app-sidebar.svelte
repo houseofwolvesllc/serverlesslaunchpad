@@ -5,18 +5,28 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { signOut } from '$lib/auth';
-	import { authStore } from '$lib/stores/auth_store';
+
 	import {
 		Home,
-		Key,
-		Clock,
+		Shield,
 		User,
-		LogOut,
-		ChevronRight,
-		Settings
+		ChevronRight
 	} from 'lucide-svelte';
 	import { toastStore } from '$lib/stores/toast_store';
 	import { cn } from '$lib/utils';
+
+	/** Icon map for collapsible navigation groups */
+	const ICON_MAP: Record<string, typeof Home> = {
+		shield: Shield,
+		admin: Shield,
+		user: User,
+		home: Home
+	};
+
+	function getGroupIcon(iconName?: string): typeof Home | undefined {
+		if (!iconName) return undefined;
+		return ICON_MAP[iconName.toLowerCase()];
+	}
 
 	let className: string | undefined = undefined;
 	export { className as class };
@@ -26,7 +36,7 @@
 		'My Account': true  // Default "My Account" to open
 	};
 	// Track which groups have been manually toggled by the user
-	let manuallyToggled: Record<string, boolean> = {};
+	const manuallyToggled: Record<string, boolean> = {};
 
 	function toggleMenuGroup(label: string) {
 		openMenuGroups[label] = !openMenuGroups[label];
@@ -48,7 +58,7 @@
 			await signOut();
 			toastStore.success('Logged out successfully');
 			await goto('/auth/signin', { replaceState: true, invalidateAll: true });
-		} catch (error) {
+		} catch {
 			toastStore.error('Failed to logout');
 		}
 	}
@@ -69,6 +79,19 @@
 	// Split navigation: mainNav (all except My Account) and accountNav (My Account only)
 	$: mainNav = navigation.filter((item: { label: string }) => item.label !== 'My Account');
 	$: accountNav = navigation.find((item: { label: string }) => item.label === 'My Account');
+
+	// Insert Theme link after My Profile in account navigation
+	const THEME_LINK = { label: 'Theme', link: '/settings' };
+	$: accountLinks = (() => {
+		const links = [...(accountNav?.links ?? [])];
+		const profileIndex = links.findIndex((l: { label: string }) => l.label === 'My Profile');
+		if (profileIndex >= 0) {
+			links.splice(profileIndex + 1, 0, THEME_LINK);
+		} else {
+			links.push(THEME_LINK);
+		}
+		return links;
+	})();
 
 	// Auto-expand menu groups containing the current active path
 	$: {
@@ -163,16 +186,25 @@
 				<!-- Main Navigation (from API, excluding My Account) -->
 				{#each mainNav as navItem (navItem.label)}
 					{#if navItem.links && navItem.links.length > 0}
+						{@const GroupIcon = getGroupIcon(navItem.icon)}
 						<!-- Collapsible group (e.g., Admin) -->
 						<li class="mt-2">
 							<button
 								on:click={() => toggleMenuGroup(navItem.label)}
-								class="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-sm font-medium"
+								class={cn(
+									'w-full flex items-center px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-sm font-medium',
+									GroupIcon ? 'justify-start gap-3' : 'justify-between'
+								)}
 							>
+								{#if GroupIcon}
+									<div class="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary">
+										<svelte:component this={GroupIcon} class="h-4 w-4" />
+									</div>
+								{/if}
 								<span>{navItem.label}</span>
 								<ChevronRight
 									class={cn(
-										'h-4 w-4 transition-transform duration-200',
+										'h-4 w-4 transition-transform duration-200 ml-auto',
 										openMenuGroups[navItem.label] ? 'rotate-90' : 'rotate-0'
 									)}
 								/>
@@ -254,102 +286,30 @@
 					)}
 				>
 					<ul class="ml-10 mt-1 space-y-1 overflow-hidden">
-						{#if accountNav && accountNav.links}
-							{#each accountNav.links as link (link.label)}
-								{@const isLinkActive = currentPath === link.link}
-								<li>
-									<button
-										on:click={() => navigate(link.link, link.rel)}
-										disabled={isLinkActive}
-										class={cn(
-											'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
-											isLinkActive
-												? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
-												: 'border-border hover:bg-accent hover:text-accent-foreground'
-										)}
-									>
-										{#if link.label === 'Sessions'}
-											<Clock class="h-4 w-4" />
-										{:else if link.label === 'API Keys'}
-											<Key class="h-4 w-4" />
-										{:else if link.label === 'My Profile'}
-											<User class="h-4 w-4" />
-										{/if}
-										<span>{link.label}</span>
-									</button>
-								</li>
-							{/each}
-						{:else}
-							<!-- Fallback when API hasn't loaded My Account yet -->
+						<!-- Account links (from API with Theme inserted after My Profile) -->
+						{#each accountLinks as link (link.label)}
+							{@const isLinkActive = currentPath === link.link}
 							<li>
 								<button
-									on:click={() => navigate('/my-profile', 'my-profile')}
-									disabled={myProfileActive}
+									on:click={() => navigate(link.link, link.rel)}
+									disabled={isLinkActive}
 									class={cn(
-										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
-										myProfileActive
+										'w-full flex items-center justify-start px-3 py-2 text-sm border-l-2 transition-colors',
+										isLinkActive
 											? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
 											: 'border-border hover:bg-accent hover:text-accent-foreground'
 									)}
 								>
-									<User class="h-4 w-4" />
-									<span>My Profile</span>
+									<span>{link.label}</span>
 								</button>
 							</li>
-							<li>
-								<button
-									on:click={() => navigate('/sessions', 'sessions')}
-									disabled={sessionsActive}
-									class={cn(
-										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
-										sessionsActive
-											? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
-											: 'border-border hover:bg-accent hover:text-accent-foreground'
-									)}
-								>
-									<Clock class="h-4 w-4" />
-									<span>Sessions</span>
-								</button>
-							</li>
-							<li>
-								<button
-									on:click={() => navigate('/api-keys', 'api-keys')}
-									disabled={apiKeysActive}
-									class={cn(
-										'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
-										apiKeysActive
-											? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
-											: 'border-border hover:bg-accent hover:text-accent-foreground'
-									)}
-								>
-									<Key class="h-4 w-4" />
-									<span>API Keys</span>
-								</button>
-							</li>
-						{/if}
-						<!-- Settings (client-side route, always present) -->
-						<li>
-							<button
-								on:click={() => navigate('/settings')}
-								disabled={settingsActive}
-								class={cn(
-									'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
-									settingsActive
-										? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
-										: 'border-border hover:bg-accent hover:text-accent-foreground'
-								)}
-							>
-								<Settings class="h-4 w-4" />
-								<span>Settings</span>
-							</button>
-						</li>
+						{/each}
 						<!-- Logout (always present - client-side action) -->
 						<li>
 							<button
 								on:click={handleLogout}
-								class="w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 border-border hover:bg-destructive hover:text-destructive-foreground transition-colors"
+								class="w-full flex items-center justify-start px-3 py-2 text-sm border-l-2 border-border hover:bg-destructive hover:text-destructive-foreground transition-colors"
 							>
-								<LogOut class="h-4 w-4" />
 								<span>Logout</span>
 							</button>
 						</li>

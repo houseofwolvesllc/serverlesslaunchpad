@@ -61,21 +61,23 @@
 	<div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 		{#each helpTopics as topic (topic.id)}
 			{@const Icon = iconMap[topic.icon]}
-			<Card class="hover:shadow-md transition-shadow cursor-pointer" on:click={() => goto(`/help/${topic.id}`)}>
-				<CardHeader>
-					<div class="flex items-center gap-3">
-						<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-							<Icon class="h-5 w-5 text-primary" />
+			<a href="/help/{topic.id}" class="no-underline text-inherit">
+				<Card class="hover:shadow-md transition-shadow cursor-pointer h-full">
+					<CardHeader>
+						<div class="flex items-center gap-3">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+								<Icon class="h-5 w-5 text-primary" />
+							</div>
+							<h3 class="text-lg font-semibold">
+								{topic.title}
+							</h3>
 						</div>
-						<h3 class="text-lg font-semibold">
-							{topic.title}
-						</h3>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<p class="text-sm text-muted-foreground">{topic.description}</p>
-				</CardContent>
-			</Card>
+					</CardHeader>
+					<CardContent>
+						<p class="text-sm text-muted-foreground">{topic.description}</p>
+					</CardContent>
+				</Card>
+			</a>
 		{/each}
 	</div>
 

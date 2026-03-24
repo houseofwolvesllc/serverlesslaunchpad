@@ -170,7 +170,10 @@
 			const selfLink = result._links?.self;
 			const resultSelfHref = Array.isArray(selfLink) ? selfLink[0]?.href : selfLink?.href;
 
-			if (resultSelfHref && resultSelfHref !== fullPath) {
+			// Normalize paths by stripping trailing slashes for comparison
+		const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/';
+
+		if (resultSelfHref && normalizePath(resultSelfHref) !== normalizePath(fullPath)) {
 				// Server told us this resource lives at a different location
 				// (e.g., newly created resource, redirected endpoint)
 				logger.info('Navigating to new resource location', {
@@ -189,7 +192,7 @@
 				const targetFullPath = template.target;
 
 				// If the target path is different from current path, navigate
-				if (targetFullPath !== fullPath) {
+				if (normalizePath(targetFullPath) !== normalizePath(fullPath)) {
 					// Server returned a collection for a different endpoint
 					// (e.g., clicking Sessions/API Keys from any page)
 					// Navigate to the collection endpoint (URL-as-source-of-truth)
@@ -252,10 +255,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{resourcePath || 'Resource'}</title>
-</svelte:head>
-
 {#if DedicatedComponent && resourceData}
 	<!-- Dedicated component from registry - receives resource prop for HATEOAS compliance -->
 	<svelte:component this={DedicatedComponent} resource={resourceData} onRefresh={handleRefresh} refreshing={resourceRefreshing} />
@@ -289,6 +288,7 @@
 	<HalResourceDetail
 		resource={resourceData}
 		loading={isLoading}
+		refreshing={resourceRefreshing}
 		error={resourceError}
 		onRefresh={handleRefresh}
 		onTemplateExecute={handleTemplateExecute}

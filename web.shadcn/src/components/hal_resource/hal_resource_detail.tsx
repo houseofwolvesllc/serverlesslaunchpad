@@ -43,6 +43,8 @@ export interface HalResourceDetailProps {
     onRefresh?: () => void;
     onTemplateExecute?: (template: any, data: any) => Promise<void>;
     loading?: boolean;
+    /** Whether a background refresh is in progress (spins the refresh icon) */
+    refreshing?: boolean;
     error?: Error | null;
 }
 
@@ -72,6 +74,7 @@ export function HalResourceDetail({
     onRefresh,
     onTemplateExecute,
     loading = false,
+    refreshing = false,
     error = null,
 }: HalResourceDetailProps) {
     // Use the hook for business logic
@@ -224,8 +227,8 @@ export function HalResourceDetail({
         );
     };
 
-    // Loading state
-    if (loading) {
+    // Loading state - only show skeleton on initial load, not during refresh
+    if (loading && !resource) {
         return (
             <div className="space-y-6">
                 {/* Breadcrumb skeleton */}
@@ -325,8 +328,8 @@ export function HalResourceDetail({
                 ))}
 
                 {onRefresh && (
-                    <Button variant="outline" onClick={onRefresh} size="sm">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button variant="outline" onClick={onRefresh} size="sm" disabled={refreshing}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 )}

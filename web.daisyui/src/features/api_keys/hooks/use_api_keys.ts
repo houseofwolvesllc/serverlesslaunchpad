@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { halClient } from '../../../lib/hal_forms_client';
 import { getEntryPoint } from '../../../services/entry_point_provider';
@@ -38,6 +38,7 @@ export function useApiKeys() {
 
     // State
     const [data, setData] = useState<HalObject | null>(null);
+    const dataRef = useRef<HalObject | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -96,7 +97,7 @@ export function useApiKeys() {
         if (!apiKeysEndpoint) return;
 
         setLoading(true);
-        setRefreshing(data !== null);
+        setRefreshing(dataRef.current !== null);
         setError(null);
 
         try {
@@ -105,14 +106,16 @@ export function useApiKeys() {
 
             // Store full HAL object
             setData(response as HalObject);
+            dataRef.current = response as HalObject;
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load API keys');
             setData(null);
+            dataRef.current = null;
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [apiKeysEndpoint, data]);
+    }, [apiKeysEndpoint]);
 
     /**
      * Refresh API keys list

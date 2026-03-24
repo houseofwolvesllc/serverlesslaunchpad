@@ -38,6 +38,7 @@ export interface HalResourceDetailProps {
     onRefresh?: () => void;
     onTemplateExecute?: (template: any, data: any) => Promise<void>;
     loading?: boolean;
+    refreshing?: boolean;
     error?: Error | null;
 }
 
@@ -113,6 +114,7 @@ export function HalResourceDetail({
     onRefresh,
     onTemplateExecute,
     loading = false,
+    refreshing = false,
     error = null,
 }: HalResourceDetailProps) {
     const [formState, setFormState] = useState<{
@@ -267,8 +269,8 @@ export function HalResourceDetail({
         );
     };
 
-    // Loading state
-    if (loading) {
+    // Loading state - only show skeleton on initial load, not during refresh
+    if (loading && !resource) {
         return (
             <Stack gap="lg">
                 {/* Breadcrumb skeleton */}
@@ -361,7 +363,8 @@ export function HalResourceDetail({
                         variant="default"
                         onClick={onRefresh}
                         size="sm"
-                        leftSection={<IconRefresh size={16} />}
+                        disabled={refreshing}
+                        leftSection={<IconRefresh size={16} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />}
                     >
                         Refresh
                     </Button>

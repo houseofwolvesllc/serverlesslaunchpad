@@ -1,7 +1,3 @@
-<!--
-  Sessions & Security Help Topic Content
--->
-
 <script lang="ts">
 	import Card from '$lib/components/ui/card.svelte';
 	import CardHeader from '$lib/components/ui/card-header.svelte';
@@ -10,7 +6,7 @@
 
 <Card>
 	<CardHeader>
-		<h2 class="text-lg font-semibold">Sessions & Security</h2>
+		<h3 class="text-2xl font-semibold leading-none tracking-tight">Sessions & Security</h3>
 	</CardHeader>
 	<CardContent>
 		<p class="text-muted-foreground">
