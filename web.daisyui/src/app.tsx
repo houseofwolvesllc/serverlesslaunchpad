@@ -9,7 +9,7 @@ import { ThemeProvider } from './components/theme_provider';
 
 export const App = () => {
     return (
-        <ThemeProvider defaultTheme="system" storageKey="daisyui-theme">
+        <ThemeProvider defaultTheme="auto" storageKey="ui-theme">
             <LoadingProvider>
                 <BrowserRouter>
                     <Toaster />
