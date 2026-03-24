@@ -20,6 +20,7 @@ import { useSelection } from '../../hooks/use_selection';
 import { HalResourceRow } from './hal_resource_row';
 import { type FieldRenderer } from './field_renderers';
 import { type HalObject, type BulkOperation } from '@houseofwolves/serverlesslaunchpad.web.commons';
+import classes from './hal_collection_list.module.css';
 
 export interface HalCollectionListProps {
     resource: HalObject | null | undefined;
@@ -33,6 +34,8 @@ export interface HalCollectionListProps {
     emptyIcon?: React.ReactNode;
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
+    /** Whether a background refresh is in progress (spins the refresh icon) */
+    refreshing?: boolean;
     selectableFilter?: (item: HalObject) => boolean;
     /** Page title to display in the header row */
     title?: string;
@@ -80,6 +83,7 @@ export function HalCollectionList({
     emptyIcon,
     showCreateButton = true,
     showRefreshButton = true,
+    refreshing = false,
     selectableFilter,
     title,
     bulkOperations = [],
@@ -168,7 +172,18 @@ export function HalCollectionList({
                         </Button>
                     )}
                     {showRefreshButton && (
-                        <Button variant="default" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            leftSection={
+                                <IconRefresh
+                                    size={16}
+                                    className={refreshing ? classes.spinning : undefined}
+                                />
+                            }
+                        >
                             Refresh
                         </Button>
                     )}
@@ -236,7 +251,18 @@ export function HalCollectionList({
                         </Button>
                     )}
                     {showRefreshButton && (
-                        <Button variant="default" size="sm" onClick={handleRefresh} leftSection={<IconRefresh size={16} />}>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            leftSection={
+                                <IconRefresh
+                                    size={16}
+                                    className={refreshing ? classes.spinning : undefined}
+                                />
+                            }
+                        >
                             Refresh
                         </Button>
                     )}

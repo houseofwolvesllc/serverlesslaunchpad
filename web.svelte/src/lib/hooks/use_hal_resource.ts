@@ -8,6 +8,8 @@ import { logger } from '$lib/logging';
 export interface HalResourceState<T extends HalObject = HalObject> {
 	data: T | null;
 	loading: boolean;
+	/** Whether a background refresh is in progress (data already loaded, re-fetching) */
+	refreshing: boolean;
 	error: Error | null;
 }
 
@@ -40,6 +42,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 	const initialState: HalResourceState<T> = {
 		data: null,
 		loading: false,
+		refreshing: false,
 		error: null,
 	};
 
@@ -73,7 +76,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 	}
 
 	async function fetch() {
-		update(state => ({ ...state, loading: true, error: null }));
+		update(state => ({ ...state, loading: true, refreshing: state.data !== null, error: null }));
 
 		try {
 			let data: HalObject;
@@ -139,6 +142,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 				...state,
 				data: data as T,
 				loading: false,
+				refreshing: false,
 				error: null,
 			}));
 
@@ -152,6 +156,7 @@ export function createHalResource<T extends HalObject = HalObject>(urlOrTemplate
 			update(state => ({
 				...state,
 				loading: false,
+				refreshing: false,
 				error,
 			}));
 		}

@@ -38,6 +38,7 @@ export function useApiKeys() {
     // State
     const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [apiKeysEndpoint, setApiKeysEndpoint] = useState<string | null>(null);
 
@@ -95,6 +96,7 @@ export function useApiKeys() {
             if (!apiKeysEndpoint) return;
 
             setLoading(true);
+            setRefreshing(data !== null);
             setError(null);
 
             try {
@@ -108,9 +110,10 @@ export function useApiKeys() {
                 setData(null);
             } finally {
                 setLoading(false);
+                setRefreshing(false);
             }
         },
-        [apiKeysEndpoint]
+        [apiKeysEndpoint, data]
     );
 
     /**
@@ -135,6 +138,7 @@ export function useApiKeys() {
     return {
         data,
         loading,
+        refreshing,
         error,
         refresh,
     };

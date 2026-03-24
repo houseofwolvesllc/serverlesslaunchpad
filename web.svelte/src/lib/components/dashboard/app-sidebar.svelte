@@ -6,16 +6,14 @@
 	import { goto } from '$app/navigation';
 	import { signOut } from '$lib/auth';
 	import { authStore } from '$lib/stores/auth_store';
-	import { onMount } from 'svelte';
-	import webConfigStore from '$lib/config/web_config_store';
 	import {
 		Home,
 		Key,
 		Clock,
-		BookOpen,
 		User,
 		LogOut,
-		ChevronRight
+		ChevronRight,
+		Settings
 	} from 'lucide-svelte';
 	import { toastStore } from '$lib/stores/toast_store';
 	import { cn } from '$lib/utils';
@@ -29,18 +27,12 @@
 	};
 	// Track which groups have been manually toggled by the user
 	let manuallyToggled: Record<string, boolean> = {};
-	let apiBaseUrl = '';
 
 	function toggleMenuGroup(label: string) {
 		openMenuGroups[label] = !openMenuGroups[label];
 		manuallyToggled[label] = true;
 		openMenuGroups = { ...openMenuGroups };
 	}
-
-	onMount(async () => {
-		const config = await webConfigStore.getConfig();
-		apiBaseUrl = config.api.base_url;
-	});
 
 	function navigate(path: string, rel?: string) {
 		if (currentPath === path) {
@@ -72,6 +64,7 @@
 	$: sessionsActive = currentPath === '/sessions';
 	$: apiKeysActive = currentPath === '/api-keys';
 	$: myProfileActive = currentPath === '/my-profile';
+	$: settingsActive = currentPath === '/settings';
 
 	// Split navigation: mainNav (all except My Account) and accountNav (My Account only)
 	$: mainNav = navigation.filter((item: { label: string }) => item.label !== 'My Account');
@@ -100,7 +93,7 @@
 
 	// Auto-expand My Account section when navigating to its child routes
 	$: {
-		if ((sessionsActive || apiKeysActive || myProfileActive) && !manuallyToggled['My Account']) {
+		if ((sessionsActive || apiKeysActive || myProfileActive || settingsActive) && !manuallyToggled['My Account']) {
 			if (!openMenuGroups['My Account']) {
 				openMenuGroups['My Account'] = true;
 				openMenuGroups = { ...openMenuGroups };
@@ -148,21 +141,6 @@
 					<span>Home</span>
 				</button>
 			</li>
-
-			<!-- Hypermedia API Documentation -->
-			{#if apiBaseUrl}
-				<li>
-					<button
-						on:click={() => window.open(apiBaseUrl, '_blank')}
-						class="w-full flex items-center justify-start gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-sm font-medium"
-					>
-						<div class="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary">
-							<BookOpen class="h-4 w-4" />
-						</div>
-						<span class="text-left">Hypermedia API Docs</span>
-					</button>
-				</li>
-			{/if}
 
 			<!-- Dynamic Navigation from Sitemap (HATEOAS-driven) -->
 			{#if isLoadingSitemap}
@@ -349,6 +327,22 @@
 								</button>
 							</li>
 						{/if}
+						<!-- Settings (client-side route, always present) -->
+						<li>
+							<button
+								on:click={() => navigate('/settings')}
+								disabled={settingsActive}
+								class={cn(
+									'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
+									settingsActive
+										? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
+										: 'border-border hover:bg-accent hover:text-accent-foreground'
+								)}
+							>
+								<Settings class="h-4 w-4" />
+								<span>Settings</span>
+							</button>
+						</li>
 						<!-- Logout (always present - client-side action) -->
 						<li>
 							<button

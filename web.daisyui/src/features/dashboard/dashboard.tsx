@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Code2, ChevronRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme_toggle';
+import { Home, ChevronRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
 import { UserButton } from '@/components/user_button/user_button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { cn } from '@/lib/utils';
 import { useDisclosure } from '@/hooks/use_disclosure';
 import { useHeadroom } from '@/hooks/use_headroom';
-import WebConfigurationStore from '@/configuration/web_config_store';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
+import { SettingsPage } from '../settings/settings_page';
+import { HelpPage } from '../help/help_page';
+import { HelpTopicDetail } from '../help/help_topic_detail';
 import { GenericResourceView } from '../resource/generic_resource_view';
 
 /**
@@ -33,7 +34,6 @@ export const Dashboard = () => {
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure(false);
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
-    const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
 
     // Track if this is the initial page load
     const isInitialLoad = useRef(true);
@@ -44,19 +44,16 @@ export const Dashboard = () => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
 
-            // If initial load and not on dashboard, redirect
-            if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+            // If initial load and not on dashboard or help, redirect
+            if (
+                location.pathname !== '/dashboard' &&
+                location.pathname !== '/' &&
+                !location.pathname.startsWith('/help')
+            ) {
                 navigate('/dashboard', { replace: true });
             }
         }
     }, [location.pathname, navigate]);
-
-    // Load API base URL for documentation link
-    useEffect(() => {
-        WebConfigurationStore.getConfig().then((config) => {
-            setApiBaseUrl(config.api.base_url);
-        });
-    }, []);
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
@@ -103,7 +100,6 @@ export const Dashboard = () => {
         return (
             <>
                 <LinksGroup icon={Home} label="Home" link="/" />
-                {apiBaseUrl && <LinksGroup icon={Code2} label="Hypermedia API Documentation" link={apiBaseUrl} newTab={true} />}
                 {mainNav.map((item) => (
                     <LinksGroup {...item} key={item.label} />
                 ))}
@@ -178,17 +174,15 @@ export const Dashboard = () => {
                             <Search className="h-5 w-5" />
                         </span>
 
-                        {/* Help Icon (disabled) */}
-                        <span
-                            className="w-12 h-12 flex items-center justify-center opacity-40 cursor-not-allowed"
+                        {/* Help Button */}
+                        <button
+                            className="btn btn-square btn-ghost"
+                            onClick={() => navigate('/help')}
                             aria-label="Help"
-                            title="Help (coming soon)"
+                            title="Help Center"
                         >
                             <HelpCircle className="h-5 w-5" />
-                        </span>
-
-                        {/* Theme Toggle */}
-                        <ThemeToggle />
+                        </button>
                     </div>
                 </div>
 
@@ -207,6 +201,13 @@ export const Dashboard = () => {
 
                             {/* Dashboard home route */}
                             <Route path="dashboard" element={<DashboardHome />} />
+
+                            {/* Client-side routes */}
+                            <Route path="settings" element={<SettingsPage />} />
+
+                            {/* Help Center routes */}
+                            <Route path="help" element={<HelpPage />} />
+                            <Route path="help/:topicId" element={<HelpTopicDetail />} />
 
                             {/* Dynamic routes from sitemap */}
                             {dynamicRoutes.map((route, index) => (
