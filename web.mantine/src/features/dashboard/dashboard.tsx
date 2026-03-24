@@ -1,18 +1,19 @@
 import { ActionIcon, Alert, AppShell, Box, Button, Group, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
-import { IconAlertCircle, IconApi, IconChevronLeft, IconChevronRight, IconHelp, IconHome, IconMenu2, IconRefresh, IconSearch } from '@tabler/icons-react';
+import { IconAlertCircle, IconChevronLeft, IconChevronRight, IconHelp, IconHome, IconMenu2, IconRefresh, IconSearch } from '@tabler/icons-react';
 import { ThemeToggle } from '../../components/theme_toggle';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
 import { UserButton } from '../../components/user_button/user_button';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import WebConfigurationStore from '../../configuration/web_config_store';
 import { generateRoutesFromNavStructure } from '../../routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import classes from './dashboard.module.css';
 import { DashboardHome } from './dashboard_home';
 import { GenericResourceView } from '../resource/generic_resource_view';
+import { HelpPage } from '../help/help_page';
+import { HelpTopicDetail } from '../help/help_topic_detail';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
@@ -23,7 +24,6 @@ export const Dashboard = () => {
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
-    const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
 
     // Track if this is the initial page load
     const isInitialLoad = useRef(true);
@@ -34,19 +34,16 @@ export const Dashboard = () => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
 
-            // If initial load and not on dashboard, redirect
-            if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+            // If initial load and not on dashboard or help, redirect
+            if (
+                location.pathname !== '/dashboard' &&
+                location.pathname !== '/' &&
+                !location.pathname.startsWith('/help')
+            ) {
                 navigate('/dashboard', { replace: true });
             }
         }
     }, [location.pathname, navigate]);
-
-    // Load API base URL for documentation link
-    useEffect(() => {
-        WebConfigurationStore.getConfig().then((config) => {
-            setApiBaseUrl(config.api.base_url);
-        });
-    }, []);
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
@@ -103,14 +100,6 @@ export const Dashboard = () => {
                     label="Home"
                     link="/"
                 />
-                {apiBaseUrl && (
-                    <LinksGroup
-                        icon={IconApi}
-                        label="Hypermedia API Documentation"
-                        link={apiBaseUrl}
-                        newTab={true}
-                    />
-                )}
                 {mainNav.map((item) => <LinksGroup {...item} key={item.label} />)}
             </>
         );
@@ -211,23 +200,16 @@ export const Dashboard = () => {
                                 <IconSearch size={20} />
                             </Box>
 
-                            {/* Help Icon (disabled) */}
-                            <Box
-                                component="span"
-                                style={{
-                                    width: rem(34),
-                                    height: rem(34),
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    opacity: 0.4,
-                                    cursor: 'not-allowed',
-                                }}
+                            {/* Help Button */}
+                            <ActionIcon
+                                variant="subtle"
+                                size="lg"
+                                onClick={() => navigate('/help')}
                                 aria-label="Help"
-                                title="Help (coming soon)"
+                                title="Help Center"
                             >
                                 <IconHelp size={20} />
-                            </Box>
+                            </ActionIcon>
 
                             {/* Theme Toggle */}
                             <ThemeToggle />
@@ -250,6 +232,10 @@ export const Dashboard = () => {
 
                             {/* Dashboard home route */}
                             <Route path="dashboard" element={<DashboardHome />} />
+
+                            {/* Help Center routes */}
+                            <Route path="help" element={<HelpPage />} />
+                            <Route path="help/:topicId" element={<HelpTopicDetail />} />
 
                             {/* Dynamic routes from sitemap */}
                             {dynamicRoutes.map((route, index) => (
