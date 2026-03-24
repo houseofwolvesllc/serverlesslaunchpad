@@ -1,0 +1,37 @@
+{
+  "environment": "local",
+  "_generated": "PLACEHOLDER",
+  "_source": "Generated from local environment",
+
+  "aws": {
+    "region": "us-west-2"
+  },
+
+  "cognito": {
+    "user_pool_id": "PLACEHOLDER",
+    "client_id": "PLACEHOLDER",
+    "identity_pool_id": "PLACEHOLDER",
+    "user_pool_provider_url": "http://localhost:9230",
+    "endpoint_url": "http://localhost:9230"
+  },
+
+  "api": {
+    "base_url": "http://localhost:3001",
+    "timeout": 30000
+  },
+
+  "s3": {
+    "upload_bucket": "serverlesslaunchpad-local-uploads",
+    "static_bucket": "serverlesslaunchpad-local-static"
+  },
+
+  "features": {
+    "enable_mfa": false,
+    "enable_analytics": false,
+    "enable_notifications": true,
+    "enable_advanced_security": false,
+    "mock_auth": false,
+    "enable_logging": true,
+    "hot_reload": true
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "environment": "local",
+  "_generated": "PLACEHOLDER",
+  "_source": "Generated from local environment",
+
+  "aws": {
+    "region": "us-west-2",
+    "endpoint_url": "http://localhost:5555"
+  },
+
+  "cognito": {
+    "user_pool_id": "PLACEHOLDER",
+    "client_id": "PLACEHOLDER",
+    "user_pool_provider_url": "http://localhost:9230"
+  },
+
+  "api": {
+    "base_url": "http://localhost:3001",
+    "timeout": 30000
+  },
+
+  "features": {
+    "enable_analytics": false,
+    "enable_rate_limiting": false,
+    "enable_advanced_security": false
+  },
+
+  "limits": {
+    "max_api_keys_per_user": 10,
+    "session_timeout_hours": 24,
+    "max_query_timeout_seconds": 300
+  }
+}
