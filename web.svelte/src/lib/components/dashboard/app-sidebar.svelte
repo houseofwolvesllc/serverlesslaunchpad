@@ -6,13 +6,10 @@
 	import { goto } from '$app/navigation';
 	import { signOut } from '$lib/auth';
 	import { authStore } from '$lib/stores/auth_store';
-	import { onMount } from 'svelte';
-	import webConfigStore from '$lib/config/web_config_store';
 	import {
 		Home,
 		Key,
 		Clock,
-		BookOpen,
 		User,
 		LogOut,
 		ChevronRight
@@ -29,18 +26,12 @@
 	};
 	// Track which groups have been manually toggled by the user
 	let manuallyToggled: Record<string, boolean> = {};
-	let apiBaseUrl = '';
 
 	function toggleMenuGroup(label: string) {
 		openMenuGroups[label] = !openMenuGroups[label];
 		manuallyToggled[label] = true;
 		openMenuGroups = { ...openMenuGroups };
 	}
-
-	onMount(async () => {
-		const config = await webConfigStore.getConfig();
-		apiBaseUrl = config.api.base_url;
-	});
 
 	function navigate(path: string, rel?: string) {
 		if (currentPath === path) {
@@ -148,21 +139,6 @@
 					<span>Home</span>
 				</button>
 			</li>
-
-			<!-- Hypermedia API Documentation -->
-			{#if apiBaseUrl}
-				<li>
-					<button
-						on:click={() => window.open(apiBaseUrl, '_blank')}
-						class="w-full flex items-center justify-start gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-sm font-medium"
-					>
-						<div class="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary">
-							<BookOpen class="h-4 w-4" />
-						</div>
-						<span class="text-left">Hypermedia API Docs</span>
-					</button>
-				</li>
-			{/if}
 
 			<!-- Dynamic Navigation from Sitemap (HATEOAS-driven) -->
 			{#if isLoadingSitemap}
