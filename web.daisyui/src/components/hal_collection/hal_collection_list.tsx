@@ -33,6 +33,8 @@ export interface HalCollectionListProps {
     emptyIcon?: React.ReactNode;
     showCreateButton?: boolean;
     showRefreshButton?: boolean;
+    /** Whether a background refresh is in progress (spins the refresh icon) */
+    refreshing?: boolean;
     selectableFilter?: (item: HalObject) => boolean;
     /** Page title to display in the header row */
     title?: string;
@@ -80,6 +82,7 @@ export function HalCollectionList({
     emptyIcon,
     showCreateButton = true,
     showRefreshButton = true,
+    refreshing = false,
     selectableFilter,
     title,
     bulkOperations = [],
@@ -169,8 +172,8 @@ export function HalCollectionList({
                         </button>
                     )}
                     {showRefreshButton && (
-                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh}>
-                            <RefreshCw className="w-4 h-4 mr-2" />
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh} disabled={refreshing}>
+                            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                             Refresh
                         </button>
                     )}
@@ -237,8 +240,8 @@ export function HalCollectionList({
                         </button>
                     )}
                     {showRefreshButton && (
-                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh}>
-                            <RefreshCw className="w-4 h-4 mr-2" />
+                        <button className="btn btn-sm border border-base-300 bg-base-100 hover:bg-base-200" onClick={handleRefresh} disabled={refreshing}>
+                            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                             Refresh
                         </button>
                     )}
