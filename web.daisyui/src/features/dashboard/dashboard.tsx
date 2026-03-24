@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Code2, ChevronRight, Menu, AlertCircle, RefreshCw, Search, HelpCircle } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme_toggle';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
 import { UserButton } from '@/components/user_button/user_button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -12,6 +11,7 @@ import WebConfigurationStore from '@/configuration/web_config_store';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
+import { SettingsPage } from '../settings/settings_page';
 import { GenericResourceView } from '../resource/generic_resource_view';
 
 /**
@@ -186,9 +186,6 @@ export const Dashboard = () => {
                         >
                             <HelpCircle className="h-5 w-5" />
                         </span>
-
-                        {/* Theme Toggle */}
-                        <ThemeToggle />
                     </div>
                 </div>
 
@@ -207,6 +204,9 @@ export const Dashboard = () => {
 
                             {/* Dashboard home route */}
                             <Route path="dashboard" element={<DashboardHome />} />
+
+                            {/* Client-side routes */}
+                            <Route path="settings" element={<SettingsPage />} />
 
                             {/* Dynamic routes from sitemap */}
                             {dynamicRoutes.map((route, index) => (
