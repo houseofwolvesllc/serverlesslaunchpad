@@ -17,6 +17,7 @@ import {
     IconDashboard,
     IconFileText,
     IconGauge,
+    IconHelpCircle,
     IconHome,
     IconKey,
     IconLock,
@@ -44,6 +45,7 @@ export const iconMapper: Record<string, Icon> = {
     // User Management
     users: IconUsers,
     user: IconUserCircle,
+    'my-profile': IconUserCircle,
     sessions: IconUserCircle,
     'user-circle': IconUserCircle,
 
@@ -77,6 +79,10 @@ export const iconMapper: Record<string, Icon> = {
 
     // API Keys
     'api-keys': IconKey,
+
+    // Help & Support
+    help: IconHelpCircle,
+    'help-circle': IconHelpCircle,
 
     // Default/Unknown
     default: IconCircle,
