@@ -1,21 +1,22 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { LinksGroup } from '@/components/navbar_links_group/navbar_links_group';
-import { ThemeToggle } from '@/components/theme_toggle';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserButton } from '@/components/user_button/user_button';
-import WebConfigurationStore from '@/configuration/web_config_store';
 import { useDisclosure } from '@/hooks/use_disclosure';
 import { useHeadroom } from '@/hooks/use_headroom';
 import { cn } from '@/lib/utils';
 import { generateRoutesFromNavStructure } from '@/routing/route_generator';
-import { AlertCircle, ChevronsLeft, ChevronsRight, Code2, HelpCircle, Home, Menu, RefreshCw, Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, ChevronsLeft, ChevronsRight, HelpCircle, Home, Menu, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { GenericResourceView } from '../resource/generic_resource_view';
+import { HelpPage } from '../help/help_page';
+import { HelpTopicDetail } from '../help/help_topic_detail';
+import { SettingsPage } from '../settings/settings_page';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { DashboardHome } from './dashboard_home';
 
@@ -38,7 +39,6 @@ function DashboardContent() {
     const pinned = useHeadroom({ fixedAt: 120 });
     const [mobileOpened, { toggle: toggleMobile }] = useDisclosure(false);
     const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
-    const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
 
     // Track if this is the initial page load
     const isInitialLoad = useRef(true);
@@ -49,20 +49,16 @@ function DashboardContent() {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
 
-            // If initial load and not on dashboard, redirect
-            if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+            // If initial load and not on dashboard or help, redirect
+            if (
+                location.pathname !== '/dashboard' &&
+                location.pathname !== '/' &&
+                !location.pathname.startsWith('/help')
+            ) {
                 navigate('/dashboard', { replace: true });
             }
         }
     }, [location.pathname, navigate]);
-
-    // Load API base URL for documentation link
-    useEffect(() => {
-        WebConfigurationStore.getConfig().then((config) => {
-            setApiBaseUrl(config.api.base_url);
-        });
-    }, []);
-
 
     // Generate dynamic routes from sitemap
     const dynamicRoutes = useMemo(() => {
@@ -107,7 +103,6 @@ function DashboardContent() {
         return (
             <>
                 <LinksGroup icon={Home} label="Home" link="/" />
-                {apiBaseUrl && <LinksGroup icon={Code2} label="Hypermedia API Documentation" link={apiBaseUrl} newTab={true} />}
                 {mainNav.map((item) => (
                     <LinksGroup {...item} key={item.label} />
                 ))}
@@ -216,15 +211,12 @@ function DashboardContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            disabled
+                            onClick={() => navigate('/help')}
                             aria-label="Help"
-                            title="Help (coming soon)"
+                            title="Help Center"
                         >
                             <HelpCircle className="h-5 w-5" />
                         </Button>
-
-                        {/* Theme Toggle */}
-                        <ThemeToggle />
                     </div>
                 </header>
 
@@ -244,6 +236,13 @@ function DashboardContent() {
 
                                 {/* Dashboard home route */}
                                 <Route path="dashboard" element={<DashboardHome />} />
+
+                                {/* Client-side routes */}
+                                <Route path="settings" element={<SettingsPage />} />
+
+                                {/* Help Center routes */}
+                                <Route path="help" element={<HelpPage />} />
+                                <Route path="help/:topicId" element={<HelpTopicDetail />} />
 
                                 {/* Dynamic routes from sitemap */}
                                 {dynamicRoutes.map((route, index) => (

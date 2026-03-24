@@ -18,7 +18,6 @@ import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking_adapte
 import { halClient } from '@/lib/hal_forms_client';
 import { isCollection } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { useMemo } from 'react';
@@ -64,7 +63,7 @@ export function GenericResourceView() {
 
     // Fetch resource using path
     // If template found in sitemap, use POST; otherwise use GET
-    const { data, loading, error, refetch } = useHalResource(urlToFetch, template);
+    const { data, loading, refreshing, error, refetch } = useHalResource(urlToFetch, template);
 
     // Track this resource in navigation history
     useHalResourceTracking(data);
@@ -94,54 +93,48 @@ export function GenericResourceView() {
      * Navigation rules based on response:
      * 1. Response has different self link → navigate to new resource location
      * 2. Response is collection from detail view → navigate to collection endpoint
-     * 3. Otherwise (update, pagination) → refresh in place
+     * 3. Otherwise (update, pagination) → no-op here, caller handles refresh
+     *
+     * Note: This handler does NOT refetch for in-place updates (case 3).
+     * Child components (HalResourceDetail, HalCollectionList) call onRefresh()
+     * after template execution to perform a single data refresh.
      */
     const handleTemplateExecute = async (template: HalTemplate, formData: Record<string, any>) => {
-        try {
-            // Execute the template and get the result
-            const result = await halClient.executeTemplate(template, formData);
+        // Execute the template and get the result
+        const result = await halClient.executeTemplate(template, formData);
 
-            // HATEOAS: Inspect response to determine navigation
+        // HATEOAS: Inspect response to determine navigation
+        // Normalize paths by stripping trailing slashes for comparison
+        const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/';
 
-            // 1. Check if result has a self link different from current location
-            const selfLink = result._links?.self;
-            const resultSelfHref = Array.isArray(selfLink) ? selfLink[0]?.href : selfLink?.href;
-            const currentPath = `/${resourcePath}`;
+        // 1. Check if result has a self link different from current location
+        const selfLink = result._links?.self;
+        const resultSelfHref = Array.isArray(selfLink) ? selfLink[0]?.href : selfLink?.href;
+        const currentPath = normalizePath(`/${resourcePath}`);
 
-            if (resultSelfHref && resultSelfHref !== currentPath) {
-                // Server told us this resource lives at a different location
-                // (e.g., newly created resource, redirected endpoint)
-                const targetPath = resultSelfHref.replace(/^\//, '');
+        if (resultSelfHref && normalizePath(resultSelfHref) !== currentPath) {
+            const targetPath = resultSelfHref.replace(/^\//, '');
+            navigate(`/${targetPath}`);
+            return;
+        }
+
+        // 2. Check if result is a collection and target is different from current path
+        const resultIsCollection = isCollection(result);
+
+        if (resultIsCollection && template.target) {
+            const targetPath = template.target.replace(/^\//, '');
+            const targetFullPath = normalizePath(`/${targetPath}`);
+
+            if (targetFullPath !== currentPath) {
                 navigate(`/${targetPath}`);
                 return;
             }
-
-            // 2. Check if result is a collection and target is different from current path
-            const resultIsCollection = isCollection(result);
-
-            if (resultIsCollection && template.target) {
-                const targetPath = template.target.replace(/^\//, '');
-                const targetFullPath = `/${targetPath}`;
-
-                // If the target path is different from current path, navigate
-                if (targetFullPath !== currentPath) {
-                    // Server returned a collection for a different endpoint
-                    // (e.g., clicking Sessions/API Keys from any page)
-                    // Navigate to the collection endpoint (URL-as-source-of-truth)
-                    navigate(targetFullPath);
-                    return;
-                }
-            }
-
-            // 3. Default: Same resource updated or pagination in collection view
-            // Refresh in place to show updated/next page data
-            await refetch();
-
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Operation failed';
-            toast.error(message);
-            throw err;
         }
+
+        // 3. Default: Same resource updated or pagination in collection view
+        // Do NOT refetch here — the calling component (HalResourceDetail or
+        // HalCollectionList) calls onRefresh() after this handler returns,
+        // which triggers a single data refresh without double-fetching.
     };
 
     /**
@@ -180,6 +173,7 @@ export function GenericResourceView() {
                 onTemplateExecute={handleTemplateExecute}
                 onRowClick={handleRowClick}
                 title={pageTitle || undefined}
+                refreshing={refreshing}
             />
         );
     } else {
@@ -187,6 +181,7 @@ export function GenericResourceView() {
             <HalResourceDetail
                 resource={data}
                 loading={isLoading}
+                refreshing={refreshing}
                 error={error ? new Error(error) : null}
                 onRefresh={handleRefresh}
                 onTemplateExecute={handleTemplateExecute}

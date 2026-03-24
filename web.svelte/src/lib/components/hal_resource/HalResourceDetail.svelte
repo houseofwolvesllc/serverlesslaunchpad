@@ -62,6 +62,8 @@
 	export let onRefresh: (() => void) | undefined = undefined;
 	export let onTemplateExecute: ((template: any, data: any) => Promise<void>) | undefined = undefined;
 	export let loading = false;
+	/** Whether a background refresh is in progress (spins the refresh icon) */
+	export let refreshing = false;
 	export let error: Error | null = null;
 
 	// State
@@ -258,8 +260,8 @@
 	}
 </script>
 
-{#if loading}
-	<!-- Loading state -->
+{#if loading && !resource}
+	<!-- Loading state (only on initial load, not during refresh) -->
 	<div class="space-y-6">
 		<!-- Breadcrumb skeleton -->
 		<div class="flex items-center gap-2">
@@ -345,8 +347,8 @@
 			{/each}
 
 			{#if onRefresh}
-				<Button variant="outline" on:click={onRefresh} size="sm">
-					<RefreshCw class="mr-2 h-4 w-4" />
+				<Button variant="outline" on:click={onRefresh} size="sm" disabled={refreshing}>
+					<RefreshCw class={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
 					Refresh
 				</Button>
 			{/if}

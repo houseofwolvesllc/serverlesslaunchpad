@@ -23,7 +23,7 @@ import { confirmDelete } from '../../../utils/confirm_delete';
  * ```
  */
 export function ApiKeysList() {
-    const { data, refresh } = useApiKeys();
+    const { data, refreshing, refresh } = useApiKeys();
 
     const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] =
         useDisclosure(false);
@@ -78,6 +78,7 @@ export function ApiKeysList() {
             <HalCollectionList
                 resource={data}
                 onRefresh={refresh}
+                refreshing={refreshing}
                 onCreate={openCreateModal}
                 bulkOperations={[
                     {

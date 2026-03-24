@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { HalObject, HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { halClient, ValidationError } from '../lib/hal_forms_client';
 
@@ -10,6 +10,8 @@ export interface UseHalResourceResult {
     data: HalObject | null;
     /** Loading state */
     loading: boolean;
+    /** Whether data is being refreshed (data already exists) */
+    refreshing: boolean;
     /** Error message if fetch failed */
     error: string | null;
     /** Refetch the resource */
@@ -66,7 +68,9 @@ export interface UseExecuteTemplateResult {
 export function useHalResource(url: string | null, template?: HalTemplate): UseHalResourceResult {
     const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const dataRef = useRef<HalObject | null>(null);
 
     /**
      * Fetch resource - uses ETags automatically (handled by ApiClient)
@@ -108,9 +112,11 @@ export function useHalResource(url: string | null, template?: HalTemplate): UseH
             }
 
             setData(resource);
+            dataRef.current = resource;
         } catch (err: any) {
             setError(err.message || 'Failed to fetch resource');
             setData(null);
+            dataRef.current = null;
         } finally {
             setLoading(false);
         }
@@ -127,6 +133,7 @@ export function useHalResource(url: string | null, template?: HalTemplate): UseH
     const refetch = useCallback(async () => {
         if (!url) return;
 
+        setRefreshing(dataRef.current !== null);
         setLoading(true);
         setError(null);
 
@@ -156,16 +163,19 @@ export function useHalResource(url: string | null, template?: HalTemplate): UseH
             }
 
             setData(resource);
+            dataRef.current = resource;
         } catch (err: any) {
             setError(err.message || 'Failed to refetch resource');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }, [url, template]);
 
     return {
         data,
         loading,
+        refreshing,
         error,
         refetch,
     };

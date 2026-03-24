@@ -27,7 +27,7 @@
 	const adminPath = '/admin';
 
 	// Create HAL resource store for admin endpoint
-	let resource = createHalResource(adminPath);
+	const resource = createHalResource(adminPath);
 	let unsubscribe: (() => void) | null = null;
 
 	// Resource state
@@ -140,10 +140,6 @@
 		logger.info('Admin create action triggered');
 	}
 </script>
-
-<svelte:head>
-	<title>Admin</title>
-</svelte:head>
 
 <div class="p-6">
 	<div class="space-y-6">

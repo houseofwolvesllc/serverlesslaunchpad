@@ -17,7 +17,7 @@ import { useHalResourceTracking } from '@/hooks/use_hal_resource_tracking_adapte
 import { halClient } from '@/lib/hal_forms_client';
 import { isCollection } from '@houseofwolves/serverlesslaunchpad.web.commons';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { notifications } from '@mantine/notifications';
+
 import type { HalTemplate } from '@houseofwolves/serverlesslaunchpad.types/hal';
 import { useSitemap } from '../sitemap/hooks/use_sitemap';
 import { useMemo } from 'react';
@@ -58,46 +58,41 @@ export function GenericResourceView() {
 
     // Fetch resource using path
     // If template found in sitemap, use POST; otherwise use GET
-    const { data, loading, error, refetch } = useHalResource(urlToFetch, template);
+    const { data, loading, refreshing, error, refetch } = useHalResource(urlToFetch, template);
 
     useHalResourceTracking(data);
 
     const isCollectionView = isCollection(data);
 
     const handleTemplateExecute = async (template: HalTemplate, formData: Record<string, any>) => {
-        try {
-            const result = await halClient.executeTemplate(template, formData);
+        const result = await halClient.executeTemplate(template, formData);
 
-            const selfLink = result._links?.self;
-            const resultSelfHref = Array.isArray(selfLink) ? selfLink[0]?.href : selfLink?.href;
-            const currentPath = `/${resourcePath}`;
+        // Normalize paths by stripping trailing slashes for comparison
+        const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/';
 
-            if (resultSelfHref && resultSelfHref !== currentPath) {
-                const targetPath = resultSelfHref.replace(/^\//, '');
-                navigate(`/${targetPath}`);
+        const selfLink = result._links?.self;
+        const resultSelfHref = Array.isArray(selfLink) ? selfLink[0]?.href : selfLink?.href;
+        const currentPath = normalizePath(`/${resourcePath}`);
+
+        if (resultSelfHref && normalizePath(resultSelfHref) !== currentPath) {
+            const targetPath = resultSelfHref.replace(/^\//, '');
+            navigate(`/${targetPath}`);
+            return;
+        }
+
+        const resultIsCollection = isCollection(result);
+        if (resultIsCollection && template.target) {
+            const targetPath = template.target.replace(/^\//, '');
+            const targetFullPath = normalizePath(`/${targetPath}`);
+            if (targetFullPath !== currentPath) {
+                navigate(targetFullPath);
                 return;
             }
-
-            const resultIsCollection = isCollection(result);
-            if (resultIsCollection && template.target) {
-                const targetPath = template.target.replace(/^\//, '');
-                const targetFullPath = `/${targetPath}`;
-                if (targetFullPath !== currentPath) {
-                    navigate(targetFullPath);
-                    return;
-                }
-            }
-
-            await refetch();
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Operation failed';
-            notifications.show({
-                color: 'red',
-                title: 'Error',
-                message
-            });
-            throw err;
         }
+
+        // Do NOT refetch here — the calling component (HalResourceDetail or
+        // HalCollectionList) calls onRefresh() after this handler returns,
+        // which triggers a single data refresh without double-fetching.
     };
 
     const handleRefresh = async () => {
@@ -124,6 +119,7 @@ export function GenericResourceView() {
                 resource={data}
                 onRefresh={handleRefresh}
                 onRowClick={handleRowClick}
+                refreshing={refreshing}
             />
         );
     } else {
@@ -131,6 +127,7 @@ export function GenericResourceView() {
             <HalResourceDetail
                 resource={data}
                 loading={isLoading}
+                refreshing={refreshing}
                 error={error ? new Error(error) : null}
                 onRefresh={handleRefresh}
                 onTemplateExecute={handleTemplateExecute}
