@@ -44,11 +44,12 @@ export const Dashboard = () => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
 
-            // If initial load and not on dashboard or help, redirect
+            // If initial load and not on dashboard, help, or settings, redirect
             if (
                 location.pathname !== '/dashboard' &&
                 location.pathname !== '/' &&
-                !location.pathname.startsWith('/help')
+                !location.pathname.startsWith('/help') &&
+                !location.pathname.startsWith('/settings')
             ) {
                 navigate('/dashboard', { replace: true });
             }
