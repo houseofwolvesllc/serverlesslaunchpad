@@ -64,6 +64,7 @@ export function useApiKeys() {
     // State
     const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [apiKeysEndpoint, setApiKeysEndpoint] = useState<string | null>(null);
@@ -140,6 +141,7 @@ export function useApiKeys() {
             if (!apiKeysEndpoint) return;
 
             setLoading(true);
+            setRefreshing(data !== null);
             setError(null);
 
             try {
@@ -165,9 +167,10 @@ export function useApiKeys() {
                 setData(null);
             } finally {
                 setLoading(false);
+                setRefreshing(false);
             }
         },
-        [apiKeysEndpoint, pageSize]
+        [apiKeysEndpoint, pageSize, data]
     );
 
     /**
@@ -295,6 +298,7 @@ export function useApiKeys() {
         data,
         apiKeys,
         loading,
+        refreshing,
         error,
         selectedIds,
         pagination,

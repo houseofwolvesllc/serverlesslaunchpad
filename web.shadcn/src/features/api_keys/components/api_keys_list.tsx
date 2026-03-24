@@ -24,7 +24,7 @@ import { useConfirmDelete } from '../../../utils/confirm_delete';
 import { useDisclosure } from '../../../hooks/use_disclosure';
 
 export function ApiKeysList() {
-    const { data, loading, error, refresh } = useApiKeys();
+    const { data, loading, refreshing, error, refresh } = useApiKeys();
 
     const [create_modal_opened, { open: open_create_modal, close: close_create_modal }] =
         useDisclosure(false);
@@ -89,6 +89,7 @@ export function ApiKeysList() {
             <HalCollectionList
                 resource={data}
                 onRefresh={refresh}
+                refreshing={refreshing}
                 onCreate={open_create_modal}
                 bulkOperations={[
                     {

@@ -83,6 +83,7 @@ export function useSessions(): UseSessionsResult {
     const [data, setData] = useState<SessionsResponse | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true); // Start with loading true
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [sessionsEndpoint, setSessionsEndpoint] = useState<string | null>(null);
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false); // Track if we've loaded data
@@ -177,6 +178,7 @@ export function useSessions(): UseSessionsResult {
         if (!sessionsEndpoint) return;
 
         setLoading(true);
+        setRefreshing(data !== null);
         setError(null);
 
         try {
@@ -202,8 +204,9 @@ export function useSessions(): UseSessionsResult {
             setData(null);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    }, [sessionsEndpoint, pageSize]);
+    }, [sessionsEndpoint, pageSize, data]);
 
     /**
      * Handle next page navigation
@@ -321,6 +324,7 @@ export function useSessions(): UseSessionsResult {
         data,
         sessions,
         loading,
+        refreshing,
         error,
         selectedIds,
         currentSessionToken: currentSessionId,
