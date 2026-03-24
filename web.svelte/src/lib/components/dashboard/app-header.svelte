@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { sidebarStore } from '$lib/stores/sidebar_store';
+	import { goto } from '$app/navigation';
 	import { Menu, Search, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
 	import Breadcrumbs from './breadcrumbs.svelte';
 	import ThemeToggle from './theme-toggle.svelte';
@@ -64,9 +65,9 @@
 		<Button
 			variant="ghost"
 			size="icon"
-			disabled
+			on:click={() => goto('/help')}
 			aria-label="Help"
-			title="Help (coming soon)"
+			title="Help Center"
 		>
 			<HelpCircle class="h-5 w-5" />
 		</Button>
