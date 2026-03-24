@@ -25,6 +25,9 @@
 	// Optional refresh callback - called after bulk operations
 	export let onRefresh: (() => void) | undefined = undefined;
 
+	/** Whether a background refresh is in progress (spins the refresh icon) */
+	export let refreshing = false;
+
 	// Extract userId from URL if present (e.g., /users/123/sessions or /users/123/sessions/list)
 	$: userIdFromUrl = $page.url.pathname.match(/^\/users\/([^\/]+)\/sessions/)?.[1];
 
@@ -133,6 +136,7 @@
 	<HalCollectionList
 		resource={data}
 		onRefresh={onRefresh}
+		{refreshing}
 		bulkOperations={[
 			{
 				id: 'delete',
