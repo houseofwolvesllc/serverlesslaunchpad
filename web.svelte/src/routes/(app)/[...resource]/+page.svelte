@@ -97,6 +97,7 @@
 	// Resource state
 	let resourceData: HalObject | null = null;
 	let resourceLoading = false;
+	let resourceRefreshing = false;
 	let resourceError: Error | null = null;
 
 	// Reactive: Create new resource store when path changes
@@ -121,6 +122,7 @@
 			unsubscribe = resourceStore.subscribe((state) => {
 				resourceData = state.data;
 				resourceLoading = state.loading;
+				resourceRefreshing = state.refreshing;
 				resourceError = state.error;
 
 				// Track resource in navigation history when loaded
@@ -256,7 +258,7 @@
 
 {#if DedicatedComponent && resourceData}
 	<!-- Dedicated component from registry - receives resource prop for HATEOAS compliance -->
-	<svelte:component this={DedicatedComponent} resource={resourceData} onRefresh={handleRefresh} />
+	<svelte:component this={DedicatedComponent} resource={resourceData} onRefresh={handleRefresh} refreshing={resourceRefreshing} />
 {:else if DedicatedComponent && resourceLoading}
 	<!-- Loading state for dedicated component -->
 	<div class="p-6">
@@ -277,6 +279,7 @@
 		<HalCollectionList
 			resource={resourceData}
 			onRefresh={handleRefresh}
+			refreshing={resourceRefreshing}
 			onCreate={handleCreate}
 			onRowClick={handleRowClick}
 		/>

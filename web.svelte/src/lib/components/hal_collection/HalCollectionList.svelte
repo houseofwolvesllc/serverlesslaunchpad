@@ -31,6 +31,8 @@
 	export let emptyIcon: any = undefined;
 	export let showCreateButton = true;
 	export let showRefreshButton = true;
+	/** Whether a background refresh is in progress (spins the refresh icon) */
+	export let refreshing = false;
 	export let selectableFilter: ((item: HalObject) => boolean) | undefined = undefined;
 	/** Page title to display in the header row */
 	export let title: string | undefined = undefined;
@@ -138,8 +140,8 @@
 				</Button>
 			{/if}
 			{#if showRefreshButton}
-				<Button variant="outline" size="sm" on:click={handleRefresh}>
-					<RefreshCw class="w-4 h-4 mr-2" />
+				<Button variant="outline" size="sm" on:click={handleRefresh} disabled={refreshing}>
+					<RefreshCw class={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
 					Refresh
 				</Button>
 			{/if}
@@ -220,8 +222,8 @@
 					</Button>
 				{/if}
 				{#if showRefreshButton}
-					<Button variant="outline" size="sm" on:click={handleRefresh}>
-						<RefreshCw class="w-4 h-4 mr-2" />
+					<Button variant="outline" size="sm" on:click={handleRefresh} disabled={refreshing}>
+						<RefreshCw class={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
 						Refresh
 					</Button>
 				{/if}
