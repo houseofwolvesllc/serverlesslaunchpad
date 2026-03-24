@@ -1,6 +1,8 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import './color_themes.css';
 import { Router } from './components/router';
+import { ThemeProvider } from './components/theme_provider';
 import { LoadingOverlay, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
@@ -15,17 +17,19 @@ export const App = () => {
 
     return (
         <MantineProvider theme={theme} defaultColorScheme="auto">
-            <ModalsProvider>
-                <LoadingContext.Provider value={{ isLoading, setIsLoading }}>
-                    <LoadingOverlay visible={isLoading} />
-                    <BrowserRouter>
-                        <Notifications />
-                        <AuthenticationProvider>
-                            <Router />
-                        </AuthenticationProvider>
-                    </BrowserRouter>
-                </LoadingContext.Provider>
-            </ModalsProvider>
+            <ThemeProvider>
+                <ModalsProvider>
+                    <LoadingContext.Provider value={{ isLoading, setIsLoading }}>
+                        <LoadingOverlay visible={isLoading} />
+                        <BrowserRouter>
+                            <Notifications />
+                            <AuthenticationProvider>
+                                <Router />
+                            </AuthenticationProvider>
+                        </BrowserRouter>
+                    </LoadingContext.Provider>
+                </ModalsProvider>
+            </ThemeProvider>
         </MantineProvider>
     );
 };
