@@ -39,6 +39,7 @@ export function useSessions() {
     // State
     const [data, setData] = useState<HalObject | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [sessionsEndpoint, setSessionsEndpoint] = useState<string | null>(null);
 
@@ -96,6 +97,7 @@ export function useSessions() {
             if (!sessionsEndpoint) return;
 
             setLoading(true);
+            setRefreshing(data !== null);
             setError(null);
 
             try {
@@ -109,9 +111,10 @@ export function useSessions() {
                 setData(null);
             } finally {
                 setLoading(false);
+                setRefreshing(false);
             }
         },
-        [sessionsEndpoint]
+        [sessionsEndpoint, data]
     );
 
     /**
@@ -152,6 +155,7 @@ export function useSessions() {
         sessions,
         currentSessionId,
         loading,
+        refreshing,
         error,
         refresh,
     };
