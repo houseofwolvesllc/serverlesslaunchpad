@@ -14,6 +14,7 @@ import {
     BarChart,
     Circle,
     Clock,
+    HelpCircle,
     LayoutDashboard,
     FileText,
     Gauge,
@@ -44,6 +45,7 @@ export const iconMapper: Record<string, LucideIcon> = {
     // User Management
     users: Users,
     user: UserCircle,
+    'my-profile': UserCircle,
     sessions: UserCircle,
     'user-circle': UserCircle,
 
@@ -77,6 +79,10 @@ export const iconMapper: Record<string, LucideIcon> = {
 
     // API Keys
     'api-keys': Key,
+
+    // Help & Support
+    help: HelpCircle,
+    'help-circle': HelpCircle,
 
     // Default/Unknown
     default: Circle,
