@@ -1,7 +1,6 @@
 import { ActionIcon, Alert, AppShell, Box, Button, Group, ScrollArea, Skeleton, Stack, Text, rem } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks';
 import { IconAlertCircle, IconChevronLeft, IconChevronRight, IconHelp, IconHome, IconMenu2, IconRefresh, IconSearch } from '@tabler/icons-react';
-import { ThemeToggle } from '../../components/theme_toggle';
 import { useEffect, useMemo, useRef } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { LinksGroup } from '../../components/navbar_links_group/navbar_links_group';
@@ -14,6 +13,7 @@ import { DashboardHome } from './dashboard_home';
 import { GenericResourceView } from '../resource/generic_resource_view';
 import { HelpPage } from '../help/help_page';
 import { HelpTopicDetail } from '../help/help_topic_detail';
+import { SettingsPage } from '../settings/settings_page';
 
 export const Dashboard = () => {
     // Fetch navigation from sitemap API
@@ -34,11 +34,12 @@ export const Dashboard = () => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
 
-            // If initial load and not on dashboard or help, redirect
+            // If initial load and not on dashboard, help, or settings, redirect
             if (
                 location.pathname !== '/dashboard' &&
                 location.pathname !== '/' &&
-                !location.pathname.startsWith('/help')
+                !location.pathname.startsWith('/help') &&
+                location.pathname !== '/settings'
             ) {
                 navigate('/dashboard', { replace: true });
             }
@@ -210,9 +211,6 @@ export const Dashboard = () => {
                             >
                                 <IconHelp size={20} />
                             </ActionIcon>
-
-                            {/* Theme Toggle */}
-                            <ThemeToggle />
                         </Group>
                     </Group>
                 </Box>
@@ -232,6 +230,9 @@ export const Dashboard = () => {
 
                             {/* Dashboard home route */}
                             <Route path="dashboard" element={<DashboardHome />} />
+
+                            {/* Settings route */}
+                            <Route path="settings" element={<SettingsPage />} />
 
                             {/* Help Center routes */}
                             <Route path="help" element={<HelpPage />} />

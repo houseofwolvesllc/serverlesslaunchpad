@@ -1,0 +1,83 @@
+/**
+ * Color Theme CSS Variables
+ *
+ * Overrides Mantine's CSS custom properties when a color theme class
+ * (midnight, emerald, sunset, charcoal) is applied to <html>.
+ * All color themes assume dark mode is active.
+ */
+
+/* Midnight — Deep indigo with violet accents */
+.midnight {
+    --mantine-color-body: hsl(235 35% 5%);
+    --mantine-color-text: hsl(226 100% 94%);
+    --mantine-color-default-border: hsl(235 25% 18%);
+    --mantine-color-default-hover: hsl(235 30% 10%);
+    --mantine-color-default: hsl(235 35% 7%);
+    --mantine-primary-color-filled: hsl(263 70% 58%);
+    --mantine-primary-color-filled-hover: hsl(263 70% 52%);
+    --mantine-primary-color-light: hsla(263 70% 58% / 0.15);
+    --mantine-primary-color-light-hover: hsla(263 70% 58% / 0.2);
+    --mantine-primary-color-light-color: hsl(263 70% 68%);
+    --mantine-color-dimmed: hsl(230 20% 60%);
+    --mantine-color-dark-filled: hsl(235 35% 7%);
+    --mantine-color-dark-filled-hover: hsl(235 30% 10%);
+    --mantine-color-dark-light: hsla(235 30% 50% / 0.15);
+    --mantine-color-dark-light-hover: hsla(235 30% 50% / 0.2);
+}
+
+/* Emerald — Forest green with mint accents */
+.emerald {
+    --mantine-color-body: hsl(155 30% 4%);
+    --mantine-color-text: hsl(152 80% 92%);
+    --mantine-color-default-border: hsl(155 20% 16%);
+    --mantine-color-default-hover: hsl(155 25% 8%);
+    --mantine-color-default: hsl(155 30% 6%);
+    --mantine-primary-color-filled: hsl(160 60% 45%);
+    --mantine-primary-color-filled-hover: hsl(160 60% 40%);
+    --mantine-primary-color-light: hsla(160 60% 45% / 0.15);
+    --mantine-primary-color-light-hover: hsla(160 60% 45% / 0.2);
+    --mantine-primary-color-light-color: hsl(160 60% 55%);
+    --mantine-color-dimmed: hsl(155 15% 55%);
+    --mantine-color-dark-filled: hsl(155 30% 6%);
+    --mantine-color-dark-filled-hover: hsl(155 25% 8%);
+    --mantine-color-dark-light: hsla(155 25% 50% / 0.15);
+    --mantine-color-dark-light-hover: hsla(155 25% 50% / 0.2);
+}
+
+/* Sunset — Warm brown with amber accents */
+.sunset {
+    --mantine-color-body: hsl(25 30% 5%);
+    --mantine-color-text: hsl(35 80% 92%);
+    --mantine-color-default-border: hsl(25 20% 17%);
+    --mantine-color-default-hover: hsl(25 25% 9%);
+    --mantine-color-default: hsl(25 30% 7%);
+    --mantine-primary-color-filled: hsl(38 70% 50%);
+    --mantine-primary-color-filled-hover: hsl(38 70% 45%);
+    --mantine-primary-color-light: hsla(38 70% 50% / 0.15);
+    --mantine-primary-color-light-hover: hsla(38 70% 50% / 0.2);
+    --mantine-primary-color-light-color: hsl(38 70% 60%);
+    --mantine-color-dimmed: hsl(30 15% 55%);
+    --mantine-color-dark-filled: hsl(25 30% 7%);
+    --mantine-color-dark-filled-hover: hsl(25 25% 9%);
+    --mantine-color-dark-light: hsla(25 25% 50% / 0.15);
+    --mantine-color-dark-light-hover: hsla(25 25% 50% / 0.2);
+}
+
+/* Charcoal — True neutral gray, no color tint */
+.charcoal {
+    --mantine-color-body: hsl(0 0% 5%);
+    --mantine-color-text: hsl(0 0% 92%);
+    --mantine-color-default-border: hsl(0 0% 17%);
+    --mantine-color-default-hover: hsl(0 0% 9%);
+    --mantine-color-default: hsl(0 0% 7%);
+    --mantine-primary-color-filled: hsl(0 0% 60%);
+    --mantine-primary-color-filled-hover: hsl(0 0% 55%);
+    --mantine-primary-color-light: hsla(0 0% 60% / 0.15);
+    --mantine-primary-color-light-hover: hsla(0 0% 60% / 0.2);
+    --mantine-primary-color-light-color: hsl(0 0% 70%);
+    --mantine-color-dimmed: hsl(0 0% 55%);
+    --mantine-color-dark-filled: hsl(0 0% 7%);
+    --mantine-color-dark-filled-hover: hsl(0 0% 9%);
+    --mantine-color-dark-light: hsla(0 0% 50% / 0.15);
+    --mantine-color-dark-light-hover: hsla(0 0% 50% / 0.2);
+}
