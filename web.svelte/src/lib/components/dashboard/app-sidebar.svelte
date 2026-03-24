@@ -15,7 +15,8 @@
 		BookOpen,
 		User,
 		LogOut,
-		ChevronRight
+		ChevronRight,
+		Settings
 	} from 'lucide-svelte';
 	import { toastStore } from '$lib/stores/toast_store';
 	import { cn } from '$lib/utils';
@@ -72,6 +73,7 @@
 	$: sessionsActive = currentPath === '/sessions';
 	$: apiKeysActive = currentPath === '/api-keys';
 	$: myProfileActive = currentPath === '/my-profile';
+	$: settingsActive = currentPath === '/settings';
 
 	// Split navigation: mainNav (all except My Account) and accountNav (My Account only)
 	$: mainNav = navigation.filter((item: { label: string }) => item.label !== 'My Account');
@@ -100,7 +102,7 @@
 
 	// Auto-expand My Account section when navigating to its child routes
 	$: {
-		if ((sessionsActive || apiKeysActive || myProfileActive) && !manuallyToggled['My Account']) {
+		if ((sessionsActive || apiKeysActive || myProfileActive || settingsActive) && !manuallyToggled['My Account']) {
 			if (!openMenuGroups['My Account']) {
 				openMenuGroups['My Account'] = true;
 				openMenuGroups = { ...openMenuGroups };
@@ -349,6 +351,22 @@
 								</button>
 							</li>
 						{/if}
+						<!-- Settings (client-side route, always present) -->
+						<li>
+							<button
+								on:click={() => navigate('/settings')}
+								disabled={settingsActive}
+								class={cn(
+									'w-full flex items-center justify-start gap-3 px-3 py-2 text-sm border-l-2 transition-colors',
+									settingsActive
+										? 'border-primary bg-accent text-accent-foreground font-medium cursor-default'
+										: 'border-border hover:bg-accent hover:text-accent-foreground'
+								)}
+							>
+								<Settings class="h-4 w-4" />
+								<span>Settings</span>
+							</button>
+						</li>
 						<!-- Logout (always present - client-side action) -->
 						<li>
 							<button

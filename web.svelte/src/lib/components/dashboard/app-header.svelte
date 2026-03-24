@@ -2,7 +2,6 @@
 	import { sidebarStore } from '$lib/stores/sidebar_store';
 	import { Menu, Search, HelpCircle, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
 	import Breadcrumbs from './breadcrumbs.svelte';
-	import ThemeToggle from './theme-toggle.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { cn } from '$lib/utils';
 
@@ -70,8 +69,5 @@
 		>
 			<HelpCircle class="h-5 w-5" />
 		</Button>
-
-		<!-- Theme Toggle -->
-		<ThemeToggle />
 	</div>
 </header>
