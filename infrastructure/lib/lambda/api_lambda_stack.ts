@@ -237,6 +237,7 @@ export class ApiLambdaStack extends BaseStack {
                         return [
                             `cp -r ${apiDir}/config ${outputDir}/`,
                             `cp ${apiDir}/src/content_types/hal.css ${outputDir}/`,
+                            `cp ${inputDir}/project.config.json ${outputDir}/`,
                         ];
                     },
                     beforeInstall(): string[] {

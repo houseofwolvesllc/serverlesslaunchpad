@@ -11,11 +11,20 @@ const __dirname = path.dirname(__filename);
  * This is loaded synchronously at application startup.
  */
 export function loadProjectConfig(): ProjectConfig {
-    // Navigate from api.hypermedia/src to monorepo root
-    const configPath = path.resolve(__dirname, "../..", "project.config.json");
+    // Check multiple locations:
+    // 1. Same directory as bundle (Lambda: /var/task/project.config.json)
+    // 2. Navigate from api.hypermedia/src/ to monorepo root (local dev via tsx)
+    // 3. Navigate from api.hypermedia/dist/ to monorepo root (local dev compiled)
+    const candidates = [
+        path.resolve(__dirname, "project.config.json"),
+        path.resolve(__dirname, "../..", "project.config.json"),
+        path.resolve(__dirname, "../../..", "project.config.json"),
+    ];
 
-    if (!fs.existsSync(configPath)) {
-        throw new Error(`Project configuration not found at ${configPath}. Ensure project.config.json exists at the monorepo root.`);
+    const configPath = candidates.find(p => fs.existsSync(p));
+
+    if (!configPath) {
+        throw new Error(`Project configuration not found. Searched: ${candidates.join(", ")}. Ensure project.config.json exists at the monorepo root.`);
     }
 
     const rawConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
