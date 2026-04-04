@@ -1,8 +1,8 @@
 # Serverless Launchpad Development Makefile
-.PHONY: help dev-start dev-stop dev-reset dev-status dev-local test-local clean local-health local-services local-logs local-start local-stop
+.PHONY: help local-start local-stop local-restart local-reset local-status local-ports test-local clean moto-logs cognito-logs moto-health moto-services
 
 # BEGIN:SCAFFOLDING_REMOVE
-# Default web frontend(s) to start: all, mantine, shadcn, daisyui, or none
+# Default web frontend(s) to start: all, mantine, shadcn, daisyui, svelte, or none
 web ?= all
 # END:SCAFFOLDING_REMOVE
 
@@ -14,58 +14,69 @@ web ?= all
 # WEB_PORT ?= 5173
 # MOTO_PORT ?= 5555
 # COGNITO_PORT ?= 9230
-# WEB_DIR = web
 # END:SCAFFOLDING_INSERT
+
+# Map env= shorthand to full environment names
+env ?=
+ifeq ($(env),dev)
+  MAPPED_ENV := development
+else ifeq ($(env),prod)
+  MAPPED_ENV := production
+else
+  MAPPED_ENV := $(env)
+endif
 
 # Default target
 help:
 	@echo "Serverless Launchpad Development Commands"
 	@echo "=========================================="
 	@echo ""
-	@echo "Development Environment:"
+	@echo "Local Development:"
 	# BEGIN:SCAFFOLDING_REMOVE
-	@echo "  make dev-start              - Start local services and all web frontends (default)"
-	@echo "  make dev-start web=all      - Start local services and all frontends (explicit)"
-	@echo "  make dev-start web=mantine  - Start local services and Mantine frontend only"
-	@echo "  make dev-start web=shadcn   - Start local services and shadcn frontend only"
-	@echo "  make dev-start web=daisyui  - Start local services and DaisyUI frontend only"
-	@echo "  make dev-start web=none     - Start local services only (infrastructure only)"
+	@echo "  make local-start              - Docker Compose full stack + all web frontends"
+	@echo "  make local-start web=mantine  - Docker Compose full stack + Mantine only"
+	@echo "  make local-start web=shadcn   - Docker Compose full stack + shadcn only"
+	@echo "  make local-start web=daisyui  - Docker Compose full stack + DaisyUI only"
+	@echo "  make local-start web=svelte   - Docker Compose full stack + Svelte only"
+	@echo "  make local-start web=none     - Docker Compose full stack (no frontend)"
 	# END:SCAFFOLDING_REMOVE
 	# BEGIN:SCAFFOLDING_INSERT
-	# @echo "  make dev-start              - Start Moto and development servers"
-	# @echo "  make dev-local              - Show local development port mappings"
+	# @echo "  make local-start              - Docker Compose full stack (Postgres, Moto, API, Web)"
 	# END:SCAFFOLDING_INSERT
-	@echo "  make dev-stop               - Stop all services"
-	@echo "  make dev-restart            - Restart all services"
-	@echo "  make dev-reset              - Reset local data and restart"
-	@echo "  make local-logs             - View local init script logs"
-	@echo "  make cognito-logs           - View Cognito-Local container logs"
-	@echo "  make dev-status             - Check status of all services"
+	@echo "  make local-start env=dev      - API+Web against AWS development"
+	@echo "  make local-start env=staging  - API+Web against AWS staging"
+	@echo "  make local-start env=prod     - API+Web against AWS production (with safety prompt)"
+	@echo "  make local-stop               - Stop all services"
+	@echo "  make local-restart            - Restart all services"
+	@echo "  make local-reset              - Reset Docker data and restart"
+	@echo "  make local-status             - Check status of all services"
+	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "  make local-ports              - Show configured port mappings"
+	# END:SCAFFOLDING_INSERT
 	@echo ""
-	@echo "Tunneled Environments (local dev server → remote AWS):"
-	@echo "  make local-start              - Start full local stack (same as dev-start)"
-	@echo "  make local-start env=dev      - Start API+Web against AWS development"
-	@echo "  make local-start env=staging  - Start API+Web against AWS staging"
-	@echo "  make local-start env=prod     - Start API+Web against AWS production (with safety prompt)"
-	@echo "  make local-stop               - Stop all local dev servers"
-	@echo ""
-	@echo "Cloud Environments (legacy):"
-	@echo "  make cloud-dev    - Run locally against AWS development environment"
-	@echo "  make cloud-staging - Run locally against AWS staging environment"
+	@echo "Logs:"
+	@echo "  make moto-logs                - View Moto init script logs"
+	@echo "  make cognito-logs             - View Cognito-Local container logs"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test-local   - Run tests against local services"
-	@echo "  make test-auth    - Test authentication flow"
+	@echo "  make test-local               - Run tests against local services"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  make clean        - Clean up all containers and data"
-	@echo "  make local-health  - Check Moto health"
-	@echo "  make local-services - List Moto services"
+	@echo "  make clean                    - Clean up all containers and data"
+	@echo "  make moto-health              - Check Moto health"
+	@echo "  make moto-services            - List Moto services"
 	@echo ""
 
-# Start development environment
-dev-start:
-	@echo "🔍 Checking Docker availability..."
+# ============================================
+# local-start: start the local development environment
+#
+#   env=         (default) Docker Compose full stack with Moto
+#   env=dev      Tunneled to AWS development
+#   env=staging  Tunneled to AWS staging
+#   env=prod     Tunneled to AWS production (with safety prompt)
+# ============================================
+local-start:
+ifeq ($(env),)
 	@if ! docker version >/dev/null 2>&1; then \
 		echo "❌ ERROR: Docker is not running or not available!"; \
 		echo ""; \
@@ -77,7 +88,7 @@ dev-start:
 	@echo "✅ Docker is available"
 	@echo ""
 	@echo "🛑 Ensuring clean environment..."
-	@$(MAKE) dev-stop
+	@$(MAKE) local-stop
 	@sleep 1
 	@# Stop any container using our ports (from other projects)
 	# BEGIN:SCAFFOLDING_REMOVE
@@ -186,14 +197,34 @@ dev-start:
 	# @echo "  Web:        http://localhost:$(WEB_PORT)"
 	# @echo ""
 	# END:SCAFFOLDING_INSERT
-	@echo "View local logs with: make local-logs"
-	@echo "Check status with: make dev-status"
+	@echo "View logs: make moto-logs"
+	@echo "Status:    make local-status"
+else ifeq ($(env),prod)
+	@echo ""
+	@echo "⚠️  WARNING: You are about to start local servers against PRODUCTION AWS."
+	@echo "   This will read/write real production data."
+	@echo ""
+	@read -p "Are you sure? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		$(MAKE) _tunnel-start ENV_NAME=production; \
+	else \
+		echo "Aborted."; \
+	fi
+else
+	@$(MAKE) _tunnel-start ENV_NAME=$(MAPPED_ENV)
+endif
 
-# Stop all services
-dev-stop:
+# ============================================
+# local-stop: stop the local development environment
+#
+#   env=         (default) Stop Docker Compose + dev servers
+#   env=dev|etc  Kill bare processes by port only
+# ============================================
+local-stop:
+ifeq ($(env),)
 	@echo "🛑 Stopping services..."
 	@echo "   Killing development processes..."
-	@# Kill any process using our development ports (except Docker on 5555)
+	@# Kill any process using our development ports
 	# BEGIN:SCAFFOLDING_REMOVE
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
@@ -220,31 +251,36 @@ dev-stop:
 	@docker compose -f docker-compose.local.yml down 2>/dev/null || true
 	@echo "   ✓ Local services stopped"
 	@echo "✅ All services stopped"
+else
+	@echo "🛑 Stopping tunneled dev servers..."
+	# BEGIN:SCAFFOLDING_REMOVE
+	-@lsof -ti:3001 | xargs kill 2>/dev/null || true
+	-@lsof -ti:5173 | xargs kill 2>/dev/null || true
+	-@lsof -ti:5174 | xargs kill 2>/dev/null || true
+	-@lsof -ti:5175 | xargs kill 2>/dev/null || true
+	-@lsof -ti:5176 | xargs kill 2>/dev/null || true
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# -@lsof -ti:$(API_PORT) | xargs kill 2>/dev/null || true
+	# -@lsof -ti:$(WEB_PORT) | xargs kill 2>/dev/null || true
+	# END:SCAFFOLDING_INSERT
+	@echo "✅ Stopped"
+endif
 
 # Restart all services
-dev-restart: dev-stop dev-start
+local-restart: local-stop local-start
 
-# Reset local data and restart
-dev-reset:
+# Reset Docker data and restart
+local-reset:
 	@echo "🔄 Resetting local data..."
 	@docker compose -f docker-compose.local.yml down -v
 	@mkdir -p logs
 	@echo "✅ Local data reset"
 	@echo ""
-	@$(MAKE) dev-start
-
-# View local init logs
-local-logs:
-	@echo "📋 Local init logs (Ctrl+C to exit):"
-	@tail -f logs/moto.log
-
-# View Cognito-Local container logs
-cognito-logs:
-	@echo "📋 Cognito-Local container logs (Ctrl+C to exit):"
-	@docker logs -f serverlesslaunchpad-cognito-local
+	@$(MAKE) local-start
 
 # Check status of all services
-dev-status:
+local-status:
 	@echo "📊 Service Status"
 	@echo "=================="
 	@echo ""
@@ -263,31 +299,6 @@ dev-status:
 	else \
 		echo "  ❌ Not running"; \
 	fi
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @echo "Moto:"
-	# @if docker ps | grep -q $$(docker compose -f docker-compose.local.yml ps -q moto 2>/dev/null) 2>/dev/null; then \
-	# 	echo "  ✅ Running on port $(MOTO_PORT)"; \
-	# 	curl -s http://localhost:$(MOTO_PORT)/moto-api/reset >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
-	# else \
-	# 	echo "  ❌ Not running"; \
-	# fi
-	# @echo ""
-	# @echo "PostgreSQL:"
-	# @if docker ps | grep -q $$(docker compose -f docker-compose.local.yml ps -q postgres 2>/dev/null) 2>/dev/null; then \
-	# 	echo "  ✅ Running on port $(POSTGRES_PORT)"; \
-	# else \
-	# 	echo "  ❌ Not running"; \
-	# fi
-	# @echo ""
-	# @echo "API Server:"
-	# @if lsof -i :$(API_PORT) >/dev/null 2>&1; then \
-	# 	echo "  ✅ Running on port $(API_PORT)"; \
-	# else \
-	# 	echo "  ❌ Not running"; \
-	# fi
-	# END:SCAFFOLDING_INSERT
-	# BEGIN:SCAFFOLDING_REMOVE
 	@echo ""
 	@echo "Mantine Web:"
 	@if lsof -i :5173 >/dev/null 2>&1; then \
@@ -314,6 +325,27 @@ dev-status:
 	fi
 	# END:SCAFFOLDING_REMOVE
 	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "Moto:"
+	# @if docker ps | grep -q $$(docker compose -f docker-compose.local.yml ps -q moto 2>/dev/null) 2>/dev/null; then \
+	# 	echo "  ✅ Running on port $(MOTO_PORT)"; \
+	# 	curl -s http://localhost:$(MOTO_PORT)/moto-api/reset >/dev/null 2>&1 && echo "    Health: OK" || echo "    Health: Not responding"; \
+	# else \
+	# 	echo "  ❌ Not running"; \
+	# fi
+	# @echo ""
+	# @echo "PostgreSQL:"
+	# @if docker ps | grep -q $$(docker compose -f docker-compose.local.yml ps -q postgres 2>/dev/null) 2>/dev/null; then \
+	# 	echo "  ✅ Running on port $(POSTGRES_PORT)"; \
+	# else \
+	# 	echo "  ❌ Not running"; \
+	# fi
+	# @echo ""
+	# @echo "API Server:"
+	# @if lsof -i :$(API_PORT) >/dev/null 2>&1; then \
+	# 	echo "  ✅ Running on port $(API_PORT)"; \
+	# else \
+	# 	echo "  ❌ Not running"; \
+	# fi
 	# @echo ""
 	# @echo "Web Frontend:"
 	# @if lsof -i :$(WEB_PORT) >/dev/null 2>&1; then \
@@ -325,8 +357,8 @@ dev-status:
 	# END:SCAFFOLDING_INSERT
 
 # BEGIN:SCAFFOLDING_INSERT
-# # Show local development port mappings
-# dev-local:
+# # Show configured port mappings
+# local-ports:
 # 	@echo "📡 Local Development Port Mappings"
 # 	@echo "==================================="
 # 	@echo ""
@@ -338,241 +370,6 @@ dev-status:
 # 	@echo ""
 # 	@echo "Configured via .env (BASE_PORT=$(BASE_PORT))"
 # END:SCAFFOLDING_INSERT
-
-# Run tests against local services
-test-local:
-	@echo "🧪 Running tests against local services..."
-	# BEGIN:SCAFFOLDING_REMOVE
-	@export AWS_ENDPOINT_URL=http://localhost:5555 && \
-	export NODE_ENV=test && \
-	export AWS_ACCESS_KEY_ID=testing && \
-	export AWS_SECRET_ACCESS_KEY=testing && \
-	cd core && npm test && \
-	cd ../framework && npm test && \
-	cd ../api.hypermedia && npm test
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @export AWS_ENDPOINT_URL=http://localhost:$(MOTO_PORT) && \
-	# export NODE_ENV=test && \
-	# export AWS_ACCESS_KEY_ID=testing && \
-	# export AWS_SECRET_ACCESS_KEY=testing && \
-	# cd core && npm test && \
-	# cd ../framework && npm test && \
-	# cd ../api.hypermedia && npm test
-	# END:SCAFFOLDING_INSERT
-
-# Clean up all containers and data
-clean:
-	@echo "🧹 Cleaning up..."
-	@$(MAKE) dev-stop
-	@docker compose -f docker-compose.local.yml down -v
-	@rm -rf logs
-	@echo "✅ Cleanup complete"
-
-# Check Moto health
-local-health:
-	@echo "🏥 Moto Health Check:"
-	# BEGIN:SCAFFOLDING_REMOVE
-	@curl -s http://localhost:5555/moto-api/reset >/dev/null 2>&1 && echo "✅ Moto is running and healthy" || echo "❌ Moto is not running"
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @curl -s http://localhost:$(MOTO_PORT)/moto-api/reset >/dev/null 2>&1 && echo "✅ Moto is running and healthy" || echo "❌ Moto is not running"
-	# END:SCAFFOLDING_INSERT
-
-# List Moto services
-local-services:
-	@echo "📦 Moto Services:"
-	@echo ""
-	@echo "Cognito User Pools:"
-	# BEGIN:SCAFFOLDING_REMOVE
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 cognito-idp list-user-pools --max-results 10 2>/dev/null | jq -r '.UserPools[] | "  - \(.Name) (ID: \(.Id))"' || echo "  No user pools found"
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 cognito-idp list-user-pools --max-results 10 2>/dev/null | jq -r '.UserPools[] | "  - \(.Name) (ID: \(.Id))"' || echo "  No user pools found"
-	# END:SCAFFOLDING_INSERT
-	@echo ""
-	@echo "S3 Buckets:"
-	# BEGIN:SCAFFOLDING_REMOVE
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 s3api list-buckets 2>/dev/null | jq -r '.Buckets[] | "  - \(.Name)"' || echo "  No buckets found"
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 s3api list-buckets 2>/dev/null | jq -r '.Buckets[] | "  - \(.Name)"' || echo "  No buckets found"
-	# END:SCAFFOLDING_INSERT
-	@echo ""
-	@echo "Secrets:"
-	# BEGIN:SCAFFOLDING_REMOVE
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 secretsmanager list-secrets 2>/dev/null | jq -r '.SecretList[] | "  - \(.Name)"' || echo "  No secrets found"
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 secretsmanager list-secrets 2>/dev/null | jq -r '.SecretList[] | "  - \(.Name)"' || echo "  No secrets found"
-	# END:SCAFFOLDING_INSERT
-	@echo ""
-	@echo "SSM Parameters:"
-	# BEGIN:SCAFFOLDING_REMOVE
-	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	aws --endpoint-url=http://localhost:5555 --region us-west-2 ssm get-parameters-by-path --path /serverlesslaunchpad 2>/dev/null | jq -r '.Parameters[] | "  - \(.Name): \(.Value)"' || echo "  No parameters found"
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
-	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 ssm get-parameters-by-path --path /serverlesslaunchpad 2>/dev/null | jq -r '.Parameters[] | "  - \(.Name): \(.Value)"' || echo "  No parameters found"
-	# END:SCAFFOLDING_INSERT
-
-# Cloud environment commands
-cloud-dev:
-	# BEGIN:SCAFFOLDING_REMOVE
-	@echo "☁️  Starting development environment (Local → AWS Development, web=$(web))"
-	@mkdir -p logs
-	@echo "🚀 Starting development servers (AWS development environment)..."
-	@cd api.hypermedia && npm run local development > ../logs/api-dev.log 2>&1 &
-	@if [ "$(web)" = "all" ]; then \
-		cd mantine.web && npm run local:development > ../logs/web-mantine-dev.log 2>&1 & \
-		cd shadcn.web && npm run local:development > ../logs/web-shadcn-dev.log 2>&1 & \
-		cd daisyui.web && npm run local:development > ../logs/web-daisyui-dev.log 2>&1 &; \
-	elif [ "$(web)" = "mantine" ]; then \
-		cd mantine.web && npm run local:development > ../logs/web-mantine-dev.log 2>&1 &; \
-	elif [ "$(web)" = "shadcn" ]; then \
-		cd shadcn.web && npm run local:development > ../logs/web-shadcn-dev.log 2>&1 &; \
-	elif [ "$(web)" = "daisyui" ]; then \
-		cd daisyui.web && npm run local:development > ../logs/web-daisyui-dev.log 2>&1 &; \
-	fi
-	@sleep 3
-	@echo "   Development servers started"
-	@echo ""
-	@echo "✨ Development environment ready (Local → AWS Development)!"
-	@echo ""
-	@echo "  API:        http://localhost:3001 → AWS Development"
-	@if [ "$(web)" = "all" ]; then \
-		echo "  Mantine:    http://localhost:5173 → AWS Development"; \
-		echo "  shadcn:     http://localhost:5174 → AWS Development"; \
-		echo "  DaisyUI:    http://localhost:5175 → AWS Development"; \
-	elif [ "$(web)" = "mantine" ]; then \
-		echo "  Mantine:    http://localhost:5173 → AWS Development"; \
-	elif [ "$(web)" = "shadcn" ]; then \
-		echo "  shadcn:     http://localhost:5174 → AWS Development"; \
-	elif [ "$(web)" = "daisyui" ]; then \
-		echo "  DaisyUI:    http://localhost:5175 → AWS Development"; \
-	fi
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @echo "☁️  Starting development environment (Local → AWS Development)"
-	# @mkdir -p logs
-	# @echo "🚀 Starting development servers (AWS development environment)..."
-	# @cd api.hypermedia && npm run local development > ../logs/api-dev.log 2>&1 &
-	# @echo "  Web:        http://localhost:$(WEB_PORT)"
-	# @sleep 3
-	# @echo "   Development servers started"
-	# @echo ""
-	# @echo "✨ Development environment ready (Local → AWS Development)!"
-	# @echo ""
-	# @echo "  API:        http://localhost:$(API_PORT) → AWS Development"
-	# @echo "  Web:        http://localhost:$(WEB_PORT)"
-	# END:SCAFFOLDING_INSERT
-
-cloud-staging:
-	# BEGIN:SCAFFOLDING_REMOVE
-	@echo "☁️  Starting staging environment (Local → AWS Staging, web=$(web))"
-	@mkdir -p logs
-	@echo "🚀 Starting development servers (AWS staging environment)..."
-	@cd api.hypermedia && npm run local staging > ../logs/api-staging.log 2>&1 &
-	@if [ "$(web)" = "all" ]; then \
-		cd mantine.web && npm run local:staging > ../logs/web-mantine-staging.log 2>&1 & \
-		cd shadcn.web && npm run local:staging > ../logs/web-shadcn-staging.log 2>&1 & \
-		cd daisyui.web && npm run local:staging > ../logs/web-daisyui-staging.log 2>&1 &; \
-	elif [ "$(web)" = "mantine" ]; then \
-		cd mantine.web && npm run local:staging > ../logs/web-mantine-staging.log 2>&1 &; \
-	elif [ "$(web)" = "shadcn" ]; then \
-		cd shadcn.web && npm run local:staging > ../logs/web-shadcn-staging.log 2>&1 &; \
-	elif [ "$(web)" = "daisyui" ]; then \
-		cd daisyui.web && npm run local:staging > ../logs/web-daisyui-staging.log 2>&1 &; \
-	fi
-	@sleep 3
-	@echo "   Development servers started"
-	@echo ""
-	@echo "✨ Staging environment ready (Local → AWS Staging)!"
-	@echo ""
-	@echo "  API:        http://localhost:3001 → AWS Staging"
-	@if [ "$(web)" = "all" ]; then \
-		echo "  Mantine:    http://localhost:5173 → AWS Staging"; \
-		echo "  shadcn:     http://localhost:5174 → AWS Staging"; \
-		echo "  DaisyUI:    http://localhost:5175 → AWS Staging"; \
-	elif [ "$(web)" = "mantine" ]; then \
-		echo "  Mantine:    http://localhost:5173 → AWS Staging"; \
-	elif [ "$(web)" = "shadcn" ]; then \
-		echo "  shadcn:     http://localhost:5174 → AWS Staging"; \
-	elif [ "$(web)" = "daisyui" ]; then \
-		echo "  DaisyUI:    http://localhost:5175 → AWS Staging"; \
-	fi
-	# END:SCAFFOLDING_REMOVE
-	# BEGIN:SCAFFOLDING_INSERT
-	# @echo "☁️  Starting staging environment (Local → AWS Staging)"
-	# @mkdir -p logs
-	# @echo "🚀 Starting development servers (AWS staging environment)..."
-	# @cd api.hypermedia && npm run local staging > ../logs/api-staging.log 2>&1 &
-	# @echo "  Web:        http://localhost:$(WEB_PORT)"
-	# @sleep 3
-	# @echo "   Development servers started"
-	# @echo ""
-	# @echo "✨ Staging environment ready (Local → AWS Staging)!"
-	# @echo ""
-	# @echo "  API:        http://localhost:$(API_PORT) → AWS Staging"
-	# @echo "  Web:        http://localhost:$(WEB_PORT)"
-	# END:SCAFFOLDING_INSERT
-
-# ============================================
-# Unified local-start / local-stop targets
-# ============================================
-# env variable controls which environment config to use:
-#   local (default) = full Docker Compose stack with Moto
-#   dev             = tunneled to AWS development
-#   staging         = tunneled to AWS staging
-#   prod            = tunneled to AWS production (with safety prompt)
-env ?= local
-
-# Start local development environment
-local-start:
-	@if [ "$(env)" = "local" ]; then \
-		$(MAKE) dev-start; \
-	elif [ "$(env)" = "dev" ] || [ "$(env)" = "development" ]; then \
-		$(MAKE) _tunnel-start ENV_NAME=development; \
-	elif [ "$(env)" = "staging" ]; then \
-		$(MAKE) _tunnel-start ENV_NAME=staging; \
-	elif [ "$(env)" = "prod" ] || [ "$(env)" = "production" ]; then \
-		echo ""; \
-		echo "⚠️  WARNING: You are about to start local servers against PRODUCTION AWS."; \
-		echo "   This will read/write real production data."; \
-		echo ""; \
-		read -p "Are you sure? (yes/no): " confirm; \
-		if [ "$$confirm" = "yes" ]; then \
-			$(MAKE) _tunnel-start ENV_NAME=production; \
-		else \
-			echo "Aborted."; \
-		fi; \
-	else \
-		echo "❌ Unknown env: $(env)"; \
-		echo "   Valid options: local, dev, staging, prod"; \
-		exit 1; \
-	fi
-
-# Stop local dev servers (kills API + Web processes, optionally Docker)
-local-stop:
-	@echo "🛑 Stopping local dev servers..."
-	@pkill -f "node.*dev_server" 2>/dev/null || true
-	@pkill -f "vite" 2>/dev/null || true
-	@pkill -f "nodemon" 2>/dev/null || true
-	@pkill -f "tsc.*--watch" 2>/dev/null || true
-	@pkill -f "tsc-alias.*--watch" 2>/dev/null || true
-	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5174 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5175 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5176 | xargs kill -9 2>/dev/null || true
-	@echo "✅ Dev servers stopped"
 
 # Internal helper: start API + Web tunneled to a remote environment
 # Usage: $(MAKE) _tunnel-start ENV_NAME=development
@@ -616,8 +413,8 @@ _tunnel-start:
 	@echo ""
 	@echo "✨ Tunneled environment ready (Local → AWS $(ENV_NAME))!"
 	@echo ""
-	@echo "  API:        http://localhost:3001 → AWS $(ENV_NAME)"
 	# BEGIN:SCAFFOLDING_REMOVE
+	@echo "  API:        http://localhost:3001 → AWS $(ENV_NAME)"
 	@if [ "$(web)" = "all" ]; then \
 		echo "  Mantine:    http://localhost:5173 → AWS $(ENV_NAME)"; \
 		echo "  shadcn:     http://localhost:5174 → AWS $(ENV_NAME)"; \
@@ -634,9 +431,104 @@ _tunnel-start:
 	fi
 	# END:SCAFFOLDING_REMOVE
 	# BEGIN:SCAFFOLDING_INSERT
+	# @echo "  API:        http://localhost:$(API_PORT) → AWS $(ENV_NAME)"
 	# @echo "  Web:        http://localhost:$(WEB_PORT) → AWS $(ENV_NAME)"
 	# END:SCAFFOLDING_INSERT
 	@echo ""
+
+# Run tests against local services
+test-local:
+	@echo "🧪 Running tests against local services..."
+	# BEGIN:SCAFFOLDING_REMOVE
+	@export AWS_ENDPOINT_URL=http://localhost:5555 && \
+	export NODE_ENV=test && \
+	export AWS_ACCESS_KEY_ID=testing && \
+	export AWS_SECRET_ACCESS_KEY=testing && \
+	cd core && npm test && \
+	cd ../framework && npm test && \
+	cd ../api.hypermedia && npm test
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @export AWS_ENDPOINT_URL=http://localhost:$(MOTO_PORT) && \
+	# export NODE_ENV=test && \
+	# export AWS_ACCESS_KEY_ID=testing && \
+	# export AWS_SECRET_ACCESS_KEY=testing && \
+	# cd core && npm test && \
+	# cd ../framework && npm test && \
+	# cd ../api.hypermedia && npm test
+	# END:SCAFFOLDING_INSERT
+
+# Clean up all containers and data
+clean:
+	@echo "🧹 Cleaning up..."
+	@$(MAKE) local-stop
+	@docker compose -f docker-compose.local.yml down -v
+	@rm -rf logs
+	@echo "✅ Cleanup complete"
+
+# View Moto init logs
+moto-logs:
+	@echo "📋 Moto init logs (Ctrl+C to exit):"
+	@tail -f logs/moto.log
+
+# View Cognito-Local container logs
+cognito-logs:
+	@echo "📋 Cognito-Local container logs (Ctrl+C to exit):"
+	@docker logs -f serverlesslaunchpad-cognito-local
+
+# Check Moto health
+moto-health:
+	@echo "🏥 Moto Health Check:"
+	# BEGIN:SCAFFOLDING_REMOVE
+	@curl -s http://localhost:5555/moto-api/reset >/dev/null 2>&1 && echo "✅ Moto is running and healthy" || echo "❌ Moto is not running"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @curl -s http://localhost:$(MOTO_PORT)/moto-api/reset >/dev/null 2>&1 && echo "✅ Moto is running and healthy" || echo "❌ Moto is not running"
+	# END:SCAFFOLDING_INSERT
+
+# List Moto services
+moto-services:
+	@echo "📦 Moto Services:"
+	@echo ""
+	@echo "Cognito User Pools:"
+	# BEGIN:SCAFFOLDING_REMOVE
+	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	aws --endpoint-url=http://localhost:5555 --region us-west-2 cognito-idp list-user-pools --max-results 10 2>/dev/null | jq -r '.UserPools[] | "  - \(.Name) (ID: \(.Id))"' || echo "  No user pools found"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 cognito-idp list-user-pools --max-results 10 2>/dev/null | jq -r '.UserPools[] | "  - \(.Name) (ID: \(.Id))"' || echo "  No user pools found"
+	# END:SCAFFOLDING_INSERT
+	@echo ""
+	@echo "S3 Buckets:"
+	# BEGIN:SCAFFOLDING_REMOVE
+	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	aws --endpoint-url=http://localhost:5555 --region us-west-2 s3api list-buckets 2>/dev/null | jq -r '.Buckets[] | "  - \(.Name)"' || echo "  No buckets found"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 s3api list-buckets 2>/dev/null | jq -r '.Buckets[] | "  - \(.Name)"' || echo "  No buckets found"
+	# END:SCAFFOLDING_INSERT
+	@echo ""
+	@echo "Secrets:"
+	# BEGIN:SCAFFOLDING_REMOVE
+	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	aws --endpoint-url=http://localhost:5555 --region us-west-2 secretsmanager list-secrets 2>/dev/null | jq -r '.SecretList[] | "  - \(.Name)"' || echo "  No secrets found"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 secretsmanager list-secrets 2>/dev/null | jq -r '.SecretList[] | "  - \(.Name)"' || echo "  No secrets found"
+	# END:SCAFFOLDING_INSERT
+	@echo ""
+	@echo "SSM Parameters:"
+	# BEGIN:SCAFFOLDING_REMOVE
+	@export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	aws --endpoint-url=http://localhost:5555 --region us-west-2 ssm get-parameters-by-path --path /serverlesslaunchpad 2>/dev/null | jq -r '.Parameters[] | "  - \(.Name): \(.Value)"' || echo "  No parameters found"
+	# END:SCAFFOLDING_REMOVE
+	# BEGIN:SCAFFOLDING_INSERT
+	# @export AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing AWS_DEFAULT_REGION=us-west-2 && \
+	# aws --endpoint-url=http://localhost:$(MOTO_PORT) --region us-west-2 ssm get-parameters-by-path --path /serverlesslaunchpad 2>/dev/null | jq -r '.Parameters[] | "  - \(.Name): \(.Value)"' || echo "  No parameters found"
+	# END:SCAFFOLDING_INSERT
 
 # Create logs directory if it doesn't exist
 $(shell mkdir -p logs)

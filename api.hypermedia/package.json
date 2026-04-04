@@ -10,10 +10,10 @@
     "scripts": {
         "clean": "rimraf coverage build tmp dist",
         "prebuild": "echo 'Starting build...'",
-        "build": "tsc && tsc-alias && [ -d config ] && cp -r config dist/ || true",
-        "build:prod": "tsc && tsc-alias && [ -d config ] && cp -r config dist/ || true",
+        "build": "tsc && tsc-alias && cp src/content_types/hal.css dist/content_types/ && ([ -d config ] && cp -r config dist/ || true)",
+        "build:prod": "tsc && tsc-alias && cp src/content_types/hal.css dist/content_types/ && ([ -d config ] && cp -r config dist/ || true)",
         "build:watch": "tsc --watch --preserveWatchOutput & tsc-alias --watch",
-        "build:release": "npm run clean && tsc && tsc-alias && [ -d config ] && cp -r config dist/ || true",
+        "build:release": "npm run clean && tsc && tsc-alias && cp src/content_types/hal.css dist/content_types/ && ([ -d config ] && cp -r config dist/ || true)",
         "local": "npm run build && node dist/dev_server.js local 2>&1 | tee ../logs/api.log",
         "local:watch": "nodemon --watch src --watch ../core/dist --watch ../framework/dist --watch ../types/dist --exec \"npm run build && node dist/dev_server.js local\" --ext ts --delay 1 2>&1 | tee ../logs/api.log",
         "local:development": "npm run build && node dist/dev_server.js development",
