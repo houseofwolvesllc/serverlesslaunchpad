@@ -473,6 +473,7 @@ ${checkboxes}
         return `<link rel="stylesheet" href="${HAL_CSS_PATH}" />`;
     }
 
+
     /**
      * Escape HTML entities
      */
