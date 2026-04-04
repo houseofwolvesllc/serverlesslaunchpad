@@ -211,12 +211,94 @@ export class Deployer extends StackManager {
             $.verbose = previousVerbose;
 
             console.log(chalk.green.bold("\n✅ Deployment completed successfully!"));
-            
+
             // Always generate local.config.json after deployment
             await this.generateLocalConfig(environment);
+
+            // Build and sync web assets for any web stacks that were deployed
+            await this.deployWebAssets(environment, services, awsProfile);
         } catch (error) {
             console.error(chalk.red(`\n❌ Deployment failed: ${(error as Error).message}`));
             process.exit(1);
+        }
+    }
+
+    /**
+     * Web package configurations for build and S3 sync
+     */
+    private readonly webPackages: Record<string, { directory: string; outputDir: string; displayName: string }> = {
+        "web-mantine": { directory: "web.mantine", outputDir: "dist", displayName: "Mantine" },
+        "web-shadcn": { directory: "web.shadcn", outputDir: "dist", displayName: "shadcn/ui" },
+        "web-daisyui": { directory: "web.daisyui", outputDir: "dist", displayName: "DaisyUI" },
+        "web-svelte": { directory: "web.svelte", outputDir: "build", displayName: "Svelte" },
+    };
+
+    /**
+     * Build and deploy web assets to S3 for any web stacks that were deployed
+     */
+    private async deployWebAssets(environment: Environment, services: string[], awsProfile: string): Promise<void> {
+        const webServices = services.filter(s => s.startsWith("web-"));
+
+        if (webServices.length === 0) return;
+
+        console.log(chalk.blue("\n🌐 Building and deploying web assets...\n"));
+
+        const projectConfig = getProjectConfig();
+        const cfnClient = new CloudFormationClient({ region: process.env.AWS_REGION });
+
+        for (const service of webServices) {
+            const pkg = this.webPackages[service];
+            if (!pkg) continue;
+
+            const stackName = `${projectConfig.resourcePrefix}-${service}-stack-${environment}`;
+
+            // Get S3 bucket name from stack outputs
+            let bucketName: string | undefined;
+            try {
+                const outputs = await this.getStackOutputs(cfnClient, stackName);
+                bucketName = outputs.find(o => o.OutputKey?.includes("BucketName"))?.OutputValue;
+            } catch (error: any) {
+                console.log(chalk.yellow(`  ⚠ Could not get outputs for ${stackName}: ${error.message}`));
+                continue;
+            }
+
+            if (!bucketName) {
+                console.log(chalk.yellow(`  ⚠ No bucket found for ${pkg.displayName}, skipping asset deployment`));
+                continue;
+            }
+
+            // Build
+            const pkgPath = path.resolve(__dirname, `../../${pkg.directory}`);
+            console.log(chalk.gray(`  [${pkg.displayName}] Building for ${environment}...`));
+            try {
+                const previousVerbose = $.verbose;
+                $.verbose = false;
+                await $`cd ${pkgPath} && npm run build:${environment}`;
+                $.verbose = previousVerbose;
+                console.log(chalk.green(`  [${pkg.displayName}] ✓ Build completed`));
+            } catch (error: any) {
+                console.log(chalk.red(`  [${pkg.displayName}] ✗ Build failed: ${error.message}`));
+                continue;
+            }
+
+            // Verify output exists
+            const outputPath = path.join(pkgPath, pkg.outputDir);
+            if (!fs.existsSync(outputPath)) {
+                console.log(chalk.red(`  [${pkg.displayName}] ✗ Build output not found: ${outputPath}`));
+                continue;
+            }
+
+            // Sync to S3
+            console.log(chalk.gray(`  [${pkg.displayName}] Syncing to s3://${bucketName}...`));
+            try {
+                const previousVerbose = $.verbose;
+                $.verbose = false;
+                await $`AWS_PROFILE=${awsProfile} aws s3 sync ${outputPath}/ s3://${bucketName}/ --delete`;
+                $.verbose = previousVerbose;
+                console.log(chalk.green(`  [${pkg.displayName}] ✓ Deployed to ${bucketName}`));
+            } catch (error: any) {
+                console.log(chalk.red(`  [${pkg.displayName}] ✗ S3 sync failed: ${error.message}`));
+            }
         }
     }
 

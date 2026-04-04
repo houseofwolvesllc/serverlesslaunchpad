@@ -11,4 +11,3 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Generated configuration files (overwritten by local init scripts)
 /config/*
-!/config/local.infrastructure.json

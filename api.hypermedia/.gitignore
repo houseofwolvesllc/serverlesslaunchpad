@@ -35,7 +35,6 @@ working_dir/
 
 # Infrastructure generated config (overwritten by local init scripts)
 config/*
-!config/local.infrastructure.json
 
 # Environment files
 .env*

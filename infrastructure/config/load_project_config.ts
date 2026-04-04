@@ -11,8 +11,11 @@ const __dirname = path.dirname(__filename);
  * This is loaded synchronously at CDK synth time.
  */
 export function loadProjectConfig(): ProjectConfig {
-    // Navigate from infrastructure/config to monorepo root
-    const configPath = path.resolve(__dirname, "../../..", "project.config.json");
+    // Navigate from infrastructure/config/ (or infrastructure/dist/config/) to monorepo root
+    // When running via tsx: __dirname = infrastructure/config/ → ../.. = monorepo root
+    // When running compiled: __dirname = infrastructure/dist/config/ → ../../.. = monorepo root
+    const distDepth = __dirname.includes(path.sep + "dist" + path.sep) ? "../../.." : "../..";
+    const configPath = path.resolve(__dirname, distDepth, "project.config.json");
 
     if (!fs.existsSync(configPath)) {
         throw new Error(`Project configuration not found at ${configPath}. Ensure project.config.json exists at the monorepo root.`);
