@@ -1,0 +1,295 @@
+/* HAL XHTML Stylesheet
+ * Styles for the hypermedia API browser-accessible HTML responses.
+ * Served at /_assets/hal.css and linked from all XHTML responses.
+ */
+
+/* Base */
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+  background: #f5f5f5;
+  line-height: 1.5;
+  font-size: 0.875rem;
+  color: #333;
+}
+
+/* Resource Container */
+.hal-resource {
+  background: #fff;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin: 0.75rem 0;
+}
+
+/* Headings */
+h1, h2, h3, h4 { color: #333; margin-top: 0.75rem; }
+h1 { font-size: 1.35rem; margin-bottom: 0.75rem; border-bottom: 2px solid #eee; padding-bottom: 0.35rem; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 1.1rem; color: #555; }
+
+/* Properties — key/value grid */
+dl {
+  background: #f5f5f5;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  margin: 0.5rem 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  align-items: baseline;
+}
+dt {
+  font-weight: 600;
+  margin: 0;
+  color: #555;
+  white-space: nowrap;
+}
+dd {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+/* Navigation Structure (_nav) */
+.hal-nav {
+  margin: 0 0 2rem 0;
+  padding: 1rem;
+  background: #f0f7ff;
+  border-radius: 0.5rem;
+  border: 1px solid #0066cc;
+}
+.hal-nav h2 {
+  margin-top: 0;
+  color: #0066cc;
+  border-bottom: 2px solid #0066cc;
+  padding-bottom: 0.5rem;
+}
+.hal-nav-group {
+  margin: 1rem 0;
+}
+.hal-nav-group h3 {
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+  color: #333;
+}
+.hal-nav-subgroup {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid #ccc;
+}
+.hal-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+.hal-nav li {
+  margin: 0.25rem 0;
+}
+.hal-nav a {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  background: #fff;
+  color: #0066cc;
+  text-decoration: none;
+  border-radius: 0.25rem;
+  border: 1px solid #0066cc;
+  font-size: 0.8rem;
+  transition: background 0.2s, color 0.2s;
+}
+.hal-nav a:hover {
+  background: #0066cc;
+  color: #fff;
+}
+.hal-nav button.nav-button {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  background: #fff;
+  color: #0066cc;
+  border: 1px solid #0066cc;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: normal;
+  transition: background 0.2s, color 0.2s;
+  margin: 0;
+}
+.hal-nav button.nav-button:hover {
+  background: #0066cc;
+  color: #fff;
+}
+
+/* Embedded Resources */
+.hal-embedded {
+  margin: 0.5rem 0;
+}
+.hal-embedded-item {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  background: #f9f9f9;
+  border-left: 3px solid #0066cc;
+  border-radius: 0.25rem;
+}
+
+/* Navigation Links */
+.hal-links {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0;
+  border-top: 1px solid #eee;
+}
+.hal-links a {
+  display: inline-block;
+  margin: 0.15rem 0.35rem 0.15rem 0;
+  padding: 0.3rem 0.65rem;
+  background: #f0f0f0;
+  color: #0066cc;
+  text-decoration: none;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  transition: background 0.2s;
+}
+.hal-links a:hover {
+  background: #e0e0e0;
+}
+
+/* Templates/Forms — responsive grid */
+.hal-templates {
+  margin: 0.75rem 0;
+  padding-top: 0.75rem;
+  border-top: 2px solid #0066cc;
+}
+.hal-template {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.1rem 1rem;
+}
+.hal-template h4 {
+  margin: 0 0 0.25rem 0;
+  color: #0066cc;
+  font-size: 0.95rem;
+  grid-column: 1 / -1;
+}
+.hal-template > input[type="hidden"] {
+  display: none;
+}
+.hal-template > fieldset {
+  grid-column: 1 / -1;
+}
+.hal-template > label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+/* Form Elements */
+.hal-template label {
+  display: block;
+  margin: 0;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: #555;
+}
+.hal-template input,
+.hal-template textarea,
+.hal-template select {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  margin: 0.1rem 0 0;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.hal-template input:focus,
+.hal-template textarea:focus,
+.hal-template select:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0,102,204,0.1);
+}
+.hal-template button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0.4rem 0.85rem;
+  margin: 0.35rem 0 0 0;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.hal-template button:hover {
+  background: #0052a3;
+}
+.hal-template button:active {
+  background: #004080;
+}
+
+/* Responsive form columns */
+@media (min-width: 640px) {
+  .hal-template {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .hal-template {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Code and Time */
+code {
+  background: #f0f0f0;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.9em;
+}
+time {
+  font-style: italic;
+  color: #666;
+}
+
+/* Error */
+.error h1 {
+  color: #c00;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  body {
+    padding: 0.5rem;
+  }
+  .hal-resource {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Print */
+@media print {
+  body {
+    background: white;
+  }
+  .hal-resource {
+    box-shadow: none;
+  }
+  button {
+    display: none;
+  }
+  .hal-links a {
+    color: #000;
+    text-decoration: underline;
+  }
+}

@@ -5,6 +5,7 @@ import { getContainer } from "./container";
 import { CONTENT_TYPES, getAcceptedContentType } from "./content_types/content_negotiation";
 import { JsonAdapter } from "./content_types/json_adapter";
 import { XhtmlAdapter } from "./content_types/xhtml_adapter";
+import { HAL_CSS_PATH, halStyles } from "./content_types/hal_xhtml_adapter";
 import {
     ConflictError,
     ForbiddenError,
@@ -110,6 +111,21 @@ export const handler = async (event: ALBEvent): Promise<ALBResult> => {
                 ...corsHeaders,
             },
             body: "",
+        };
+    }
+
+    // Serve static assets (CSS stylesheet for XHTML responses)
+    if (event.httpMethod === "GET" && event.path === HAL_CSS_PATH) {
+        const corsHeaders = await getCorsHeaders(event);
+        return {
+            statusCode: 200,
+            headers: {
+                "Content-Type": "text/css; charset=utf-8",
+                "Cache-Control": "public, max-age=86400, immutable",
+                ...getSecurityHeaders(),
+                ...corsHeaders,
+            },
+            body: halStyles,
         };
     }
 
