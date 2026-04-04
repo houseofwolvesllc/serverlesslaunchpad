@@ -29,4 +29,3 @@ dist-ssr
 
 # Generated configuration files (overwritten by local init scripts)
 config/*
-!config/local.infrastructure.json

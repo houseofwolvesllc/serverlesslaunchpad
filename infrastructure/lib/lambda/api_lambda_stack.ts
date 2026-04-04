@@ -10,6 +10,7 @@ import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ISecret, Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { BaseStack, BaseStackProps } from "../base/base_stack";
+import { getProjectConfig } from "../../config/load_project_config";
 
 export interface ApiLambdaStackProps extends BaseStackProps {
     encryptionKey?: Key;
@@ -231,10 +232,12 @@ export class ApiLambdaStack extends BaseStack {
                         ];
                     },
                     afterBundling(inputDir: string, outputDir: string): string[] {
-                        // Copy config files to Lambda package (esbuild only bundles JS)
+                        // Copy non-JS assets to Lambda package (esbuild only bundles JS)
+                        // hal.css goes to root because esbuild flattens the bundle — __dirname = /var/task/
                         const apiDir = `${inputDir}/api.hypermedia`;
                         return [
                             `cp -r ${apiDir}/config ${outputDir}/`,
+                            `cp ${apiDir}/src/content_types/hal.css ${outputDir}/`,
                         ];
                     },
                     beforeInstall(): string[] {
@@ -256,6 +259,9 @@ export class ApiLambdaStack extends BaseStack {
             environment: {
                 NODE_ENV: this.appEnvironment,
                 AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1", // AWS SDK optimization
+                // Project identity (from project.config.json at synth time)
+                PROJECT_TABLE_PREFIX: getProjectConfig().tablePrefix,
+                PROJECT_CONFIG_DOMAIN: getProjectConfig().configDomain,
                 // Pass all configuration as environment variables
                 // The Lambda code can read these and build its config object
                 COGNITO_USER_POOL_ID: props.userPoolId,
