@@ -231,10 +231,11 @@ export class ApiLambdaStack extends BaseStack {
                         ];
                     },
                     afterBundling(inputDir: string, outputDir: string): string[] {
-                        // Copy config files to Lambda package (esbuild only bundles JS)
+                        // Copy non-JS assets to Lambda package (esbuild only bundles JS)
                         const apiDir = `${inputDir}/api.hypermedia`;
                         return [
                             `cp -r ${apiDir}/config ${outputDir}/`,
+                            `mkdir -p ${outputDir}/content_types && cp ${apiDir}/src/content_types/hal.css ${outputDir}/content_types/`,
                         ];
                     },
                     beforeInstall(): string[] {
